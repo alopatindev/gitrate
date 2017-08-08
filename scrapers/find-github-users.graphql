@@ -1,0 +1,76 @@
+query {
+  search(
+    first: %(results_limit)d,
+    type: REPOSITORY,
+    query: "%(query)s",
+  ) {
+    nodes {
+      ... on Repository {
+        id
+        name
+        createdAt
+        pushedAt
+        ...commits
+        ...ownerRepositories
+        ...repositoryTopics
+      }
+    }
+  }
+}
+
+fragment commits on Repository {
+  defaultBranchRef {
+    target {
+      ... on Commit {
+        id
+        history(first: %(commits_limit)d) {
+          nodes {
+            author {
+              user {
+                id
+                #login
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+fragment ownerRepositories on Repository {
+  owner {
+    id
+    login
+    pinnedRepositories(first: %(pinned_repositories_limit)d, orderBy: { field: UPDATED_AT, direction: DESC }) {
+      ...repositoryConnections
+    }
+    repositories(first: %(repositories_limit)d, orderBy: { field: UPDATED_AT, direction: DESC }) {
+      ...repositoryConnections
+    }
+  }
+}
+
+fragment repositoryConnections on RepositoryConnection {
+  nodes {
+    id
+    nameWithOwner
+    isFork
+    isMirror
+    createdAt
+    pushedAt
+    #...commits
+    ...repositoryTopics
+  }
+}
+
+fragment repositoryTopics on Repository {
+  repositoryTopics(first: %(topics_limit)d) {
+    nodes {
+      topic {
+        #id
+        name
+      }
+    }
+  }
+}
