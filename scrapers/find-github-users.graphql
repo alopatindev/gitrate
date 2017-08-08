@@ -2,7 +2,7 @@ query {
   search(
     first: %(results_limit)d,
     type: REPOSITORY,
-    query: "%(query)s",
+    query: "%(search_query)s",
   ) {
     nodes {
       ... on Repository {
