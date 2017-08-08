@@ -9,6 +9,7 @@ from dateutil.parser import parse as isodate
 
 GITHUB_TOKEN = sys.argv[1]
 MIN_REPO_AGE_DAYS = 60
+MAX_REPO_SIZE_KB = 5120
 
 
 def gql_execute(query):
@@ -25,15 +26,15 @@ def gql_execute(query):
 
 def search_repositories_and_users():
     pattern = '](https://travis-ci.org/'
-    query = "in:README.md sort:updated mirror:false fork:false '%s'" % pattern
+    query = "in:README.md sort:updated mirror:false fork:false size:<=%d '%s'" % (MAX_REPO_SIZE_KB, pattern)
     query_args = {
         'search_query': query,
-        'results_limit': 20,
-        'commits_limit': 2,
-        'repositories_limit': 20,
-        'pinned_repositories_limit': 6,
-        'topics_limit': 20,
-        'languages_limit': 20,
+        'max_results': 20,
+        'max_commits': 2,
+        'max_repositories': 20,
+        'max_pinned_repositories': 6,
+        'max_topics': 20,
+        'max_languages': 20,
         'results_offset': '',
     }
 
