@@ -15,6 +15,16 @@ query {
         name
         createdAt
         pushedAt
+        primaryLanguage {
+          #id
+          name
+        }
+        languages(first:%(languages_limit)d) {
+          nodes {
+            #id
+            name
+          }
+        }
         ...commits
         ...ownerRepositories
         ...repositoryTopics
@@ -64,6 +74,16 @@ fragment repositoryConnections on RepositoryConnection {
     isMirror
     createdAt
     pushedAt
+    primaryLanguage {
+      #id
+      name
+    }
+    languages(first:%(languages_limit)d) {
+      nodes {
+        #id
+        name
+      }
+    }
     #...commits
     ...repositoryTopics
   }
