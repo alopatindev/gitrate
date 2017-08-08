@@ -1,9 +1,14 @@
 query {
   search(
     first: %(results_limit)d,
+    %(results_offset)s,
     type: REPOSITORY,
     query: "%(search_query)s",
   ) {
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
     nodes {
       ... on Repository {
         id

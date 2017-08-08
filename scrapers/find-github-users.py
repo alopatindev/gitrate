@@ -31,9 +31,26 @@ def search_users():
         'topics_limit': 20,
         'repositories_limit': 20,
         'pinned_repositories_limit': 6,
+        'results_offset': '',
     }
-    graphql_query = open('find-github-users.graphql').read() % query_args
-    return gql_execute(graphql_query)
+
+    end_cursor = None
+    while True:
+        if end_cursor is not None:
+            query_args['results_offset'] = 'after: "%s"' % end_cursor
+
+        graphql_query = open('find-github-users.graphql').read() % query_args
+        result = gql_execute(graphql_query)['data']['search']
+
+        page_info = result['pageInfo']
+        if page_info['hasNextPage']:
+            end_cursor = page_info['endCursor']
+        else:
+            break
+
+        yield result
 
 
-print(search_users())
+for result in search_users():
+    print(result)
+    break
