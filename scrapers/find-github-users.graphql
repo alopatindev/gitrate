@@ -37,7 +37,7 @@ fragment commits on Repository {
   defaultBranchRef {
     target {
       ... on Commit {
-        id
+        oid
         history(first: %(max_commits)d) {
           nodes {
             author {
