@@ -1,9 +1,9 @@
 query {
   search(
-    first: %(max_results)d,
-    %(results_offset)s,
-    type: REPOSITORY,
-    query: "%(search_query)s",
+    first: ${max_results},
+    ${page},
+    type: ${type},
+    query: "${search_query}",
   ) {
     pageInfo {
       endCursor
@@ -19,7 +19,7 @@ query {
           #id
           name
         }
-        languages(first:%(max_languages)d) {
+        languages(first:${max_languages}) {
           nodes {
             #id
             name
@@ -38,7 +38,7 @@ fragment commits on Repository {
     target {
       ... on Commit {
         oid
-        history(first: %(max_commits)d) {
+        history(first: ${max_commits}) {
           nodes {
             author {
               user {
@@ -57,10 +57,10 @@ fragment ownerRepositories on Repository {
   owner {
     id
     login
-    pinnedRepositories(first: %(max_pinned_repositories)d, orderBy: { field: UPDATED_AT, direction: DESC }) {
+    pinnedRepositories(first: ${max_pinned_repositories}, orderBy: { field: UPDATED_AT, direction: DESC }) {
       ...repositoryConnections
     }
-    repositories(first: %(max_repositories)d, orderBy: { field: UPDATED_AT, direction: DESC }) {
+    repositories(first: ${max_repositories}, orderBy: { field: UPDATED_AT, direction: DESC }) {
       ...repositoryConnections
     }
   }
@@ -78,7 +78,7 @@ fragment repositoryConnections on RepositoryConnection {
       #id
       name
     }
-    languages(first:%(max_languages)d) {
+    languages(first:${max_languages}) {
       nodes {
         #id
         name
@@ -90,7 +90,7 @@ fragment repositoryConnections on RepositoryConnection {
 }
 
 fragment repositoryTopics on Repository {
-  repositoryTopics(first: %(max_topics)d) {
+  repositoryTopics(first: ${max_topics}) {
     nodes {
       topic {
         #id
