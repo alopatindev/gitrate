@@ -1,9 +1,8 @@
 name := "hiregooddevs-analysis"
 
 scalaVersion := "2.11.11"
-scalacOptions ++= Seq(
+scalacOptions in (Compile, console) ++= Seq(
   "-feature",
-  "-language:postfixOps",
   "-deprecation",
   "-encoding", "UTF-8",
   "-unchecked",
@@ -13,6 +12,11 @@ scalacOptions ++= Seq(
   "-Ywarn-value-discard",
   "-Xfuture",
   "-Xexperimental",
+  "-language:postfixOps",
+)
+
+scalacOptions in (Test, console) --= Seq(
+  "-feature",
 )
 
 val sparkVersion = "2.1.1"
@@ -30,8 +34,10 @@ libraryDependencies ++= Seq(
 
   //"com.typesafe.play" %% "play-json" % "2.6.2",
   //"com.datastax.spark" %% "spark-cassandra-connector" % "2.0.2",
-  //"org.scalacheck" %% "scalacheck" % "1.12.1" % Test,
-  //"junit" % "junit" % "4.10" % Test,
+
+  "org.scalatest" %% "scalatest" % "3.0.3" % Test,
+  "org.scalacheck" %% "scalacheck" % "1.13.5" % Test,
+  "junit" % "junit" % "4.12" % Test,
 )
 
 dependencyOverrides ++= Seq(
