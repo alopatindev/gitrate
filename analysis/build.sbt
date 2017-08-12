@@ -15,7 +15,7 @@ scalacOptions ++= Seq(
   "-Xexperimental",
 )
 
-val sparkVersion = "2.2.0"
+val sparkVersion = "2.1.1"
 val playWsStandaloneVersion = "1.0.4"
 
 libraryDependencies ++= Seq(
@@ -32,6 +32,12 @@ libraryDependencies ++= Seq(
   //"com.datastax.spark" %% "spark-cassandra-connector" % "2.0.2",
   //"org.scalacheck" %% "scalacheck" % "1.12.1" % Test,
   //"junit" % "junit" % "4.10" % Test,
+)
+
+dependencyOverrides ++= Seq(
+  "com.fasterxml.jackson.core" % "jackson-core" % "2.8.7",
+  "com.fasterxml.jackson.core" % "jackson-databind" % "2.8.7",
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.7",
 )
 
 //testOptions in Test += Tests.Argument("-oF")
