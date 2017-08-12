@@ -1,6 +1,6 @@
 package hiregooddevs.analysis
 
-import hiregooddevs.analysis.github._
+import github._
 
 import org.apache.log4j.{Level, Logger}
 
@@ -16,7 +16,7 @@ import org.apache.spark.streaming.StreamingContext._
 //import com.datastax.spark.connector._
 //import com.datastax.spark.connector.streaming._
 
-object Main extends App {
+object Main {
 
   val conf = new SparkConf()
     .setAppName("FindGithubUsers") // TODO: use class name
@@ -24,14 +24,18 @@ object Main extends App {
     .set("spark.cleaner.ttl", "3600")
   //.setJars()
 
-  val sc = new SparkContext(conf)
-  val ssc = new StreamingContext(sc, Seconds(3))
+  def main(args: Array[String]): Unit = {
+    val sc = new SparkContext(conf)
+    val ssc = new StreamingContext(sc, Seconds(3))
 
-  /*Logger.getRootLogger().setLevel(Level.OFF)
-  Logger.getLogger("org").setLevel(Level.OFF)
-  Logger.getLogger("akka").setLevel(Level.OFF)*/
+    // FIXME: move to config?
+    /*Logger.getRootLogger().setLevel(Level.OFF)
+    Logger.getLogger("org").setLevel(Level.OFF)
+    Logger.getLogger("akka").setLevel(Level.OFF)*/
 
-  val stream = ssc.receiverStream(new GithubReceiver(apiToken = "")) // FIXME
+    val stream = ssc.receiverStream(new GithubReceiver(apiToken = "")) // TODO: move to config
+
+    stream.print()
 //
 //  stream
 //    .map(status => status.getText)
@@ -41,11 +45,11 @@ object Main extends App {
 //  //.reduceByKey(_ + _)
 //  //.print()
 //
-//  ssc
-//    .start()
-//    .awaitTermination()
+    ssc.start()
+    ssc.awaitTermination()
 
-  sc.stop()
+    sc.stop()
+  }
 
 }
 
