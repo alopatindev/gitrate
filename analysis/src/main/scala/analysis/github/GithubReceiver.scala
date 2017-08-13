@@ -46,7 +46,6 @@ class GithubReceiver(apiToken: String,
     logInfo()
     Future {
       // TODO: initialize from database
-      // FIXME: load from config
       val infiniteQueries: Iterator[String] = Iterator
         .continually(
           List(
@@ -60,13 +59,17 @@ class GithubReceiver(apiToken: String,
         .flatten
         .map(_.toString)
 
-      val _ = (for {
+      // TODO: read page from database
+      val responses = for {
         query <- infiniteQueries
         if started
         (response, nextPage) <- makeQuery(query)
-        _ = processResponse(response, query, nextPage)
-      } yield
-        ()).size // force computations FIXME; yield response, map response?
+      } yield (response, query, nextPage)
+
+      responses.foreach {
+        case (response, query, nextPage) =>
+          processResponse(response, query, nextPage)
+      }
     }
 
     ()
@@ -75,6 +78,23 @@ class GithubReceiver(apiToken: String,
   override def onStop(): Unit = {
     logInfo()
     started = false
+  }
+
+  private def makeQuery(
+      query: String): Iterator[(JsLookupResult, Option[String])] = {
+    logInfo(query)
+
+    val paginator = new Paginator
+    val infiniteLoop = Iterator.continually(List(()))
+
+    for {
+      _ <- infiniteLoop
+      if started && paginator.hasNextPage()
+      response <- executeGQLBlocking(query, paginator.nextPage())
+      searchResult = response \ "data" \ "search"
+      pageInfo = searchResult \ "pageInfo"
+      _ = paginator.update(pageInfo)
+    } yield (searchResult, paginator.nextPage())
   }
 
   private def processResponse(response: JsLookupResult,
@@ -92,30 +112,15 @@ class GithubReceiver(apiToken: String,
     }
   }
 
-  def makeQuery(query: String): Iterator[(JsLookupResult, Option[String])] = {
-    logInfo(query)
-
-    val paginator = new Paginator
-    def infiniteLoop = Iterator.continually(List(()))
-
-    for {
-      _ <- infiniteLoop
-      if paginator.hasNextPage()
-      response <- executeGQLBlocking(query, paginator.nextPage())
-      searchResult = response \ "data" \ "search"
-      pageInfo = searchResult \ "pageInfo"
-      _ = paginator.update(pageInfo)
-    } yield (searchResult, paginator.nextPage())
-  }
-
-  def executeGQLBlocking(query: String,
-                         page: Option[String]): Option[JsValue] =
+  private def executeGQLBlocking(query: String,
+                                 page: Option[String]): Option[JsValue] =
     Try {
       val responseFuture = executeGQL(query, page)
       Await.result(responseFuture, requestTimeout)
     }.toOption
 
-  def executeGQL(query: String, page: Option[String]): Future[JsValue] = {
+  private def executeGQL(query: String,
+                         page: Option[String]): Future[JsValue] = {
     import hiregooddevs.utils.StringUtils._
 
     val args = Map(
@@ -137,7 +142,7 @@ class GithubReceiver(apiToken: String,
     apiCall(jsonQuery)
   }
 
-  def apiCall(data: JsValue): Future[JsValue] = {
+  private def apiCall(data: JsValue): Future[JsValue] = {
     import play.api.libs.ws.JsonBodyReadables._
     import play.api.libs.ws.JsonBodyWritables._
     import scala.concurrent.ExecutionContext.Implicits._
