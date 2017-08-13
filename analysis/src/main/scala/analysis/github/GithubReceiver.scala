@@ -43,7 +43,7 @@ class GithubReceiver(apiToken: String,
   @volatile private var started = true
 
   override def onStart(): Unit = {
-    logInfo("")
+    logInfo()
     Future {
       // TODO: initialize from database
       // FIXME: load from config
@@ -60,40 +60,24 @@ class GithubReceiver(apiToken: String,
         .flatten
         .map(_.toString)
 
-      val firstPage = None
       val _ = (for {
         query <- infiniteQueries
         if started
-
-        _ = log.debug(s"QUERY `$query`")
-
-        firstResponse <- executeGQLBlocking(query, firstPage)
-        _ = processResponse(firstResponse, query, firstPage)
-
-        searchResult = firstResponse \ "data" \ "search"
-        pageInfo = searchResult \ "pageInfo"
-
-        JsDefined(hasNextPage) = pageInfo \ "hasNextPage"
-        if hasNextPage.toString.toBoolean
-
-        JsDefined(nextPage) = pageInfo \ "endCursor"
-        nextPageOption = Some(nextPage.toString)
-
-        _ = log.debug(s"QUERY NEXT PAGE $nextPageOption of `$query`")
-        response <- executeGQLBlocking(query, nextPageOption)
-        _ = processResponse(response, query, nextPageOption)
-      } yield ()).size // force computations
+        (response, nextPage) <- makeQuery(query)
+        _ = processResponse(response, query, nextPage)
+      } yield
+        ()).size // force computations FIXME; yield response, map response?
     }
 
     ()
   }
 
   override def onStop(): Unit = {
-    logInfo("")
+    logInfo()
     started = false
   }
 
-  private def processResponse(response: JsValue,
+  private def processResponse(response: JsLookupResult,
                               query: String,
                               page: Option[String]): Unit = {
     logDebug(s"query = `$query`, page = $page, response = `$response`")
@@ -106,6 +90,22 @@ class GithubReceiver(apiToken: String,
         val result = Iterator(response.toString)
         store(result)
     }
+  }
+
+  def makeQuery(query: String): Iterator[(JsLookupResult, Option[String])] = {
+    logInfo(query)
+
+    val paginator = new Paginator
+    def infiniteLoop = Iterator.continually(List(()))
+
+    for {
+      _ <- infiniteLoop
+      if paginator.hasNextPage()
+      response <- executeGQLBlocking(query, paginator.nextPage())
+      searchResult = response \ "data" \ "search"
+      pageInfo = searchResult \ "pageInfo"
+      _ = paginator.update(pageInfo)
+    } yield (searchResult, paginator.nextPage())
   }
 
   def executeGQLBlocking(query: String,
@@ -161,6 +161,28 @@ class GithubReceiver(apiToken: String,
   private def resourceToString(resourceFilePath: String): String = {
     val stream = getClass.getResourceAsStream(resourceFilePath)
     inputStreamToString(stream)
+  }
+
+  private class Paginator {
+
+    def nextPage() = _nextPage
+
+    def hasNextPage() = _hasNextPage
+
+    def update(pageInfo: JsLookupResult): Unit = {
+      (pageInfo \ "hasNextPage", pageInfo \ "endCursor") match {
+        case (JsDefined(hasNextPage), JsDefined(endCursor))
+            if hasNextPage.toString.toBoolean =>
+          _nextPage = Some(endCursor.toString)
+        case _ =>
+          logDebug("no more pages")
+          _hasNextPage = false
+      }
+    }
+
+    private var _nextPage: Option[String] = None
+    private var _hasNextPage: Boolean = true
+
   }
 
 }
