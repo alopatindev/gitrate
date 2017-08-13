@@ -3,10 +3,12 @@ package hiregooddevs.analysis.github
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 
+import hiregooddevs.utils.LogUtils
+
 import java.io.{File, InputStream}
 import java.net.URL
 
-import org.apache.log4j.{Level, Logger, LogManager}
+import org.apache.log4j.Level
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
 
@@ -23,16 +25,10 @@ import scala.util.{Success, Try}
 
 class GithubReceiver(apiToken: String,
                      storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK)
-    extends Receiver[String](storageLevel: StorageLevel) {
+    extends Receiver[String](storageLevel: StorageLevel)
+    with LogUtils {
 
-  @transient lazy val log = LogManager.getLogger(getClass.getSimpleName)
   log.setLevel(Level.DEBUG) // TODO: move to config
-
-  // TODO: move to separate module
-  def cutLongDebugData(data: Any): String = {
-    val limit = 10
-    data.toString.take(limit)
-  }
 
   // TODO: move to separate module
   // FIXME: get actor system from spark?
@@ -47,7 +43,7 @@ class GithubReceiver(apiToken: String,
   @volatile private var started = true
 
   override def onStart(): Unit = {
-    log.info("onStart")
+    logInfo("")
     Future {
       // TODO: initialize from database
       // FIXME: load from config
@@ -69,7 +65,7 @@ class GithubReceiver(apiToken: String,
         query <- infiniteQueries
         if started
 
-        _ = log.info(s"start QUERY `$query`")
+        _ = log.debug(s"QUERY `$query`")
 
         firstResponse <- executeGQLBlocking(query, firstPage)
         _ = processResponse(firstResponse, query, firstPage)
@@ -83,7 +79,7 @@ class GithubReceiver(apiToken: String,
         JsDefined(nextPage) = pageInfo \ "endCursor"
         nextPageOption = Some(nextPage.toString)
 
-        _ = log.info(s"start SUBQUERY, page `$nextPageOption`")
+        _ = log.debug(s"QUERY NEXT PAGE $nextPageOption of `$query`")
         response <- executeGQLBlocking(query, nextPageOption)
         _ = processResponse(response, query, nextPageOption)
       } yield ()).size // force computations
@@ -93,26 +89,23 @@ class GithubReceiver(apiToken: String,
   }
 
   override def onStop(): Unit = {
-    log.info("onStop")
+    logInfo("")
     started = false
   }
 
   private def processResponse(response: JsValue,
                               query: String,
                               page: Option[String]): Unit = {
-    log.debug(
-      s"processResponse(`${cutLongDebugData(response)}`, `$query`, `$page`)")
+    logDebug(s"query = `$query`, page = $page, response = `$response`")
 
     val errorMessages: JsLookupResult = response \ "errors"
     errorMessages match {
-      case JsDefined(value) => log.error(value.toString)
-      case _                => ()
+      case JsDefined(value) => logError(value)
+      case _                =>
+        // TODO: store object, save page and query
+        val result = Iterator(response.toString)
+        store(result)
     }
-
-    // TODO: save page and query
-    // FIXME: error handling?
-    val result = Iterator(response.toString)
-    store(result)
   }
 
   def executeGQLBlocking(query: String,
@@ -128,7 +121,6 @@ class GithubReceiver(apiToken: String,
     val args = Map(
       "search_query" -> query,
       "page" -> page
-      //.map(p => "after: \"%s\"".format(p))
         .map(p => "after: " + p)
         .getOrElse(""),
       "type" -> "REPOSITORY",
@@ -150,7 +142,7 @@ class GithubReceiver(apiToken: String,
     import play.api.libs.ws.JsonBodyWritables._
     import scala.concurrent.ExecutionContext.Implicits._
 
-    log.debug(s"apiCall data = `${cutLongDebugData(data)}`")
+    logDebug(data)
 
     ws.url(apiURL)
       .addHttpHeaders("Authorization" -> s"bearer $apiToken")
