@@ -1,27 +1,22 @@
 package hiregooddevs.analysis.github
 
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
-
 import hiregooddevs.utils.LogUtils
 
 import java.io.{File, InputStream}
-import java.net.URL
+import java.net.{HttpURLConnection, URL}
 
 import org.apache.log4j.Level
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
 
 import play.api.libs.json._
-import play.api.libs.ws._
-import play.api.libs.ws.ahc._
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.io.Source
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 class GithubReceiver(apiToken: String,
                      storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK)
@@ -30,13 +25,7 @@ class GithubReceiver(apiToken: String,
 
   log.setLevel(Level.DEBUG) // TODO: move to config
 
-  // TODO: move to separate module
-  // FIXME: get actor system from spark?
-  @transient lazy implicit val system = ActorSystem()
-  @transient lazy implicit val materializer = ActorMaterializer()
-  @transient lazy val ws = StandaloneAhcWSClient()
-
-  val requestTimeout = 10000 millis
+  val requestTimeout = 10 seconds
   val apiURL = "https://api.github.com/graphql"
   val queryTemplate: String = resourceToString("/GithubSearch.graphql")
 
@@ -113,11 +102,21 @@ class GithubReceiver(apiToken: String,
   }
 
   private def executeGQLBlocking(query: String,
-                                 page: Option[String]): Option[JsValue] =
-    Try {
+                                 page: Option[String]): Option[JsValue] = {
+    val result = Try {
       val responseFuture = executeGQL(query, page)
       Await.result(responseFuture, requestTimeout)
-    }.toOption
+    }
+
+    result match {
+      case Success(_) =>
+        logDebug("SUCCEED")
+      case Failure(error) =>
+        logError(s"error ${error.toString}")
+    }
+
+    result.toOption
+  }
 
   private def executeGQL(query: String,
                          page: Option[String]): Future[JsValue] = {
@@ -142,18 +141,27 @@ class GithubReceiver(apiToken: String,
     apiCall(jsonQuery)
   }
 
-  private def apiCall(data: JsValue): Future[JsValue] = {
-    import play.api.libs.ws.JsonBodyReadables._
-    import play.api.libs.ws.JsonBodyWritables._
-    import scala.concurrent.ExecutionContext.Implicits._
-
+  private def apiCall(data: JsValue): Future[JsValue] = Future {
     logDebug(data)
 
-    ws.url(apiURL)
-      .addHttpHeaders("Authorization" -> s"bearer $apiToken")
-      .withRequestTimeout(requestTimeout)
-      .post(data)
-      .map(response => response.body[JsValue])
+    val connection =
+      new URL(apiURL)
+        .openConnection()
+        .asInstanceOf[HttpURLConnection] // FIXME: replace with wrapper?
+    connection.setConnectTimeout(requestTimeout.toMillis.toInt)
+    connection.setRequestMethod("POST")
+    connection.setRequestProperty("Authorization", s"bearer $apiToken")
+    connection.setRequestProperty("Content-Type", "application/json")
+
+    connection.setDoOutput(true)
+    val outputStream = connection.getOutputStream
+    outputStream.write(data.toString.getBytes("UTF-8"))
+    outputStream.close()
+
+    connection.connect()
+    val result = Json.parse(connection.getInputStream)
+    result
+    // FIXME: interruption handling
   }
 
   // FIXME: replace or make common utils
@@ -179,6 +187,7 @@ class GithubReceiver(apiToken: String,
         case (JsDefined(hasNextPage), JsDefined(endCursor))
             if hasNextPage.toString.toBoolean =>
           _nextPage = Some(endCursor.toString)
+          logDebug(s"next page is ${nextPage}")
         case _ =>
           logDebug("no more pages")
           _hasNextPage = false

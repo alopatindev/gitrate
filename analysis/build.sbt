@@ -23,7 +23,6 @@ val sparkVersion = "2.1.1"
 val playWsStandaloneVersion = "1.0.4"
 
 libraryDependencies ++= Seq(
-  "com.typesafe.play" %% "play-ahc-ws-standalone" % playWsStandaloneVersion,
   "com.typesafe.play" %% "play-ws-standalone-json" % playWsStandaloneVersion,
 
   //"io.reactivex" %% "rxscala" % "0.26.5",
