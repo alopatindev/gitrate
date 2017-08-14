@@ -12,11 +12,11 @@ scalacOptions in (Compile, console) ++= Seq(
   "-Ywarn-value-discard",
   "-Xfuture",
   "-Xexperimental",
-  "-language:postfixOps",
+  "-language:postfixOps"
 )
 
 scalacOptions in (Test, console) --= Seq(
-  "-feature",
+  "-feature"
 )
 
 val sparkVersion = "2.1.1"
@@ -35,19 +35,21 @@ libraryDependencies ++= Seq(
   //"com.datastax.spark" %% "spark-cassandra-connector" % "2.0.2",
 
   "org.scalatest" %% "scalatest" % "3.0.3" % Test,
-  "org.scalacheck" %% "scalacheck" % "1.13.5" % Test,
+  "org.scalacheck" %% "scalacheck" % "1.13.5" % Test
 )
 
-dependencyOverrides ++= Seq(
+dependencyOverrides ++= Set(
   "com.fasterxml.jackson.core" % "jackson-core" % "2.8.7",
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.8.7",
-  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.7",
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.7"
 )
 
 assemblyMergeStrategy in assembly := {
  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
  case x => MergeStrategy.first
 }
+
+coverageEnabled := true
 
 //testOptions in Test += Tests.Argument("-oF")
 //parallelExecution in Test := false
