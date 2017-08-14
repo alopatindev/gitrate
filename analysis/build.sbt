@@ -46,5 +46,10 @@ dependencyOverrides ++= Seq(
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.7",
 )
 
+assemblyMergeStrategy in assembly := {
+ case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+ case x => MergeStrategy.first
+}
+
 //testOptions in Test += Tests.Argument("-oF")
 //parallelExecution in Test := false
