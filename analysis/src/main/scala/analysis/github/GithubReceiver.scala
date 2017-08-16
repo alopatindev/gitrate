@@ -1,9 +1,10 @@
 package hiregooddevs.analysis.github
 
-import hiregooddevs.utils.LogUtils
+import hiregooddevs.utils.{LogUtils, RxUtils}
 
 import java.io.{File, InputStream}
-import java.net.{HttpURLConnection, URL}
+
+import rx.lang.scala.Subscription
 
 import org.apache.log4j.Level
 import org.apache.spark.storage.StorageLevel
@@ -11,115 +12,126 @@ import org.apache.spark.streaming.receiver.Receiver
 
 import play.api.libs.json._
 
-import scala.concurrent.Await
+import scala.annotation.tailrec
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.io.Source
 import scala.util.{Failure, Success, Try}
 
-class GithubReceiver(apiToken: String,
-                     storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK)
+abstract class GithubReceiver(apiToken: String,
+                              queries: Seq[GithubSearchQuery],
+                              storageLevel: StorageLevel =
+                                StorageLevel.MEMORY_AND_DISK)
     extends Receiver[String](storageLevel: StorageLevel)
+    with RxUtils
     with LogUtils {
 
   log.setLevel(Level.DEBUG) // TODO: move to config
 
-  val requestTimeout = 10 seconds
-  val apiURL = "https://api.github.com/graphql"
-  val queryTemplate: String = resourceToString("/GithubSearch.graphql")
+  def httpPostBlocking(url: String,
+                       data: String,
+                       headers: Map[String, String],
+                       timeout: Duration): InputStream
 
-  @volatile private var started = true
+  private val requestTimeout = 10 seconds
+  private val apiURL = "https://api.github.com/graphql"
+  private val queryTemplate: String = resourceToString("/GithubSearch.graphql")
+
+  private val responsesObs = observableInterval(0 seconds)
+  private var responsesSub: Option[Subscription] = None
+
+  @volatile private var infiniteQueries: Option[Iterator[String]] = None
+  @volatile private var started = false
 
   override def onStart(): Unit = {
     logInfo()
-    Future {
-      // TODO: initialize from database
-      val infiniteQueries: Iterator[String] = Iterator
-        .continually(
-          List(
-            GithubSearchQuery(language = "JavaScript",
-                              filename = ".eslintrc.*",
-                              maxRepoSizeKiB = 2048),
-            GithubSearchQuery(language = "JavaScript",
-                              filename = ".travis.yml",
-                              maxRepoSizeKiB = 2048)
-          ))
-        .flatten
-        .map(_.toString)
 
-      // TODO: read page from database
-      val responses = for {
-        query <- infiniteQueries
-        if started
-        (response, nextPage) <- makeQuery(query)
-      } yield (response, query, nextPage)
+    started = true
 
-      responses.foreach {
-        case (response, query, nextPage) =>
-          processResponse(response, query, nextPage)
-      }
-    }
+    val sub = responsesObs
+      .subscribe(
+        onNext = onNextQuery,
+        onError = { logError(_) }
+      )
 
-    ()
+    responsesSub = Some(sub)
   }
 
   override def onStop(): Unit = {
     logInfo()
-    started = false
+    responsesSub.foreach { sub =>
+      logInfo("unsubscribe")
+      started = false
+      sub.unsubscribe()
+      responsesSub = None
+      infiniteQueries = None
+      rxShutdown()
+    }
   }
 
-  private def makeQuery(
-      query: String): Iterator[(JsLookupResult, Option[String])] = {
+  private def initializeQueries(): Unit = {
+    val iterator = Iterator
+      .continually(queries)
+      .flatten
+      .map(_.toString)
+    infiniteQueries = Some(iterator)
+  }
+
+  private def onNextQuery(step: Long): Unit = {
+    if (step == 0 && infiniteQueries.isEmpty) {
+      initializeQueries()
+    }
+
+    infiniteQueries match {
+      case Some(q) =>
+        val query = q.next()
+        makeQuery(query, None)
+      case None =>
+    }
+  }
+
+  @tailrec
+  private def makeQuery(query: String, page: Option[String]): Unit = {
     logInfo(query)
 
-    val paginator = new Paginator
-    val infiniteLoop = Iterator.continually(List(()))
+    def getNextPage(pageInfo: JsLookupResult): Option[String] =
+      (pageInfo \ "hasNextPage", pageInfo \ "endCursor") match {
+        case (JsDefined(hasNextPage), JsDefined(endCursor))
+            if hasNextPage.toString.toBoolean =>
+          val nextPage = Some(endCursor.toString)
+          logDebug(s"next page is $nextPage")
+          nextPage
+        case _ =>
+          logDebug("no more pages")
+          None
+      }
 
-    for {
-      _ <- infiniteLoop
-      if started && paginator.hasNextPage()
-      response <- executeGQLBlocking(query, paginator.nextPage())
-      searchResult = response \ "data" \ "search"
-      pageInfo = searchResult \ "pageInfo"
-      _ = paginator.update(pageInfo)
-    } yield (searchResult, paginator.nextPage())
+    val nextPage = executeGQLBlocking(query, page).flatMap { response =>
+      val searchResult: JsLookupResult = response \ "data" \ "search"
+      val errors: JsLookupResult = response \ "errors" // TODO: from response or searchResult? test it
+      val pageInfo: JsLookupResult = searchResult \ "pageInfo"
+      processResponse(searchResult, errors)
+      getNextPage(pageInfo)
+    }
+
+    if (!nextPage.isEmpty && started) {
+      makeQuery(query, nextPage)
+    }
   }
 
-  private def processResponse(response: JsLookupResult,
-                              query: String,
-                              page: Option[String]): Unit = {
-    logDebug(s"query = `$query`, page = $page, response = `$response`")
+  private def processResponse(searchResult: JsLookupResult,
+                              errors: JsLookupResult): Unit = {
+    logDebug(s"searchResult = `$searchResult`")
 
-    val errorMessages: JsLookupResult = response \ "errors"
-    errorMessages match {
-      case JsDefined(value) => logError(value)
-      case _                =>
-        // TODO: store object, save page and query
-        val result = Iterator(response.toString)
-        store(result)
+    (searchResult, errors) match {
+      case (JsDefined(searchResult: JsValue), _) =>
+        store(searchResult.toString)
+      case (_, JsDefined(errors: JsValue)) => logError(errors)
+      case (JsUndefined(), JsUndefined())  => throw new IllegalStateException
     }
   }
 
   private def executeGQLBlocking(query: String,
                                  page: Option[String]): Option[JsValue] = {
-    val result = Try {
-      val responseFuture = executeGQL(query, page)
-      Await.result(responseFuture, requestTimeout)
-    }
-
-    result match {
-      case Success(_) =>
-        logDebug("SUCCEED")
-      case Failure(error) =>
-        logError(s"error ${error.toString}")
-    }
-
-    result.toOption
-  }
-
-  private def executeGQL(query: String,
-                         page: Option[String]): Future[JsValue] = {
     import hiregooddevs.utils.StringUtils._
 
     val args = Map(
@@ -138,30 +150,31 @@ class GithubReceiver(apiToken: String,
 
     val gqlQuery: String = queryTemplate.formatTemplate(args)
     val jsonQuery: JsValue = Json.obj("query" -> gqlQuery)
-    apiCall(jsonQuery)
+    val result = apiCallBlocking(jsonQuery)
+
+    result match {
+      case Success(_) =>
+        logDebug("SUCCEED")
+      case Failure(error) =>
+        logError(s"error ${error.toString}")
+    }
+
+    result.toOption
   }
 
-  private def apiCall(data: JsValue): Future[JsValue] = Future {
+  private def apiCallBlocking(data: JsValue): Try[JsValue] = Try {
     logDebug(data)
 
-    val connection =
-      new URL(apiURL)
-        .openConnection()
-        .asInstanceOf[HttpURLConnection] // FIXME: replace with wrapper?
-    connection.setConnectTimeout(requestTimeout.toMillis.toInt)
-    connection.setRequestMethod("POST")
-    connection.setRequestProperty("Authorization", s"bearer $apiToken")
-    connection.setRequestProperty("Content-Type", "application/json")
+    val headers = Map(
+      "Authorization" -> s"bearer $apiToken",
+      "Content-Type" -> "application/json"
+    )
 
-    connection.setDoOutput(true)
-    val outputStream = connection.getOutputStream
-    outputStream.write(data.toString.getBytes("UTF-8"))
-    outputStream.close()
-
-    connection.connect()
-    val result = Json.parse(connection.getInputStream)
-    result
-    // FIXME: interruption handling
+    val response = httpPostBlocking(url = apiURL,
+                                    data = data.toString,
+                                    headers = headers,
+                                    timeout = requestTimeout)
+    Json.parse(response)
   }
 
   // FIXME: replace or make common utils
@@ -174,29 +187,6 @@ class GithubReceiver(apiToken: String,
   private def resourceToString(resourceFilePath: String): String = {
     val stream = getClass.getResourceAsStream(resourceFilePath)
     inputStreamToString(stream)
-  }
-
-  private class Paginator {
-
-    def nextPage() = _nextPage
-
-    def hasNextPage() = _hasNextPage
-
-    def update(pageInfo: JsLookupResult): Unit = {
-      (pageInfo \ "hasNextPage", pageInfo \ "endCursor") match {
-        case (JsDefined(hasNextPage), JsDefined(endCursor))
-            if hasNextPage.toString.toBoolean =>
-          _nextPage = Some(endCursor.toString)
-          logDebug(s"next page is ${nextPage}")
-        case _ =>
-          logDebug("no more pages")
-          _hasNextPage = false
-      }
-    }
-
-    private var _nextPage: Option[String] = None
-    private var _hasNextPage: Boolean = true
-
   }
 
 }

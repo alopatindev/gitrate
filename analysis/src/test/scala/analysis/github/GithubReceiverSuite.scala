@@ -1,45 +1,147 @@
-package hiregooddevs.github
+package hiregooddevs.analysis.github
 
+import org.scalatest.concurrent.Eventually
 import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.{BeforeAndAfter, WordSpec}
 
-class GithubReceiverSuite extends WordSpec {
+class GithubReceiverSuite
+    extends WordSpec
+    with BeforeAndAfter
+    with Eventually {
+
+  import java.io.{ByteArrayInputStream, File, InputStream}
+
+  import scala.concurrent.ExecutionContext.Implicits.global
+  import scala.concurrent.duration._
+  import scala.concurrent.Future
+  import scala.collection.mutable
+  import scala.io.Source
+
+  var fixture: Option[Fixture] = None
+
+  before {
+    fixture = {
+      val f = new Fixture
+      f.receiver.onStart
+      Some(f)
+    }
+  }
+
+  after {
+    fixture.foreach { f =>
+      f.receiver.onStop()
+      fixture = None
+    }
+  }
 
   "GithubReceiver" can {
 
     "store" should {
-      "be called when new users were found" in {} // hard
-    }
-
-    "loadQueries" should {
-      "be called after onStart" in {} // easy
-      "be called after traversing all pages of current query" in {} // middle
-      "return old queries, when can't load them" in {} // hard
-    }
-
-    "loadState" should {
-      "be called after onStart" in {} // easy
-    }
-
-    "storeState" should {
-      "be called after processing each page" in {} // middle
-    }
-
-    "getState" should {
-      "be initially unset" in {
-        //val receiver = new GithubReceiver(apiToken = "dummy")
-        //receiver.getState shouldEqual None
+      "be called when new users were found" in {
+        eventually(timeout(1 second)) {
+          val usersReceived = fixture
+            .map(_.countResponses("lee-richardson") >= 1)
+            .getOrElse(false)
+          assert(usersReceived)
+        }
       }
-      "contain the first query after onStart" in {} // middle
-      "contain the next query when previous ran out of pages" in {} // middle
-      "contain the same query as before interruption" in {} // hard
-      "contain the same page as before interruption" in {} // hard
-      "contain the first of the same query as before interruption when page has become invalid" in {} // hard
-      "contain the first query and page if receiver was interrupted on a query that no longer exists" in {} // hard
     }
 
-    "onStop" should {
-      "interrupt current https connection" in {} // hard
+    "onStart" should {
+      "execute first query" in {
+        eventually {
+          val querySent = fixture
+            .map(_.countRequests("eslintrc") >= 1)
+            .getOrElse(false)
+          assert(querySent)
+        }
+      }
+      "execute first query again, after traversing all pages of the last query" in {
+        eventually {
+          val multipleFirstPageRequests = fixture
+            .map(_.countRequests("eslintrc") >= 2)
+            .getOrElse(false)
+          val secondPageRequested = fixture
+            .map(_.countRequests("second page") >= 1)
+            .getOrElse(false)
+          val lastPageVisited = fixture
+            .map(_.countResponses("\"hasNextPage\":false") >= 1)
+            .getOrElse(false)
+          assert(
+            multipleFirstPageRequests && secondPageRequested && lastPageVisited)
+        }
+      }
+      "ignore error responses" in {
+        eventually {
+          val multipleInvalidRequests = fixture
+            .map(_.countRequests("invalid") >= 2)
+            .getOrElse(false)
+          assert(multipleInvalidRequests)
+        }
+      }
+    }
+
+  }
+
+  class Fixture {
+
+    def countRequests(pattern: String): Int =
+      _requests.filter { _ contains pattern }.length
+
+    def countResponses(pattern: String): Int =
+      _responses.filter { _ contains pattern }.length
+
+    val receiver = {
+      val apiToken = ""
+      val queries = Seq(
+        GithubSearchQuery(language = "JavaScript",
+                          filename = ".eslintrc.*",
+                          maxRepoSizeKiB = 2048),
+        GithubSearchQuery(language = "JavaScript",
+                          filename = ".travis.yml",
+                          maxRepoSizeKiB = 2048),
+        GithubSearchQuery(language = "invalid",
+                          filename = "invalid",
+                          maxRepoSizeKiB = -1)
+      )
+      new FakeReceiver(apiToken = apiToken, queries = queries)
+      with FakeHttpClient
+    }
+
+    private val firstResponse = loadResource("GithubFirstPageFixture.json")
+    private val secondResponse = loadResource("GithubLastPageFixture.json")
+    private val errorResponse = loadResource("GithubErrorFixture.json")
+
+    private def loadResource(filename: String): String =
+      Source
+        .fromFile(s"src/test/resources/$filename")
+        .mkString
+
+    abstract class FakeReceiver(apiToken: String,
+                                queries: Seq[GithubSearchQuery])
+        extends GithubReceiver(apiToken, queries) {
+      override def store(response: String): Unit = {
+        _responses = response :: _responses
+      }
+    }
+
+    @volatile private var _requests: List[String] = List.empty
+    @volatile private var _responses: List[String] = List.empty
+
+    trait FakeHttpClient {
+      def httpPostBlocking(url: String,
+                           data: String,
+                           headers: Map[String, String],
+                           timeout: Duration): InputStream = {
+        _requests = data :: _requests
+        val response = data match {
+          case d if d contains "second page" => secondResponse
+          case d if d contains "invalid"     => errorResponse
+          case _                             => firstResponse
+        }
+
+        new ByteArrayInputStream(response.getBytes("UTF-8"))
+      }
     }
 
   }

@@ -1,0 +1,87 @@
+{
+  "data": {
+    "search": {
+      "pageInfo": {
+        "endCursor": "second page",
+        "hasNextPage": true
+      },
+      "nodes": [{
+        "id": "MDEwOlJlcG9zaXRvcnk5MDA5MzA3MA==",
+        "name": "gulp-react-boilerplate",
+        "createdAt": "2017-05-03T01:01:35Z",
+        "pushedAt": "2017-05-04T17:10:25Z",
+        "primaryLanguage": {
+          "name": "JavaScript"
+        },
+        "languages": {
+          "nodes": [{
+            "name": "JavaScript"
+          }]
+        },
+        "repositoryTopics": {
+          "nodes": []
+        },
+        "owner": {
+          "id": "MDQ6VXNlcjk3MjA4MTU=",
+          "login": "lee-richardson",
+          "pinnedRepositories": {
+            "nodes": [{
+              "id": "MDEwOlJlcG9zaXRvcnk3ODMxMzk0Nw==",
+              "nameWithOwner": "lee-richardson/contactPage",
+              "isFork": false,
+              "isMirror": false,
+              "createdAt": "2017-01-08T01:13:23Z",
+              "pushedAt": "2017-01-20T01:33:26Z",
+              "primaryLanguage": {
+                "name": "CSS"
+              },
+              "languages": {
+                "nodes": [{
+                  "name": "JavaScript"
+                }]
+              },
+              "repositoryTopics": {
+                "nodes": []
+              }
+            }]
+          },
+          "repositories": {
+            "nodes": [{
+              "id": "MDEwOlJlcG9zaXRvcnk5Mzk3NzMyNA==",
+              "nameWithOwner": "lee-richardson/nmhairwp",
+              "isFork": false,
+              "isMirror": false,
+              "createdAt": "2017-06-11T02:39:26Z",
+              "pushedAt": "2017-06-24T21:06:15Z",
+              "primaryLanguage": {
+                "name": "PHP"
+              },
+              "languages": {
+                "nodes": [{
+                  "name": "PHP"
+                }]
+              },
+              "repositoryTopics": {
+                "nodes": []
+              }
+            }]
+          }
+        },
+        "defaultBranchRef": {
+          "target": {
+            "oid": "a92fb314b737b683d99e397db583e560f0b88fd9",
+            "history": {
+              "nodes": [{
+                "author": {
+                  "user": {
+                    "id": "MDQ6VXNlcjk3MjA4MTU="
+                  }
+                }
+              }]
+            }
+          }
+        }
+      }]
+    }
+  }
+}

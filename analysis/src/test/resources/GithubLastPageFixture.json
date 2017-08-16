@@ -1,0 +1,54 @@
+{
+  "data": {
+    "search": {
+      "pageInfo": {
+        "hasNextPage": false
+      },
+      "nodes": [{
+        "id": "MDEasdf==",
+        "name": "foobar",
+        "createdAt": "2017-05-03T01:01:35Z",
+        "pushedAt": "2017-05-04T17:10:25Z",
+        "primaryLanguage": {
+          "name": "JavaScript"
+        },
+        "languages": {
+          "nodes": [{
+            "name": "JavaScript"
+          }]
+        },
+        "repositoryTopics": {
+          "nodes": []
+        },
+        "owner": {
+          "id": "MDQ6Vsdfg=",
+          "login": "foobarlogin",
+          "pinnedRepositories": {
+            "nodes": [{
+              "id": "MDEwOlJlcG9asdf0Nw==",
+              "nameWithOwner": "foobarlogin/asdfg",
+              "isFork": false,
+              "isMirror": false,
+              "createdAt": "2017-01-08T01:13:23Z",
+              "pushedAt": "2017-01-20T01:33:26Z",
+              "primaryLanguage": {
+                "name": "CSS"
+              },
+              "languages": {
+                "nodes": [{
+                  "name": "JavaScript"
+                }]
+              },
+              "repositoryTopics": {
+                "nodes": []
+              }
+            }]
+          },
+          "repositories": {
+            "nodes": []
+          }
+        }
+      }]
+    }
+  }
+}
