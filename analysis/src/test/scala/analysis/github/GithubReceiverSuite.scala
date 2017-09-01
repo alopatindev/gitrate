@@ -35,7 +35,7 @@ class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
       "be called when new users were found" in {
         eventually(timeout(1 second)) {
           val usersReceived = fixture
-            .map(_.countResponses("sunil-ramesh") >= 1)
+            .map(_.countResponses("Inspq") >= 1)
             .getOrElse(false)
           assert(usersReceived)
         }
