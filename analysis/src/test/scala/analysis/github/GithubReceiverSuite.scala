@@ -4,10 +4,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfter, WordSpec}
 
-class GithubReceiverSuite
-    extends WordSpec
-    with BeforeAndAfter
-    with Eventually {
+class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
 
   import java.io.{ByteArrayInputStream, File, InputStream}
 
@@ -65,8 +62,7 @@ class GithubReceiverSuite
           val lastPageVisited = fixture
             .map(_.countResponses("\"hasNextPage\":false") >= 1)
             .getOrElse(false)
-          assert(
-            multipleFirstPageRequests && secondPageRequested && lastPageVisited)
+          assert(multipleFirstPageRequests && secondPageRequested && lastPageVisited)
         }
       }
       "ignore error responses" in {
@@ -92,18 +88,11 @@ class GithubReceiverSuite
     val receiver = {
       val apiToken = ""
       val queries = Seq(
-        GithubSearchQuery(language = "JavaScript",
-                          filename = ".eslintrc.*",
-                          maxRepoSizeKiB = 2048),
-        GithubSearchQuery(language = "JavaScript",
-                          filename = ".travis.yml",
-                          maxRepoSizeKiB = 2048),
-        GithubSearchQuery(language = "invalid",
-                          filename = "invalid",
-                          maxRepoSizeKiB = -1)
+        GithubSearchQuery(language = "JavaScript", filename = ".eslintrc.*", maxRepoSizeKiB = 2048),
+        GithubSearchQuery(language = "JavaScript", filename = ".travis.yml", maxRepoSizeKiB = 2048),
+        GithubSearchQuery(language = "invalid", filename = "invalid", maxRepoSizeKiB = -1)
       )
-      new FakeReceiver(apiToken = apiToken, queries = queries)
-      with FakeHttpClient
+      new FakeReceiver(apiToken = apiToken, queries = queries) with FakeHttpClient
     }
 
     private val firstResponse = loadResource("GithubFirstPageFixture.json")
@@ -115,8 +104,7 @@ class GithubReceiverSuite
         .fromFile(s"src/test/resources/$filename")
         .mkString
 
-    abstract class FakeReceiver(apiToken: String,
-                                queries: Seq[GithubSearchQuery])
+    abstract class FakeReceiver(apiToken: String, queries: Seq[GithubSearchQuery])
         extends GithubReceiver(apiToken, queries) {
       override def store(response: String): Unit = {
         _responses = response :: _responses
@@ -127,10 +115,7 @@ class GithubReceiverSuite
     @volatile private var _responses: List[String] = List.empty
 
     trait FakeHttpClient {
-      def httpPostBlocking(url: String,
-                           data: String,
-                           headers: Map[String, String],
-                           timeout: Duration): InputStream = {
+      def httpPostBlocking(url: String, data: String, headers: Map[String, String], timeout: Duration): InputStream = {
         _requests = data :: _requests
         val response = data match {
           case d if d contains "second page" => secondResponse

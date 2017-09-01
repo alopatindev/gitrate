@@ -4,8 +4,6 @@ import hiregooddevs.utils.LogUtils
 
 import java.io.{File, InputStream}
 
-import rx.lang.scala.Subscription
-
 import org.apache.log4j.Level
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
@@ -20,23 +18,18 @@ import scala.util.{Failure, Success, Try}
 
 abstract class GithubReceiver(apiToken: String,
                               queries: Seq[GithubSearchQuery],
-                              storageLevel: StorageLevel =
-                                StorageLevel.MEMORY_AND_DISK)
+                              storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK)
     extends Receiver[String](storageLevel: StorageLevel)
     with LogUtils {
 
   log.setLevel(Level.DEBUG) // TODO: move to config
 
-  def httpPostBlocking(url: String,
-                       data: String,
-                       headers: Map[String, String],
-                       timeout: Duration): InputStream
+  def httpPostBlocking(url: String, data: String, headers: Map[String, String], timeout: Duration): InputStream
 
   private val requestTimeout = 10 seconds
   private val apiURL = "https://api.github.com/graphql"
 
-  @transient private lazy val queryTemplate: String =
-    resourceToString("/GithubSearch.graphql")
+  @transient private lazy val queryTemplate: String = resourceToString("/GithubSearch.graphql")
 
   @volatile private var started = false
 
@@ -76,8 +69,7 @@ abstract class GithubReceiver(apiToken: String,
 
     def getNextPage(pageInfo: JsLookupResult): Option[String] =
       (pageInfo \ "hasNextPage", pageInfo \ "endCursor") match {
-        case (JsDefined(hasNextPage), JsDefined(endCursor))
-            if hasNextPage.toString.toBoolean =>
+        case (JsDefined(hasNextPage), JsDefined(endCursor)) if hasNextPage.toString.toBoolean =>
           val nextPage = Some(endCursor.toString)
           logDebug(s"next page is $nextPage")
           nextPage
@@ -99,8 +91,7 @@ abstract class GithubReceiver(apiToken: String,
     }
   }
 
-  private def processResponse(searchResult: JsLookupResult,
-                              errors: JsLookupResult): Unit = {
+  private def processResponse(searchResult: JsLookupResult, errors: JsLookupResult): Unit = {
     logDebug(s"searchResult = `$searchResult`")
 
     (searchResult, errors) match {
@@ -111,8 +102,7 @@ abstract class GithubReceiver(apiToken: String,
     }
   }
 
-  private def executeGQLBlocking(query: String,
-                                 page: Option[String]): Option[JsValue] = {
+  private def executeGQLBlocking(query: String, page: Option[String]): Option[JsValue] = {
     import hiregooddevs.utils.StringUtils._
 
     // TODO: load from config
@@ -143,10 +133,7 @@ abstract class GithubReceiver(apiToken: String,
       "Content-Type" -> "application/json"
     )
 
-    val response = httpPostBlocking(url = apiURL,
-                                    data = data.toString,
-                                    headers = headers,
-                                    timeout = requestTimeout)
+    val response = httpPostBlocking(url = apiURL, data = data.toString, headers = headers, timeout = requestTimeout)
     Json.parse(response)
   }
 
