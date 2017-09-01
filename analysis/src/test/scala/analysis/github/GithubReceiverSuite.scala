@@ -70,7 +70,10 @@ class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
           val multipleInvalidRequests = fixture
             .map(_.countRequests("invalid") >= 2)
             .getOrElse(false)
-          assert(multipleInvalidRequests)
+          val invalidResponses = fixture
+            .map(_.countResponses("INVALID_CURSOR_ARGUMENTS") > 0)
+            .getOrElse(false)
+          assert(multipleInvalidRequests && !invalidResponses)
         }
       }
     }
