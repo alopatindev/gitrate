@@ -21,12 +21,6 @@ class GithubDStreamSuite extends WordSpec {
       }
     }
 
-    "transform data for static analysis" should {
-      "return files and lines changed by the user only" in {
-        assert(false)
-      }
-    }
-
     // TODO: separate module?
     "static analysis" should {
       "run on the same machine as git" in { assert(false) }

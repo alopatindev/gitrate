@@ -11,9 +11,7 @@ class GithubReceiverSuite
 
   import java.io.{ByteArrayInputStream, File, InputStream}
 
-  import scala.concurrent.ExecutionContext.Implicits.global
   import scala.concurrent.duration._
-  import scala.concurrent.Future
   import scala.collection.mutable
   import scala.io.Source
 
