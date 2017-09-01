@@ -26,7 +26,10 @@
           "pinnedRepositories": {
             "nodes": [{
               "id": "MDEwOlJlcG9asdf0Nw==",
-              "nameWithOwner": "foobarlogin/asdfg",
+              "name": "asdfg",
+              "owner": {
+                "login": "foobarlogin"
+              },
               "isFork": false,
               "isMirror": false,
               "createdAt": "2017-01-08T01:13:23Z",

@@ -38,7 +38,7 @@ class GithubReceiverSuite
       "be called when new users were found" in {
         eventually(timeout(1 second)) {
           val usersReceived = fixture
-            .map(_.countResponses("lee-richardson") >= 1)
+            .map(_.countResponses("sunil-ramesh") >= 1)
             .getOrElse(false)
           assert(usersReceived)
         }
