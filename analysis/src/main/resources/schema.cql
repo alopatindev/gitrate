@@ -1,4 +1,4 @@
-DROP KEYSPACE IF EXISTS hiregooddevs;
+-- DROP KEYSPACE IF EXISTS hiregooddevs;
 
 
 CREATE KEYSPACE IF NOT EXISTS hiregooddevs
@@ -9,7 +9,7 @@ USE hiregooddevs;
 
 
 CREATE TABLE IF NOT EXISTS users (
-    id uuid,
+    id timeuuid,
 
     github_id text,
     github_login text,
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
     location text,
 
     position text,
-    developer_level int, -- FIXME: enum? (null/unknown, not_developer, junior, middle, senior)
+    developer_level text, // null/unknown, not_developer, junior, middle, senior
 
     contacts map<text, text>,
     show_email boolean,
@@ -33,15 +33,14 @@ CREATE TABLE IF NOT EXISTS users (
     languages frozen<set<text>>,
     technologies frozen<set<text>>,
 
-    total_grade double,
-    grades map<text, double>,
+    total_grade float,
+    grades map<text, float>,
 
     working_experience_years int,
     programming_experience_years int,
 
     updated_by_user timestamp,
     updated_by_analyzer timestamp,
-    views counter,
 
     PRIMARY KEY ((id), total_grade, updated_by_analyzer, updated_by_user, verified_languages, verified_technologies, languages, technologies, working_experience_years, programming_experience_years, developer_level)
 )
@@ -59,22 +58,59 @@ WITH CLUSTERING ORDER BY (
 );
 
 
-CREATE TABLE IF NOT EXISTS tags (
-    id uuid,
-    name text,
-    category text,
-    clicked counter,
-    PRIMARY KEY ((id), name)
-);
-
-
 CREATE TABLE IF NOT EXISTS repositories (
     github_repo_id text,
     user_id int,
     name text,
-    tags set<frozen<tuple<text, text>>>, -- FIXME: type?
-    grades map<text, double>,
-    -- TODO: state? error text?
-    -- TODO: updated_by_analyzer?
-    PRIMARY KEY ((github_repo_id, user_id))
+    languages set<text>,
+    technologies set<text>,
+    grades map<text, float>,
+    state text,
+    updated_by_analyzer timestamp,
+    PRIMARY KEY ((github_repo_id), user_id, state)
+);
+
+
+CREATE TABLE IF NOT EXISTS github_search_queries (
+    query text,
+    enabled boolean,
+    PRIMARY KEY ((query), enabled)
+);
+
+
+CREATE TABLE IF NOT EXISTS technologies_aliases (
+    name text,
+    aliases frozen<set<text>>,
+    PRIMARY KEY ((name), aliases)
+);
+
+
+CREATE TABLE IF NOT EXISTS users_statistics (
+    user_id timeuuid,
+    views counter,
+    PRIMARY KEY (user_id)
+);
+
+
+CREATE TABLE IF NOT EXISTS languages_statistics (
+    id timeuuid,
+    name text,
+    clicks counter,
+    PRIMARY KEY ((id), name)
+);
+
+
+CREATE TABLE IF NOT EXISTS technologies_statistics (
+    id timeuuid,
+    name text,
+    clicks counter,
+    PRIMARY KEY ((id), name)
+);
+
+
+CREATE TABLE IF NOT EXISTS locations_statistics (
+    id timeuuid,
+    name text,
+    clicks counter,
+    PRIMARY KEY ((id), name)
 );
