@@ -16,38 +16,14 @@ query {
         createdAt
         pushedAt
         primaryLanguage {
-          #id
           name
         }
         languages(first:${max_languages}) {
           nodes {
-            #id
             name
           }
         }
-        ...commits
         ...ownerRepositories
-        ...repositoryTopics
-      }
-    }
-  }
-}
-
-fragment commits on Repository {
-  defaultBranchRef {
-    target {
-      ... on Commit {
-        oid
-        history(first: ${max_commits}) {
-          nodes {
-            author {
-              user {
-                id
-                #login
-              }
-            }
-          }
-        }
       }
     }
   }
@@ -69,31 +45,19 @@ fragment ownerRepositories on Repository {
 fragment repositoryConnections on RepositoryConnection {
   nodes {
     id
-    nameWithOwner
+    name
+    owner {
+      login
+    }
     isFork
     isMirror
     createdAt
     pushedAt
     primaryLanguage {
-      #id
       name
     }
     languages(first:${max_languages}) {
       nodes {
-        #id
-        name
-      }
-    }
-    #...commits
-    ...repositoryTopics
-  }
-}
-
-fragment repositoryTopics on Repository {
-  repositoryTopics(first: ${max_topics}) {
-    nodes {
-      topic {
-        #id
         name
       }
     }

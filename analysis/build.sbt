@@ -27,8 +27,6 @@ libraryDependencies ++= Seq(
 
   //"com.datastax.spark" %% "spark-cassandra-connector" % "2.0.2",
 
-  "io.reactivex" %% "rxscala" % "0.26.5",
-
   "org.apache.spark" %% "spark-core" % sparkVersion,
   "org.apache.spark" %% "spark-sql" % sparkVersion,
   "org.apache.spark" %% "spark-streaming" % sparkVersion,

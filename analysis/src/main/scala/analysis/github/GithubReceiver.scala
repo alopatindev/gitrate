@@ -1,6 +1,6 @@
 package hiregooddevs.analysis.github
 
-import hiregooddevs.utils.{LogUtils, RxUtils}
+import hiregooddevs.utils.LogUtils
 
 import java.io.{File, InputStream}
 
@@ -14,6 +14,7 @@ import play.api.libs.json._
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
+import scala.concurrent.Future
 import scala.io.Source
 import scala.util.{Failure, Success, Try}
 
@@ -22,7 +23,6 @@ abstract class GithubReceiver(apiToken: String,
                               storageLevel: StorageLevel =
                                 StorageLevel.MEMORY_AND_DISK)
     extends Receiver[String](storageLevel: StorageLevel)
-    with RxUtils
     with LogUtils {
 
   log.setLevel(Level.DEBUG) // TODO: move to config
@@ -34,59 +34,40 @@ abstract class GithubReceiver(apiToken: String,
 
   private val requestTimeout = 10 seconds
   private val apiURL = "https://api.github.com/graphql"
-  private val queryTemplate: String = resourceToString("/GithubSearch.graphql")
 
-  private val responsesObs = observableInterval(0 seconds)
-  private var responsesSub: Option[Subscription] = None
+  @transient private lazy val queryTemplate: String =
+    resourceToString("/GithubSearch.graphql")
 
-  @volatile private var infiniteQueries: Option[Iterator[String]] = None
   @volatile private var started = false
 
   override def onStart(): Unit = {
     logInfo()
 
     started = true
-
-    val sub = responsesObs
-      .subscribe(
-        onNext = onNextQuery,
-        onError = { logError(_) }
-      )
-
-    responsesSub = Some(sub)
+    run()
   }
 
   override def onStop(): Unit = {
     logInfo()
-    responsesSub.foreach { sub =>
-      logInfo("unsubscribe")
-      started = false
-      sub.unsubscribe()
-      responsesSub = None
-      infiniteQueries = None
-      rxShutdown()
-    }
+    started = false
   }
 
-  private def initializeQueries(): Unit = {
-    val iterator = Iterator
-      .continually(queries)
-      .flatten
-      .map(_.toString)
-    infiniteQueries = Some(iterator)
-  }
+  private def run(): Unit = {
+    import scala.concurrent.ExecutionContext.Implicits.global
 
-  private def onNextQuery(step: Long): Unit = {
-    if (step == 0 && infiniteQueries.isEmpty) {
-      initializeQueries()
-    }
+    Future {
+      val infiniteQueries = Iterator
+        .continually(queries)
+        .flatten
+        .map(_.toString)
 
-    infiniteQueries match {
-      case Some(q) =>
-        val query = q.next()
+      while (started) {
+        val query = infiniteQueries.next()
         makeQuery(query, None)
-      case None =>
-    }
+      }
+    }.failed.foreach(throwable => logError(throwable))
+
+    ()
   }
 
   @tailrec
@@ -134,6 +115,7 @@ abstract class GithubReceiver(apiToken: String,
                                  page: Option[String]): Option[JsValue] = {
     import hiregooddevs.utils.StringUtils._
 
+    // TODO: load from config
     val args = Map(
       "search_query" -> query,
       "page" -> page
@@ -141,28 +123,19 @@ abstract class GithubReceiver(apiToken: String,
         .getOrElse(""),
       "type" -> "REPOSITORY",
       "max_results" -> "20",
-      "max_commits" -> "2",
       "max_repositories" -> "20",
       "max_pinned_repositories" -> "6",
-      "max_topics" -> "20",
       "max_languages" -> "20"
     )
 
     val gqlQuery: String = queryTemplate.formatTemplate(args)
     val jsonQuery: JsValue = Json.obj("query" -> gqlQuery)
-    val result = apiCallBlocking(jsonQuery)
-
-    result match {
-      case Success(_) =>
-        logDebug("SUCCEED")
-      case Failure(error) =>
-        logError(s"error ${error.toString}")
-    }
-
+    val result: Try[JsValue] = executeApiCallBlocking(jsonQuery)
+    result.failed.foreach(throwable => logError(throwable)) // TODO: extend Future?
     result.toOption
   }
 
-  private def apiCallBlocking(data: JsValue): Try[JsValue] = Try {
+  private def executeApiCallBlocking(data: JsValue): Try[JsValue] = Try {
     logDebug(data)
 
     val headers = Map(
