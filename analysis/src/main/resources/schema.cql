@@ -28,10 +28,10 @@ CREATE TABLE IF NOT EXISTS users (
     job_seeker boolean,
     available_for_relocation boolean,
 
-    verified_languages frozen<set<text>>,
-    verified_technologies frozen<set<text>>,
-    languages frozen<set<text>>,
-    technologies frozen<set<text>>,
+    verified_languages frozen<list<text>>,
+    verified_technologies frozen<list<text>>,
+    languages frozen<list<text>>,
+    technologies frozen<list<text>>,
 
     total_grade float,
     grades map<text, float>,
@@ -62,8 +62,8 @@ CREATE TABLE IF NOT EXISTS repositories (
     github_repo_id text,
     user_id int,
     name text,
-    languages set<text>,
-    technologies set<text>,
+    languages list<text>,
+    technologies list<text>,
     grades map<text, float>,
     state text,
     updated_by_analyzer timestamp,
@@ -72,16 +72,21 @@ CREATE TABLE IF NOT EXISTS repositories (
 
 
 CREATE TABLE IF NOT EXISTS github_search_queries (
-    query text,
+    id timeuuid,
+    language text,
+    filename text,
+    minRepoSizeKiB int,
+    maxRepoSizeKiB int,
+    pattern text,
     enabled boolean,
-    PRIMARY KEY ((query), enabled)
+    PRIMARY KEY ((id), enabled)
 );
 
 
 CREATE TABLE IF NOT EXISTS technologies_aliases (
-    name text,
-    aliases frozen<set<text>>,
-    PRIMARY KEY ((name), aliases)
+    alias text,
+    technology text,
+    PRIMARY KEY ((alias), technology)
 );
 
 
