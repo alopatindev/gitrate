@@ -91,9 +91,15 @@ class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
     val receiver = {
       val apiToken = ""
       val queries = Seq(
-        GithubSearchQuery(language = "JavaScript", filename = ".eslintrc.*", maxRepoSizeKiB = 2048),
-        GithubSearchQuery(language = "JavaScript", filename = ".travis.yml", maxRepoSizeKiB = 2048),
-        GithubSearchQuery(language = "invalid", filename = "invalid", maxRepoSizeKiB = -1)
+        GithubSearchQuery(language = "JavaScript",
+                          filename = ".eslintrc.*",
+                          minRepoSizeKiB = 10,
+                          maxRepoSizeKiB = 2048),
+        GithubSearchQuery(language = "JavaScript",
+                          filename = ".travis.yml",
+                          minRepoSizeKiB = 10,
+                          maxRepoSizeKiB = 2048),
+        GithubSearchQuery(language = "invalid", filename = "invalid", minRepoSizeKiB = -1, maxRepoSizeKiB = -1)
       )
       new FakeReceiver(apiToken = apiToken, queries = queries) with FakeHttpClient
     }

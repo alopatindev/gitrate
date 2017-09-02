@@ -48,7 +48,8 @@ assemblyMergeStrategy in assembly := {
   case x => MergeStrategy.first
 }
 
-coverageEnabled := true
+coverageEnabled in(Test, compile) := true
+coverageEnabled in(Compile, compile) := false
 
 /*testOptions in Test += Tests.Argument("-oF")
 parallelExecution in Test := false
