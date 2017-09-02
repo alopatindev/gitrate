@@ -1,6 +1,7 @@
 package hiregooddevs.analysis
 
 import github._
+import hiregooddevs.utils.HttpClient
 
 import org.apache.log4j.{Level, Logger}
 
@@ -9,42 +10,35 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 import org.apache.spark.streaming._
 import org.apache.spark.streaming.StreamingContext._
-//import org.apache.spark.streaming.receiver.Receiver
-
-//import org.apache.spark.streaming.dstream.ReceiverInputDStream
-
-//import com.datastax.spark.connector._
-//import com.datastax.spark.connector.streaming._
 
 object Main {
 
   val conf = new SparkConf()
-    .setAppName("FindGithubUsers") // TODO: use class name
-    .setMaster("local[*]") // TODO: use config
-    .set("spark.cleaner.ttl", "3600")
-  //.setJars()
+    .setAppName("FindGithubUsers")
+    .setMaster("local[*]")
 
   def main(args: Array[String]): Unit = {
+    sys.props.get("app.githubToken") match {
+      case Some(githubToken) => run(githubToken)
+      case None              => Logger.getRootLogger().error("System property app.githubToken is not found")
+    }
+  }
+
+  private def run(githubToken: String): Unit = {
+    // TODO: load from database
+    val queries = Seq(
+      GithubSearchQuery(language = "JavaScript", filename = ".eslintrc.*", minRepoSizeKiB = 10, maxRepoSizeKiB = 2048),
+      GithubSearchQuery(language = "JavaScript", filename = ".travis.yml", minRepoSizeKiB = 10, maxRepoSizeKiB = 2048)
+    )
+
     val sc = new SparkContext(conf)
-    val ssc = new StreamingContext(sc, Seconds(3))
+    val ssc = new StreamingContext(sc, Seconds(5))
 
-    // FIXME: move to config?
-    /*Logger.getRootLogger().setLevel(Level.OFF)
-    Logger.getLogger("org").setLevel(Level.OFF)
-    Logger.getLogger("akka").setLevel(Level.OFF)*/
-
-    val stream = ssc.receiverStream(new GithubReceiver(apiToken = "")) // TODO: move to config
+    val receiver = new GithubReceiver(githubToken, queries) with HttpClient
+    val stream = ssc.receiverStream(receiver)
+    // TODO: checkpoint
 
     stream.print()
-//
-//  stream
-//    .map(status => status.getText)
-//  //.foreachRDD { rdd => }
-//  //.flatMap(record => record.split(" "))
-//  //.map(word => word -> 1)
-//  //.reduceByKey(_ + _)
-//  //.print()
-//
     ssc.start()
     ssc.awaitTermination()
 
@@ -52,5 +46,3 @@ object Main {
   }
 
 }
-
-// private class SearchReceiver extends Receiver {}
