@@ -13,10 +13,6 @@ import org.apache.spark.streaming.StreamingContext._
 
 object Main {
 
-  val conf = new SparkConf() // scalastyle:ignore
-    .setAppName("FindGithubUsers")
-    .setMaster("local[*]")
-
   def main(args: Array[String]): Unit = {
     import sys.props
 
@@ -39,15 +35,24 @@ object Main {
   }
 
   private def run(batchDuration: Duration, githubConf: GithubConf): Unit = {
-    // TODO: load from database
-    val queries = Seq(
-      GithubSearchQuery(language = "JavaScript", filename = ".eslintrc.*", minRepoSizeKiB = 10, maxRepoSizeKiB = 2048),
-      GithubSearchQuery(language = "JavaScript", filename = ".travis.yml", minRepoSizeKiB = 10, maxRepoSizeKiB = 2048)
-    )
+    import com.datastax.spark.connector._
 
-    val sc = new SparkContext(conf)
+    val sparkConf = new SparkConf() // scalastyle:ignore
+      .setAppName("FindGithubUsers")
+      .setMaster("local[*]")
+    val sc = new SparkContext(sparkConf)
     val ssc = new StreamingContext(sc, batchDuration)
 
+    // FIXME: ALLOW FILTERING?
+    val queries =
+      sc.cassandraTable[GithubSearchQuery]("hiregooddevs", "github_search_queries")
+        .select("language",
+                "filename",
+                "min_repo_size_kib" as "minRepoSizeKiB",
+                "max_repo_size_kib" as "maxRepoSizeKiB",
+                "pattern")
+        .where("enabled = true")
+        .collect()
     val receiver = new GithubReceiver(githubConf, queries) with HttpClient
     val stream = ssc.receiverStream(receiver)
     // TODO: checkpoint

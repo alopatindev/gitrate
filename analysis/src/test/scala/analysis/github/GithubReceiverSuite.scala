@@ -96,7 +96,7 @@ class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
         GithubSearchQuery(language = "JavaScript", filename = ".travis.yml", minRepoSizeKiB = 1, maxRepoSizeKiB = 2),
         GithubSearchQuery(language = "invalid", filename = "invalid", minRepoSizeKiB = -1, maxRepoSizeKiB = -1)
       )
-      new FakeReceiver(conf, queries = queries) with FakeHttpClient
+      new FakeReceiver(conf, queries) with FakeHttpClient
     }
 
     private val firstResponse = loadResource("GithubFirstPageFixture.json")

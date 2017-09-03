@@ -18,12 +18,11 @@ scalacOptions ++= Seq(
 )
 
 val sparkVersion = "2.1.1"
-val playWsStandaloneVersion = "1.0.4"
 
 libraryDependencies ++= Seq(
-  "com.typesafe.play" %% "play-ws-standalone-json" % playWsStandaloneVersion,
+  "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.3",
 
-  //"com.datastax.spark" %% "spark-cassandra-connector" % "2.0.2",
+  "com.typesafe.play" %% "play-ws-standalone-json" % "1.0.4",
 
   "org.apache.spark" %% "spark-core" % sparkVersion,
   "org.apache.spark" %% "spark-sql" % sparkVersion,
