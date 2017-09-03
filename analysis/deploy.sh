@@ -20,5 +20,3 @@ spark-submit \
     --properties-file spark-defaults.conf \
     --driver-java-options "${JVM_OPTS}" \
     "${OUT_JAR}"
-
-rm -rfv "${OUT_DIR}"
