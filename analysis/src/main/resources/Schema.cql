@@ -75,8 +75,8 @@ CREATE TABLE IF NOT EXISTS github_search_queries (
     id timeuuid,
     language text,
     filename text,
-    minRepoSizeKiB int,
-    maxRepoSizeKiB int,
+    min_repo_size_kib int,
+    max_repo_size_kib int,
     pattern text,
     enabled boolean,
     PRIMARY KEY ((id), enabled)
