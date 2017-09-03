@@ -3,7 +3,7 @@ import scala.io.Source
 name := "hiregooddevs-analysis"
 
 scalaVersion := "2.11.11"
-scalacOptions in (Compile, console) ++= Seq(
+scalacOptions ++= Seq(
   "-feature",
   "-deprecation",
   "-encoding", "UTF-8",
@@ -14,11 +14,7 @@ scalacOptions in (Compile, console) ++= Seq(
   "-Ywarn-value-discard",
   "-Xfuture",
   "-Xexperimental",
-  "-language:postfixOps"
-)
-
-scalacOptions in (Test, console) --= Seq(
-  "-feature"
+  "-language:postfixOps",
 )
 
 val sparkVersion = "2.1.1"
