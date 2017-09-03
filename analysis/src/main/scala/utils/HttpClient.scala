@@ -10,14 +10,11 @@ import scala.concurrent.Future
 trait HttpClient {
 
   // FIXME: too many arguments
-  def httpPostBlocking(url: String,
-                       data: String,
-                       headers: Map[String, String],
-                       timeout: Duration): InputStream = {
+  def httpPostBlocking(url: String, data: String, headers: Map[String, String], timeout: Duration): InputStream = {
     val connection =
       new URL(url)
         .openConnection()
-        .asInstanceOf[HttpURLConnection] // FIXME: replace with wrapper?
+        .asInstanceOf[HttpURLConnection] // FIXME: replace with wrapper? scalaj-http?
 
     // TODO: retries
     connection.setConnectTimeout(timeout.toMillis.toInt)

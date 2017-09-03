@@ -3,7 +3,7 @@
 set -e
 
 MAIN_CLASS="hiregooddevs.analysis.Main"
-JVM_OPTS="$(cat conf/jvm.options)"
+JVM_OPTS="$(tr '\n' ' ' < conf/jvm.options)"
 OUT_DIR="/tmp/spark-app"
 OUT_JAR="${OUT_DIR}/out.jar"
 

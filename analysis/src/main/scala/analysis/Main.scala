@@ -18,13 +18,17 @@ object Main {
     .setMaster("local[*]")
 
   def main(args: Array[String]): Unit = {
-    sys.props.get("app.githubToken") match {
-      case Some(githubToken) => run(githubToken)
-      case None              => Logger.getRootLogger().error("System property app.githubToken is not found")
+    import sys.props
+
+    val properties = Seq("app.githubToken", "app.batchDurationSeconds").map(props.get)
+    properties match {
+      case Seq(Some(githubToken), Some(batchDurationSeconds)) => run(githubToken, Seconds(batchDurationSeconds.toLong))
+      case _ =>
+        Logger.getRootLogger().error(s"Invalid configuration $properties")
     }
   }
 
-  private def run(githubToken: String): Unit = {
+  private def run(githubToken: String, batchDuration: Duration): Unit = {
     // TODO: load from database
     val queries = Seq(
       GithubSearchQuery(language = "JavaScript", filename = ".eslintrc.*", minRepoSizeKiB = 10, maxRepoSizeKiB = 2048),
@@ -32,7 +36,7 @@ object Main {
     )
 
     val sc = new SparkContext(conf)
-    val ssc = new StreamingContext(sc, Seconds(5))
+    val ssc = new StreamingContext(sc, batchDuration)
 
     val receiver = new GithubReceiver(githubToken, queries) with HttpClient
     val stream = ssc.receiverStream(receiver)

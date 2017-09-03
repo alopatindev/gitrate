@@ -10,13 +10,13 @@ trait LogUtils {
   val maxDebugLength = 200
 
   def logError(data: Any = "", cut: Boolean = true): Unit =
-    if (log.isEnabledFor(Level.ERROR)) log.error(formatData(data, cut))
+    if (log.isEnabledFor(Level.ERROR)) { log.error(formatData(data, cut)) }
 
   def logInfo(data: Any = "", cut: Boolean = true): Unit =
-    if (log.isInfoEnabled) log.info(formatData(data, cut))
+    if (log.isInfoEnabled) { log.info(formatData(data, cut)) }
 
   def logDebug(data: Any = "", cut: Boolean = true): Unit =
-    if (log.isDebugEnabled) log.debug(formatData(data, cut))
+    if (log.isDebugEnabled) { log.debug(formatData(data, cut)) }
 
   private val methodNesting = 5
 
