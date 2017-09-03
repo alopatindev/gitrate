@@ -25,16 +25,22 @@ class GithubDStreamSuite extends WordSpec {
   "GithubDStreamSuite" can {
 
     "filter GitHub API output" should {
-      "ignore users with invalid type (e.g. organization)" in { assert(false) }
+      "ignore users with invalid type (e.g. organization)" in {
+        assert(fixture.isUser("target-user"))
+        assert(!fixture.isUser("not-user"))
+      }
       "ignore too young repos" in {
         assert(fixture.isOld("target-user", "old-repo"))
         assert(!fixture.isOld("target-user", "young-repo"))
       }
       "allow only repos with commits mostly made by the user" in {
+        assert(fixture.hasMostlyCommitsByOwner("target-user", "repo-with-mostly-commits-by-owner"))
+        assert(!fixture.hasMostlyCommitsByOwner("target-user", "repo-with-mostly-commits-by-others"))
+      }
+      "ignore repos user doesn't own" in {
         assert(fixture.isOwnedByUser("target-user", "repo-by-owner"))
         assert(!fixture.isOwnedByUser("target-user", "repo-by-others"))
       }
-      "ignore repos user doesn't own" in { assert(false) }
       "ignore repos with primary language we don't support" in {
         assert(fixture.isSupported("target-user", "repo-with-javascript-as-primary"))
         assert(!fixture.isSupported("target-user", "repo-with-unknown-as-primary"))
