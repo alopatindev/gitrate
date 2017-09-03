@@ -13,7 +13,7 @@ import org.apache.spark.streaming.StreamingContext._
 
 object Main {
 
-  val conf = new SparkConf()
+  val conf = new SparkConf() // scalastyle:ignore
     .setAppName("FindGithubUsers")
     .setMaster("local[*]")
 

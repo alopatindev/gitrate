@@ -3,6 +3,7 @@ package hiregooddevs.analysis.github
 import hiregooddevs.utils.LogUtils
 
 import java.io.{File, InputStream}
+import java.util.concurrent.atomic.AtomicBoolean
 
 import org.apache.log4j.Level
 import org.apache.spark.storage.StorageLevel
@@ -34,21 +35,20 @@ abstract class GithubReceiver(conf: GithubConf,
 
   private val requestTimeout = 10 seconds
   private val apiURL = "https://api.github.com/graphql"
-
   @transient private lazy val queryTemplate: String = resourceToString("/GithubSearch.graphql")
 
-  @volatile private var started = false
+  private val started = new AtomicBoolean(false)
 
   override def onStart(): Unit = {
     logInfo()
 
-    started = true
+    started.set(true)
     run()
   }
 
   override def onStop(): Unit = {
     logInfo()
-    started = false
+    started.set(false)
   }
 
   private def run(): Unit = {
@@ -60,7 +60,7 @@ abstract class GithubReceiver(conf: GithubConf,
         .flatten
         .map(_.toString)
 
-      while (started) {
+      while (started.get()) { // scalastyle:ignore
         val query = infiniteQueries.next()
         makeQuery(query, None)
       }
@@ -92,7 +92,7 @@ abstract class GithubReceiver(conf: GithubConf,
       getNextPage(pageInfo)
     }
 
-    if (!nextPage.isEmpty && started) {
+    if (!nextPage.isEmpty && started.get()) {
       makeQuery(query, nextPage)
     }
   }

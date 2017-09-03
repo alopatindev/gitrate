@@ -20,7 +20,7 @@ trait HttpClient {
     connection.setConnectTimeout(timeout.toMillis.toInt)
     connection.setRequestMethod("POST")
 
-    for ((key, value) <- headers) {
+    for ((key, value) <- headers) { // scalastyle:ignore
       connection.setRequestProperty(key, value)
     }
 
