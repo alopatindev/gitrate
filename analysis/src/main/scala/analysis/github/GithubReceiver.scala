@@ -64,7 +64,7 @@ abstract class GithubReceiver(conf: GithubConf,
         val query = infiniteQueries.next()
         makeQuery(query, None)
       }
-    }.failed.foreach(throwable => logError(throwable))
+    }.logErrors()
 
     ()
   }
@@ -86,7 +86,7 @@ abstract class GithubReceiver(conf: GithubConf,
 
     val nextPage = executeGQLBlocking(query, page).flatMap { response =>
       val searchResult: JsLookupResult = response \ "data" \ "search"
-      val errors: JsLookupResult = response \ "errors" // TODO: from response or searchResult? test it
+      val errors: JsLookupResult = response \ "errors"
       val pageInfo: JsLookupResult = searchResult \ "pageInfo"
       processResponse(searchResult, errors)
       getNextPage(pageInfo)
@@ -125,9 +125,9 @@ abstract class GithubReceiver(conf: GithubConf,
 
     val gqlQuery: String = queryTemplate.formatTemplate(args)
     val jsonQuery: JsValue = Json.obj("query" -> gqlQuery)
-    val result: Try[JsValue] = executeApiCallBlocking(jsonQuery)
-    result.failed.foreach(throwable => logError(throwable)) // TODO: extend Future?
-    result.toOption
+    executeApiCallBlocking(jsonQuery)
+      .logErrors()
+      .toOption
   }
 
   private def executeApiCallBlocking(data: JsValue): Try[JsValue] = Try {
