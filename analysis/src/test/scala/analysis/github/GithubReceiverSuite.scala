@@ -89,13 +89,14 @@ class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
       _responses.filter { _ contains pattern }.length
 
     val receiver = {
-      val apiToken = ""
+      val conf =
+        GithubConf(apiToken = "", maxResults = "", maxRepositories = "", maxPinnedRepositories = "", maxLanguages = "")
       val queries = Seq(
         GithubSearchQuery(language = "JavaScript", filename = ".eslintrc.*", minRepoSizeKiB = 1, maxRepoSizeKiB = 2),
         GithubSearchQuery(language = "JavaScript", filename = ".travis.yml", minRepoSizeKiB = 1, maxRepoSizeKiB = 2),
         GithubSearchQuery(language = "invalid", filename = "invalid", minRepoSizeKiB = -1, maxRepoSizeKiB = -1)
       )
-      new FakeReceiver(apiToken = apiToken, queries = queries) with FakeHttpClient
+      new FakeReceiver(conf, queries = queries) with FakeHttpClient
     }
 
     private val firstResponse = loadResource("GithubFirstPageFixture.json")
@@ -107,8 +108,8 @@ class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
         .fromFile(s"src/test/resources/$filename")
         .mkString
 
-    abstract class FakeReceiver(apiToken: String, queries: Seq[GithubSearchQuery])
-        extends GithubReceiver(apiToken, queries) {
+    abstract class FakeReceiver(conf: GithubConf, queries: Seq[GithubSearchQuery])
+        extends GithubReceiver(conf, queries) {
       override def store(response: String): Unit = {
         _responses = response :: _responses
       }

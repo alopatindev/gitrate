@@ -20,15 +20,25 @@ object Main {
   def main(args: Array[String]): Unit = {
     import sys.props
 
-    val properties = Seq("app.githubToken", "app.batchDurationSeconds").map(props.get)
+    val properties = Seq(
+      "stream.batchDurationSeconds",
+      "github.apiToken",
+      "github.maxResults",
+      "github.maxRepositories",
+      "github.maxPinnedRepositories",
+      "github.maxLanguages"
+    ).flatMap(props.get)
+
     properties match {
-      case Seq(Some(githubToken), Some(batchDurationSeconds)) => run(githubToken, Seconds(batchDurationSeconds.toLong))
+      case Seq(batchDuration, apiToken, maxResults, maxRepositories, maxPinnedRepositories, maxLanguages) =>
+        run(Seconds(batchDuration.toLong),
+            GithubConf(apiToken, maxResults, maxRepositories, maxPinnedRepositories, maxLanguages))
       case _ =>
         Logger.getRootLogger().error(s"Invalid configuration $properties")
     }
   }
 
-  private def run(githubToken: String, batchDuration: Duration): Unit = {
+  private def run(batchDuration: Duration, githubConf: GithubConf): Unit = {
     // TODO: load from database
     val queries = Seq(
       GithubSearchQuery(language = "JavaScript", filename = ".eslintrc.*", minRepoSizeKiB = 10, maxRepoSizeKiB = 2048),
@@ -38,7 +48,7 @@ object Main {
     val sc = new SparkContext(conf)
     val ssc = new StreamingContext(sc, batchDuration)
 
-    val receiver = new GithubReceiver(githubToken, queries) with HttpClient
+    val receiver = new GithubReceiver(githubConf, queries) with HttpClient
     val stream = ssc.receiverStream(receiver)
     // TODO: checkpoint
 

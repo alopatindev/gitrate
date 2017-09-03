@@ -16,7 +16,13 @@ import scala.concurrent.Future
 import scala.io.Source
 import scala.util.{Failure, Success, Try}
 
-abstract class GithubReceiver(apiToken: String,
+case class GithubConf(val apiToken: String,
+                      val maxResults: String,
+                      val maxRepositories: String,
+                      val maxPinnedRepositories: String,
+                      val maxLanguages: String)
+
+abstract class GithubReceiver(conf: GithubConf,
                               queries: Seq[GithubSearchQuery],
                               storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK)
     extends Receiver[String](storageLevel: StorageLevel)
@@ -105,17 +111,16 @@ abstract class GithubReceiver(apiToken: String,
   private def executeGQLBlocking(query: String, page: Option[String]): Option[JsValue] = {
     import hiregooddevs.utils.StringUtils._
 
-    // TODO: load from config
     val args = Map(
-      "search_query" -> query,
+      "searchQuery" -> query,
       "page" -> page
         .map(p => "after: " + p)
         .getOrElse(""),
       "type" -> "REPOSITORY",
-      "max_results" -> "20",
-      "max_repositories" -> "20",
-      "max_pinned_repositories" -> "6",
-      "max_languages" -> "20"
+      "maxResults" -> conf.maxResults,
+      "maxRepositories" -> conf.maxRepositories,
+      "maxPinnedRepositories" -> conf.maxPinnedRepositories,
+      "maxLanguages" -> conf.maxLanguages
     )
 
     val gqlQuery: String = queryTemplate.formatTemplate(args)
@@ -129,7 +134,7 @@ abstract class GithubReceiver(apiToken: String,
     logDebug(data)
 
     val headers = Map(
-      "Authorization" -> s"bearer $apiToken",
+      "Authorization" -> s"bearer ${conf.apiToken}",
       "Content-Type" -> "application/json"
     )
 

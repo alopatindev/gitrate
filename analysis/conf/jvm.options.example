@@ -1,2 +1,6 @@
--Dapp.githubToken=INSERT_YOUR_GITHUB_TOKEN_HERE
--Dapp.batchDurationSeconds=5
+-Dstream.batchDurationSeconds=5
+-Dgithub.apiToken=INSERT_YOUR_GITHUB_TOKEN_HERE
+-Dgithub.maxResults=20
+-Dgithub.maxRepositories=20
+-Dgithub.maxPinnedRepositories=6
+-Dgithub.maxLanguages=20
