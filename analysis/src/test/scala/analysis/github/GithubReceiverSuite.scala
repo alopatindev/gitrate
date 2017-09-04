@@ -1,18 +1,17 @@
 package hiregooddevs.analysis.github
 
 import org.scalatest.concurrent.Eventually
-import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfter, WordSpec}
 
 class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
 
   import java.io.{ByteArrayInputStream, File, InputStream}
+  import java.util.concurrent.atomic.AtomicReference
 
   import scala.concurrent.duration._
-  import scala.collection.mutable
   import scala.io.Source
 
-  var fixture: Option[Fixture] = None
+  var fixture: Option[Fixture] = None // scalastyle:ignore
 
   before {
     fixture = {
@@ -35,7 +34,7 @@ class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
       "be called when new users were found" in {
         eventually(timeout(1 second)) {
           val usersReceived = fixture
-            .map(_.countResponses("Inspq") >= 1)
+            .map(_.responses.count("Inspq") >= 1)
             .getOrElse(false)
           assert(usersReceived)
         }
@@ -46,7 +45,7 @@ class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
       "execute first query" in {
         eventually {
           val querySent = fixture
-            .map(_.countRequests("eslintrc") >= 1)
+            .map(_.requests.count("eslintrc") >= 1)
             .getOrElse(false)
           assert(querySent)
         }
@@ -54,13 +53,13 @@ class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
       "execute first query again, after traversing all pages of the last query" in {
         eventually {
           val multipleFirstPageRequests = fixture
-            .map(_.countRequests("eslintrc") >= 2)
+            .map(_.requests.count("eslintrc") >= 2)
             .getOrElse(false)
           val secondPageRequested = fixture
-            .map(_.countRequests("second page") >= 1)
+            .map(_.requests.count("second page") >= 1)
             .getOrElse(false)
           val lastPageVisited = fixture
-            .map(_.countResponses("\"hasNextPage\":false") >= 1)
+            .map(_.responses.count("\"hasNextPage\":false") >= 1)
             .getOrElse(false)
           assert(multipleFirstPageRequests && secondPageRequested && lastPageVisited)
         }
@@ -68,10 +67,10 @@ class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
       "ignore error responses" in {
         eventually {
           val multipleInvalidRequests = fixture
-            .map(_.countRequests("invalid") >= 2)
+            .map(_.requests.count("invalid") >= 2)
             .getOrElse(false)
           val invalidResponses = fixture
-            .map(_.countResponses("INVALID_CURSOR_ARGUMENTS") > 0)
+            .map(_.responses.count("INVALID_CURSOR_ARGUMENTS") > 0)
             .getOrElse(false)
           assert(multipleInvalidRequests && !invalidResponses)
         }
@@ -82,11 +81,8 @@ class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
 
   class Fixture {
 
-    def countRequests(pattern: String): Int =
-      _requests.filter { _ contains pattern }.length
-
-    def countResponses(pattern: String): Int =
-      _responses.filter { _ contains pattern }.length
+    val requests = AtomicStringList()
+    val responses = AtomicStringList()
 
     val receiver = {
       val conf =
@@ -129,20 +125,28 @@ class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
     abstract class FakeReceiver(conf: GithubConf, queries: => Seq[GithubSearchQuery])
         extends GithubReceiver(conf, queries) {
       override def store(response: String): Unit = {
-        _responses = response :: _responses
+        responses.append(response)
       }
     }
 
-    @volatile private var _requests: List[String] = List.empty
-    @volatile private var _responses: List[String] = List.empty
+    case class AtomicStringList() extends AtomicReference[List[String]] {
+      set(List.empty)
+
+      def append(item: String): Unit = {
+        accumulateAndGet(List(item), (xs, ys) => xs ++ ys)
+        ()
+      }
+      def count(pattern: String): Int =
+        get().filter { _ contains pattern }.length
+    }
 
     trait FakeHttpClient {
       def httpPostBlocking(url: String, data: String, headers: Map[String, String], timeout: Duration): InputStream = {
-        _requests = data :: _requests
+        requests.append(data)
         val response = data match {
-          case d if d contains "second page" => secondResponse
-          case d if d contains "invalid"     => errorResponse
-          case _                             => firstResponse
+          case d: String if d contains "second page" => secondResponse
+          case d: String if d contains "invalid"     => errorResponse
+          case _                                     => firstResponse
         }
 
         new ByteArrayInputStream(response.getBytes("UTF-8"))

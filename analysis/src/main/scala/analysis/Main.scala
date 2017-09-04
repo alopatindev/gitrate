@@ -1,16 +1,9 @@
 package hiregooddevs.analysis
 
-import github._
-import hiregooddevs.utils.{HttpClient, LogUtils}
+import github.{GithubConf, GithubReceiver, GithubSearchQuery}
+import hiregooddevs.utils.{HttpClient, SparkUtils, LogUtils}
 
-import org.apache.spark.streaming._
-import org.apache.spark.streaming.StreamingContext._
-import org.apache.spark.{SparkConf, SparkContext}
-
-import com.datastax.spark.connector._
-import com.datastax.spark.connector.cql.CassandraConnector
-
-object Main extends LogUtils {
+object Main extends LogUtils with SparkUtils {
 
   def main(args: Array[String]): Unit = {
     val properties = Seq(
@@ -24,23 +17,19 @@ object Main extends LogUtils {
 
     properties match {
       case Seq(batchDurationSeconds, apiToken, maxResults, maxRepositories, maxPinnedRepositories, maxLanguages) =>
-        val batchDuration = Seconds(batchDurationSeconds.toLong)
         val githubConf = GithubConf(apiToken,
                                     maxResults.toInt,
                                     maxRepositories.toInt,
                                     maxPinnedRepositories.toInt,
                                     maxLanguages.toInt)
-        run(batchDuration, githubConf)
+        run(batchDurationSeconds.toInt, githubConf)
       case _ => logError(s"Invalid configuration $properties")
     }
   }
 
-  private def run(batchDuration: Duration, githubConf: GithubConf): Unit = {
-    val sparkConf = new SparkConf() // scalastyle:ignore
-      .setAppName("FindGithubUsers")
-      .setMaster("local[*]")
-    val sc = new SparkContext(sparkConf)
-    val ssc = new StreamingContext(sc, batchDuration)
+  private def run(batchDurationSeconds: Int, githubConf: GithubConf): Unit = {
+    val sc = createSparkContext()
+    val ssc = createStreamingContext(batchDurationSeconds)
 
     val receiver = new GithubReceiver(githubConf, loadQueriesOnExecutor) with HttpClient
     val stream = ssc.receiverStream(receiver)
@@ -54,15 +43,8 @@ object Main extends LogUtils {
   }
 
   def loadQueriesOnExecutor: Seq[GithubSearchQuery] = {
-    import scala.collection.JavaConverters._
-
     logInfo()
-    val conf = SparkContext
-      .getOrCreate()
-      .getConf
-    CassandraConnector(conf).withSessionDo { session =>
-      session
-        .execute("""
+    val query = """
 SELECT
   language,
   filename,
@@ -73,12 +55,10 @@ SELECT
   pattern
 FROM hiregooddevs.github_search_queries
 WHERE partition = 0 AND enabled = true;
-""")
-        .iterator
-        .asScala
-        .map(row => GithubSearchQuery(row))
-        .toSeq
-    }
+"""
+    executeCQL(query)
+      .map(row => GithubSearchQuery(row))
+      .toSeq
   }
 
 }

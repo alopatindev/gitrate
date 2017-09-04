@@ -115,10 +115,9 @@
   </check>
   <check enabled="true" class="org.scalastyle.scalariform.PublicMethodsHaveTypeChecker" level="warning" />
   <check enabled="true" class="org.scalastyle.file.NewLineAtEofChecker" level="warning" />
-  <check enabled="true" class="org.scalastyle.file.NoNewLineAtEofChecker" level="warning" />
   <check enabled="true" class="org.scalastyle.scalariform.UnderscoreImportChecker" level="warning">
     <parameters>
-      <parameter name="ignoreRegex">collection\.JavaConverters\._|scala\.concurrent\.duration\._</parameter>
+      <parameter name="ignoreRegex">collection\.JavaConverters\._|scala\.concurrent\.duration\._|.*Utils\._</parameter>
     </parameters>
   </check>
   <check enabled="true" class="org.scalastyle.file.RegexChecker" level="warning">
@@ -168,13 +167,13 @@
   <check enabled="true" class="org.scalastyle.scalariform.MultipleStringLiteralsChecker" level="warning">
     <parameters>
       <parameter name="allowed">1</parameter>
-      <parameter name="ignoreRegex">^\&amp;quot;\&amp;quot;$</parameter>
+      <parameter name="ignoreRegex"><![CDATA[^""?$]]></parameter>
     </parameters>
   </check>
   <check enabled="true" class="org.scalastyle.scalariform.NamedArgumentChecker" level="warning">
     <parameters>
       <parameter name="checkString">false</parameter>
-      <parameter name="ignoreMethod">set.+|getOrElse</parameter>
+      <parameter name="ignoreMethod">set.*|getOrElse</parameter>
     </parameters>
   </check>
   <check enabled="true" class="org.scalastyle.scalariform.NonASCIICharacterChecker" level="warning" />
