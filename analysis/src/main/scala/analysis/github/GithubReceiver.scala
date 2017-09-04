@@ -54,7 +54,11 @@ abstract class GithubReceiver(conf: GithubConf,
   private def run(): Unit = {
     import scala.concurrent.ExecutionContext.Implicits.global
 
+    logInfo()
+
     Future {
+      logDebug("initialize infiniteQueries")
+
       val infiniteQueries = Iterator
         .continually(queries)
         .flatten

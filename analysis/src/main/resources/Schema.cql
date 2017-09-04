@@ -11,36 +11,36 @@ USE hiregooddevs;
 CREATE TABLE IF NOT EXISTS users (
     id timeuuid,
 
-    github_id text,
-    github_login text,
-    github_avatar_url text,
+    github_id TEXT,
+    github_login TEXT,
+    github_avatar_url TEXT,
 
-    full_name text,
-    description text,
-    location text,
+    full_name TEXT,
+    description TEXT,
+    location TEXT,
 
-    position text,
-    developer_level text, // null/unknown, not_developer, junior, middle, senior
+    position TEXT,
+    developer_level TEXT, // null/unknown, not_developer, junior, middle, senior
 
-    contacts map<text, text>,
-    show_email boolean,
+    contacts FROZEN<MAP<TEXT, TEXT>>,
+    show_email BOOLEAN,
 
-    job_seeker boolean,
-    available_for_relocation boolean,
+    job_seeker BOOLEAN,
+    available_for_relocation BOOLEAN,
 
-    verified_languages frozen<list<text>>,
-    verified_technologies frozen<list<text>>,
-    languages frozen<list<text>>,
-    technologies frozen<list<text>>,
+    verified_languages FROZEN<LIST<TEXT>>, // TODO: vs SET?
+    verified_technologies FROZEN<LIST<TEXT>>,
+    languages FROZEN<LIST<TEXT>>,
+    technologies FROZEN<LIST<TEXT>>,
 
-    total_grade float,
-    grades map<text, float>,
+    total_grade FLOAT,
+    grades FROZEN<MAP<TEXT, FLOAT>>,
 
-    working_experience_years int,
-    programming_experience_years int,
+    working_experience_years INT,
+    programming_experience_years INT,
 
-    updated_by_user timestamp,
-    updated_by_analyzer timestamp,
+    updated_by_user TIMESTAMP,
+    updated_by_analyzer TIMESTAMP,
 
     PRIMARY KEY ((id), total_grade, updated_by_analyzer, updated_by_user, verified_languages, verified_technologies, languages, technologies, working_experience_years, programming_experience_years, developer_level)
 )
@@ -59,63 +59,66 @@ WITH CLUSTERING ORDER BY (
 
 
 CREATE TABLE IF NOT EXISTS repositories (
-    github_repo_id text,
-    user_id int,
-    name text,
-    languages list<text>,
-    technologies list<text>,
-    grades map<text, float>,
-    state text,
-    updated_by_analyzer timestamp,
+    github_repo_id TEXT,
+    user_id INT,
+    name TEXT,
+    languages FROZEN<LIST<TEXT>>,
+    technologies FROZEN<LIST<TEXT>>,
+    grades FROZEN<MAP<TEXT, FLOAT>>,
+    state TEXT,
+    updated_by_analyzer TIMESTAMP,
     PRIMARY KEY ((github_repo_id), user_id, state)
 );
 
 
 CREATE TABLE IF NOT EXISTS github_search_queries (
-    id timeuuid,
-    language text,
-    filename text,
-    min_repo_size_kib int,
-    max_repo_size_kib int,
-    pattern text,
-    enabled boolean,
-    PRIMARY KEY ((id), enabled)
+    partition INT,
+    id TIMEUUID,
+    language TEXT,
+    filename TEXT,
+    min_repo_size_kib INT,
+    max_repo_size_kib INT,
+    min_stars INT,
+    max_stars INT,
+    pattern TEXT,
+    enabled BOOLEAN,
+    PRIMARY KEY ((partition), enabled, id)
 );
 
 
 CREATE TABLE IF NOT EXISTS technologies_aliases (
-    alias text,
-    technology text,
+    alias TEXT,
+    technology TEXT,
     PRIMARY KEY ((alias), technology)
 );
 
 
 CREATE TABLE IF NOT EXISTS users_statistics (
-    user_id timeuuid,
-    views counter,
+    user_id TIMEUUID,
+    views COUNTER,
     PRIMARY KEY (user_id)
 );
 
 
 CREATE TABLE IF NOT EXISTS languages_statistics (
-    id timeuuid,
-    name text,
-    clicks counter,
+    id TIMEUUID,
+    name TEXT,
+    clicks COUNTER,
     PRIMARY KEY ((id), name)
 );
 
 
 CREATE TABLE IF NOT EXISTS technologies_statistics (
-    id timeuuid,
-    name text,
-    clicks counter,
+    id TIMEUUID,
+    name TEXT,
+    clicks COUNTER,
     PRIMARY KEY ((id), name)
 );
 
 
 CREATE TABLE IF NOT EXISTS locations_statistics (
-    id timeuuid,
-    name text,
-    clicks counter,
+    id TIMEUUID,
+    name TEXT,
+    clicks COUNTER,
     PRIMARY KEY ((id), name)
 );

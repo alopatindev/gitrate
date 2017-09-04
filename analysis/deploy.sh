@@ -17,6 +17,7 @@ cd "${OUT_DIR}"
 spark-submit \
     --deploy-mode cluster \
     --class "${MAIN_CLASS}" \
+    --name AnalyzeGithubUsers \
     --properties-file spark-defaults.conf \
     --driver-java-options "${JVM_OPTS}" \
     "${OUT_JAR}"
