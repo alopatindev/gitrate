@@ -18,13 +18,13 @@ import scala.io.Source
 import scala.util.{Failure, Success, Try}
 
 case class GithubConf(val apiToken: String,
-                      val maxResults: String,
-                      val maxRepositories: String,
-                      val maxPinnedRepositories: String,
-                      val maxLanguages: String)
+                      val maxResults: Int,
+                      val maxRepositories: Int,
+                      val maxPinnedRepositories: Int,
+                      val maxLanguages: Int)
 
 abstract class GithubReceiver(conf: GithubConf,
-                              queries: Seq[GithubSearchQuery],
+                              queries: => Seq[GithubSearchQuery],
                               storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK)
     extends Receiver[String](storageLevel: StorageLevel)
     with LogUtils {
@@ -117,10 +117,10 @@ abstract class GithubReceiver(conf: GithubConf,
         .map(p => "after: " + p)
         .getOrElse(""),
       "type" -> "REPOSITORY",
-      "maxResults" -> conf.maxResults,
-      "maxRepositories" -> conf.maxRepositories,
-      "maxPinnedRepositories" -> conf.maxPinnedRepositories,
-      "maxLanguages" -> conf.maxLanguages
+      "maxResults" -> conf.maxResults.toString,
+      "maxRepositories" -> conf.maxRepositories.toString,
+      "maxPinnedRepositories" -> conf.maxPinnedRepositories.toString,
+      "maxLanguages" -> conf.maxLanguages.toString
     )
 
     val gqlQuery: String = queryTemplate.formatTemplate(args)

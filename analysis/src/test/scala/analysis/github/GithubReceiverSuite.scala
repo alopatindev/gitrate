@@ -90,7 +90,7 @@ class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
 
     val receiver = {
       val conf =
-        GithubConf(apiToken = "", maxResults = "", maxRepositories = "", maxPinnedRepositories = "", maxLanguages = "")
+        GithubConf(apiToken = "", maxResults = 0, maxRepositories = 0, maxPinnedRepositories = 0, maxLanguages = 0)
       val queries = Seq(
         GithubSearchQuery(language = "JavaScript", filename = ".eslintrc.*", minRepoSizeKiB = 1, maxRepoSizeKiB = 2),
         GithubSearchQuery(language = "JavaScript", filename = ".travis.yml", minRepoSizeKiB = 1, maxRepoSizeKiB = 2),
@@ -108,7 +108,7 @@ class GithubReceiverSuite extends WordSpec with BeforeAndAfter with Eventually {
         .fromFile(s"src/test/resources/$filename")
         .mkString
 
-    abstract class FakeReceiver(conf: GithubConf, queries: Seq[GithubSearchQuery])
+    abstract class FakeReceiver(conf: GithubConf, queries: => Seq[GithubSearchQuery])
         extends GithubReceiver(conf, queries) {
       override def store(response: String): Unit = {
         _responses = response :: _responses
