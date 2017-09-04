@@ -48,6 +48,9 @@ assemblyMergeStrategy in assembly := {
 coverageEnabled in(Test, compile) := true
 coverageEnabled in(Compile, compile) := false
 
+scalastyleConfig := baseDirectory.value / "project" / "scalastyle-config.xml"
+scalastyleConfig in Test := baseDirectory.value / "project" / "scalastyle-config-test.xml"
+
 //testOptions in Test += Tests.Argument("-oF")
 //parallelExecution in Test := false
 
