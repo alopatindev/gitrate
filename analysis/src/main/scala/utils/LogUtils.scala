@@ -13,6 +13,8 @@ trait LogUtils {
 
   val maxDebugLength = 200
 
+  def logError(throwable: Throwable): Unit = log.error(throwable.getMessage(), throwable)
+
   def logError(data: Any = "", cut: Boolean = true): Unit =
     if (log.isEnabledFor(Level.ERROR)) { log.error(formatData(data, cut)) }
 

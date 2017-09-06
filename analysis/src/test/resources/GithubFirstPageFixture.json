@@ -2,7 +2,7 @@
   "data": {
     "search": {
       "pageInfo": {
-        "endCursor": "second page",
+        "endCursor": "SECOND_PAGE",
         "hasNextPage": true
       },
       "nodes": [{

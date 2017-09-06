@@ -4,32 +4,38 @@ name := "hiregooddevs-analysis"
 
 scalaVersion := "2.11.11"
 scalacOptions ++= Seq(
-  "-feature",
   "-deprecation",
   "-encoding", "UTF-8",
+  "-feature",
+  "-language:postfixOps",
+  "-target:jvm-1.8",
   "-unchecked",
+  "-Xexperimental",
+  "-Xfuture",
   "-Xlint",
   "-Yno-adapted-args",
+  "-Ywarn-adapted-args",
   "-Ywarn-dead-code",
+  "-Ywarn-numeric-widen",
+  "-Ywarn-unused",
+  "-Ywarn-unused-import",
   "-Ywarn-value-discard",
-  "-Xfuture",
-  "-Xexperimental",
-  "-language:postfixOps",
 )
 
 val sparkVersion = "2.1.1"
 
 libraryDependencies ++= Seq(
+  "org.apache.spark" %% "spark-core" % sparkVersion,
+  "org.apache.spark" %% "spark-sql" % sparkVersion,
+  "org.apache.spark" %% "spark-streaming" % sparkVersion,
   "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.3",
 
   "com.typesafe.play" %% "play-ws-standalone-json" % "1.0.4",
 
-  "org.apache.spark" %% "spark-core" % sparkVersion,
-  "org.apache.spark" %% "spark-sql" % sparkVersion,
-  "org.apache.spark" %% "spark-streaming" % sparkVersion,
+  "org.scalaj" %% "scalaj-http" % "2.3.0",
 
-  "org.scalatest" %% "scalatest" % "3.0.3" % Test,
   "org.scalacheck" %% "scalacheck" % "1.13.5" % Test,
+  "org.scalatest" %% "scalatest" % "3.0.3" % Test,
 )
 
 // https://stackoverflow.com/questions/43841091/spark2-1-0-incompatible-jackson-versions-2-7-6/43845063#43845063

@@ -1,7 +1,7 @@
 {
   "data": null,
   "errors": [{
-      "message": "`asd` does not appear to be a valid cursor.",
+      "message": "`INVALID_PAGE` does not appear to be a valid cursor.",
       "type": "INVALID_CURSOR_ARGUMENTS",
       "path": [
         "search",
@@ -13,7 +13,7 @@
       }]
     },
     {
-      "message": "`asd` does not appear to be a valid cursor.",
+      "message": "`INVALID_PAGE` does not appear to be a valid cursor.",
       "type": "INVALID_CURSOR_ARGUMENTS",
       "path": [
         "search",
@@ -26,7 +26,7 @@
       }]
     },
     {
-      "message": "`asd` does not appear to be a valid cursor.",
+      "message": "`INVALID_PAGE` does not appear to be a valid cursor.",
       "type": "INVALID_CURSOR_ARGUMENTS",
       "path": [
         "search",

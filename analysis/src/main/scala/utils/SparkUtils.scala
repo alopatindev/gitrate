@@ -3,8 +3,7 @@ package hiregooddevs.utils
 import com.datastax.driver.core.Row
 import com.datastax.spark.connector.cql.CassandraConnector
 
-import org.apache.spark.streaming.StreamingContext
-import org.apache.spark.streaming.{Duration, Seconds}
+import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkConf, SparkContext}
 
 trait SparkUtils {
@@ -18,7 +17,7 @@ trait SparkUtils {
 
   def createStreamingContext(batchDurationSeconds: Int): StreamingContext = {
     val sc = SparkContext.getOrCreate()
-    val duration = Seconds(batchDurationSeconds)
+    val duration = Seconds(batchDurationSeconds.toLong)
     new StreamingContext(sc, duration)
   }
 

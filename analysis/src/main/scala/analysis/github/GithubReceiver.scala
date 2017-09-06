@@ -1,21 +1,21 @@
 package hiregooddevs.analysis.github
 
+import hiregooddevs.utils.HttpClientFactory.HttpPostFunction
 import hiregooddevs.utils.LogUtils
 
-import java.io.{File, InputStream}
+import java.io.InputStream
+import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 
-import org.apache.log4j.Level
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
 
 import play.api.libs.json.{Json, JsValue, JsLookupResult, JsDefined, JsUndefined}
 
 import scala.annotation.tailrec
-import scala.concurrent.duration._
 import scala.concurrent.Future
 import scala.io.Source
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 case class GithubConf(val apiToken: String,
                       val maxResults: Int,
@@ -23,21 +23,17 @@ case class GithubConf(val apiToken: String,
                       val maxPinnedRepositories: Int,
                       val maxLanguages: Int)
 
-abstract class GithubReceiver(conf: GithubConf,
-                              queries: => Seq[GithubSearchQuery],
-                              storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK)
-    extends Receiver[String](storageLevel: StorageLevel)
+class GithubReceiver(conf: GithubConf, storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK)(
+    httpPostBlocking: HttpPostFunction[JsValue, JsValue],
+    onLoadQueries: () => Seq[GithubSearchQuery],
+    onStoreResult: (GithubReceiver, String) => Unit
+) extends Receiver[String](storageLevel: StorageLevel)
     with LogUtils {
 
-  log.setLevel(Level.DEBUG) // TODO: move to config
-
-  def httpPostBlocking(url: String, data: String, headers: Map[String, String], timeout: Duration): InputStream
-
-  private val requestTimeout = 10 seconds
-  private val apiURL = "https://api.github.com/graphql"
+  private val apiURL = new URL("https://api.github.com/graphql")
   @transient private lazy val queryTemplate: String = resourceToString("/GithubSearch.graphql")
 
-  private val started = new AtomicBoolean(false)
+  private val started = new AtomicBoolean(false) // scalastyle:ignore
 
   override def onStart(): Unit = {
     logInfo()
@@ -54,28 +50,26 @@ abstract class GithubReceiver(conf: GithubConf,
   private def run(): Unit = {
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    logInfo()
+    Future(helper).logErrors()
 
-    Future {
-      logDebug("initialize infiniteQueries")
+    @tailrec
+    def helper(): Unit = {
+      if (started.get()) {
+        logInfo("reloading queries")
+        val queries = onLoadQueries()
 
-      val infiniteQueries = Iterator
-        .continually(queries)
-        .flatten
-        .map(_.toString)
+        queries
+          .map(_.toString)
+          .foreach(query => makeQuery(query, None))
 
-      while (started.get()) { // scalastyle:ignore
-        val query = infiniteQueries.next()
-        makeQuery(query, None)
+        helper()
       }
-    }.logErrors()
-
-    ()
+    }
   }
 
   @tailrec
   private def makeQuery(query: String, page: Option[String]): Unit = {
-    logInfo(query)
+    logDebug(query)
 
     def getNextPage(pageInfo: JsLookupResult): Option[String] =
       (pageInfo \ "hasNextPage", pageInfo \ "endCursor") match {
@@ -96,17 +90,17 @@ abstract class GithubReceiver(conf: GithubConf,
       getNextPage(pageInfo)
     }
 
-    if (!nextPage.isEmpty && started.get()) {
-      makeQuery(query, nextPage)
+    nextPage match {
+      case Some(_) if started.get() => makeQuery(query, nextPage)
+      case _                        =>
     }
   }
 
   private def processResponse(searchResult: JsLookupResult, errors: JsLookupResult): Unit = {
-    logDebug(s"searchResult = `$searchResult`")
-
     (searchResult, errors) match {
       case (JsDefined(searchResult: JsValue), _) =>
-        store(searchResult.toString)
+        val result = searchResult.toString // JSON string is easier to serialize
+        onStoreResult(this, result)
       case (_, JsDefined(errors: JsValue)) => logError(errors)
       case (JsUndefined(), JsUndefined())  => throw new IllegalStateException
     }
@@ -142,8 +136,7 @@ abstract class GithubReceiver(conf: GithubConf,
       "Content-Type" -> "application/json"
     )
 
-    val response = httpPostBlocking(url = apiURL, data = data.toString, headers = headers, timeout = requestTimeout)
-    Json.parse(response)
+    httpPostBlocking(apiURL, data, headers)
   }
 
   // FIXME: replace or make common utils

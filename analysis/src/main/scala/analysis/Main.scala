@@ -1,7 +1,11 @@
 package hiregooddevs.analysis
 
+import hiregooddevs.utils.HttpClientFactory
+import hiregooddevs.utils.HttpClientFactory.HttpPostFunction
+import hiregooddevs.utils.{LogUtils, SparkUtils}
+
 import github.{GithubConf, GithubReceiver, GithubSearchQuery}
-import hiregooddevs.utils.{HttpClient, SparkUtils, LogUtils}
+import play.api.libs.json.{Json, JsValue}
 
 object Main extends LogUtils with SparkUtils {
 
@@ -31,7 +35,8 @@ object Main extends LogUtils with SparkUtils {
     val sc = createSparkContext()
     val ssc = createStreamingContext(batchDurationSeconds)
 
-    val receiver = new GithubReceiver(githubConf, loadQueriesOnExecutor) with HttpClient
+    val httpPostBlocking: HttpPostFunction[JsValue, JsValue] = HttpClientFactory.postFunction(Json.parse)
+    val receiver = new GithubReceiver(githubConf)(httpPostBlocking, onLoadQueries, onStoreResult)
     val stream = ssc.receiverStream(receiver)
     // TODO: checkpoint
 
@@ -42,7 +47,8 @@ object Main extends LogUtils with SparkUtils {
     sc.stop()
   }
 
-  def loadQueriesOnExecutor: Seq[GithubSearchQuery] = {
+  // runs on executor
+  def onLoadQueries(): Seq[GithubSearchQuery] = {
     logInfo()
     val query = """
 SELECT
@@ -60,5 +66,8 @@ WHERE partition = 0 AND enabled = true;
       .map(row => GithubSearchQuery(row))
       .toSeq
   }
+
+  // runs on executor
+  def onStoreResult(receiver: GithubReceiver, result: String): Unit = receiver.store(result)
 
 }

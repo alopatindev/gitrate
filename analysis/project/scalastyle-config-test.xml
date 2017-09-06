@@ -170,7 +170,7 @@
       <parameter name="ignoreRegex"><![CDATA[^""?$]]></parameter>
     </parameters>
   </check>
-  <check enabled="true" class="org.scalastyle.scalariform.NamedArgumentChecker" level="warning">
+  <check enabled="false" class="org.scalastyle.scalariform.NamedArgumentChecker" level="warning">
     <parameters>
       <parameter name="checkString">false</parameter>
       <parameter name="ignoreMethod">set.*|getOrElse</parameter>
