@@ -1,9 +1,8 @@
 package gitrate.analysis.github
 
 import gitrate.utils.HttpClientFactory.HttpPostFunction
-import gitrate.utils.LogUtils
+import gitrate.utils.{LogUtils, ResourceUtils}
 
-import java.io.InputStream
 import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -15,7 +14,6 @@ import play.api.libs.json.{Json, JsValue, JsLookupResult, JsDefined, JsUndefined
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.io.Source
 import scala.util.Try
 
 case class GithubConf(val apiToken: String,
@@ -29,7 +27,8 @@ class GithubReceiver(conf: GithubConf, storageLevel: StorageLevel = StorageLevel
     onLoadQueries: () => Seq[GithubSearchQuery],
     onStoreResult: (GithubReceiver, String) => Unit
 ) extends Receiver[String](storageLevel: StorageLevel)
-    with LogUtils {
+    with LogUtils
+    with ResourceUtils {
 
   private val apiURL = new URL("https://api.github.com/graphql")
   @transient private lazy val queryTemplate: String = resourceToString("/GithubSearch.graphql")
@@ -142,18 +141,6 @@ class GithubReceiver(conf: GithubConf, storageLevel: StorageLevel = StorageLevel
     )
 
     httpPostBlocking(apiURL, data, headers)
-  }
-
-  // FIXME: replace or make common utils
-
-  private def inputStreamToString(stream: InputStream): String =
-    Source
-      .fromInputStream(stream)
-      .mkString
-
-  private def resourceToString(resourceFilePath: String): String = {
-    val stream = getClass.getResourceAsStream(resourceFilePath)
-    inputStreamToString(stream)
   }
 
 }

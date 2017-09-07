@@ -1,9 +1,9 @@
 package gitrate.analysis.github
 
 import org.scalatest.concurrent.Eventually
-import org.scalatest.{fixture, BeforeAndAfter, Outcome}
+import org.scalatest.{fixture, Outcome}
 
-class GithubReceiverSuite extends fixture.WordSpec with BeforeAndAfter with Eventually {
+class GithubReceiverSuite extends fixture.WordSpec with Eventually {
 
   import gitrate.utils.HttpClientFactory.Headers
 
@@ -104,8 +104,7 @@ class GithubReceiverSuite extends fixture.WordSpec with BeforeAndAfter with Even
     // weird design decision forces us to do this
     // alternatively some mocking framework could be used
     def fakeOnStoreResult(receiver: GithubReceiver, result: String): Unit = {
-      responses.add(result)
-      ()
+      val _ = responses.add(result)
     }
 
     val fakeConf = GithubConf("", 0, 0, 0, 0)
