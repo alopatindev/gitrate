@@ -1,11 +1,11 @@
-package hiregooddevs.analysis.github
+package gitrate.analysis.github
 
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{fixture, BeforeAndAfter, Outcome}
 
 class GithubReceiverSuite extends fixture.WordSpec with BeforeAndAfter with Eventually {
 
-  import hiregooddevs.utils.HttpClientFactory.Headers
+  import gitrate.utils.HttpClientFactory.Headers
 
   import java.net.URL
   import java.util.concurrent.atomic.AtomicInteger

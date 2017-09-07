@@ -1,4 +1,4 @@
-package hiregooddevs.utils
+package gitrate.utils
 
 import com.datastax.driver.core.Row
 import com.datastax.spark.connector.cql.CassandraConnector
@@ -8,9 +8,11 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 trait SparkUtils {
 
+  private val appName = "gitrate-analysis"
+
   def createSparkContext(): SparkContext = {
     val sparkConf = new SparkConf()
-      .setAppName("hiregooddevs-analysis")
+      .setAppName(appName)
       .setMaster("local[*]")
     new SparkContext(sparkConf)
   }

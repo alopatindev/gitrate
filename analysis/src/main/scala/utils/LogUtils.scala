@@ -1,4 +1,4 @@
-package hiregooddevs.utils
+package gitrate.utils
 
 import org.apache.log4j.{Level, Logger, LogManager}
 

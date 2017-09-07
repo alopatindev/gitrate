@@ -1,6 +1,6 @@
 import scala.io.Source
 
-name := "hiregooddevs-analysis"
+name := "gitrate-analysis"
 
 scalaVersion := "2.11.11"
 scalacOptions ++= Seq(

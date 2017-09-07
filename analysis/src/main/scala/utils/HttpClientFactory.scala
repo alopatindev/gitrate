@@ -1,4 +1,4 @@
-package hiregooddevs.utils
+package gitrate.utils
 
 import java.io.InputStream
 import java.net.URL

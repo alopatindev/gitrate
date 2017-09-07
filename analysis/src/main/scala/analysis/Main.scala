@@ -1,8 +1,8 @@
-package hiregooddevs.analysis
+package gitrate.analysis
 
-import hiregooddevs.utils.HttpClientFactory
-import hiregooddevs.utils.HttpClientFactory.HttpPostFunction
-import hiregooddevs.utils.{LogUtils, SparkUtils}
+import gitrate.utils.HttpClientFactory
+import gitrate.utils.HttpClientFactory.HttpPostFunction
+import gitrate.utils.{LogUtils, SparkUtils}
 
 import github.{GithubConf, GithubReceiver, GithubSearchQuery}
 import play.api.libs.json.{Json, JsValue}
@@ -59,7 +59,7 @@ SELECT
   CAST(min_stars AS INT) AS minStars,
   CAST(max_stars AS INT) AS maxStars,
   pattern
-FROM hiregooddevs.github_search_queries
+FROM gitrate.github_search_queries
 WHERE partition = 0 AND enabled = true;
 """
     executeCQL(query)

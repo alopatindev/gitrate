@@ -1,7 +1,7 @@
-package hiregooddevs.analysis.github
+package gitrate.analysis.github
 
-import hiregooddevs.utils.HttpClientFactory.HttpPostFunction
-import hiregooddevs.utils.LogUtils
+import gitrate.utils.HttpClientFactory.HttpPostFunction
+import gitrate.utils.LogUtils
 
 import java.io.InputStream
 import java.net.URL
@@ -13,6 +13,7 @@ import org.apache.spark.streaming.receiver.Receiver
 import play.api.libs.json.{Json, JsValue, JsLookupResult, JsDefined, JsUndefined}
 
 import scala.annotation.tailrec
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.io.Source
 import scala.util.Try
@@ -48,8 +49,6 @@ class GithubReceiver(conf: GithubConf, storageLevel: StorageLevel = StorageLevel
   }
 
   private def run(): Unit = {
-    import scala.concurrent.ExecutionContext.Implicits.global
-
     Future(helper).logErrors()
 
     @tailrec
@@ -57,6 +56,12 @@ class GithubReceiver(conf: GithubConf, storageLevel: StorageLevel = StorageLevel
       if (started.get()) {
         logInfo("reloading queries")
         val queries = onLoadQueries()
+
+        if (queries.isEmpty) {
+          logError("list of queries is empty!")
+          val pauseMillis = 10000L
+          Thread.sleep(pauseMillis)
+        }
 
         queries
           .map(_.toString)
@@ -107,7 +112,7 @@ class GithubReceiver(conf: GithubConf, storageLevel: StorageLevel = StorageLevel
   }
 
   private def executeGQLBlocking(query: String, page: Option[String]): Option[JsValue] = {
-    import hiregooddevs.utils.StringUtils._
+    import gitrate.utils.StringUtils._
 
     val args = Map(
       "searchQuery" -> query,

@@ -1,4 +1,4 @@
-package hiregooddevs.utils
+package gitrate.utils
 
 import org.apache.commons.lang.text.StrSubstitutor
 

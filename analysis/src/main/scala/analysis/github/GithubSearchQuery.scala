@@ -1,4 +1,4 @@
-package hiregooddevs.analysis.github
+package gitrate.analysis.github
 
 import com.datastax.driver.core.Row
 

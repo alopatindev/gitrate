@@ -1,4 +1,4 @@
-package hiregooddevs.utils
+package gitrate.utils
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec

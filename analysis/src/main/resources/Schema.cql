@@ -1,11 +1,11 @@
--- DROP KEYSPACE IF EXISTS hiregooddevs;
+-- DROP KEYSPACE IF EXISTS gitrate;
 
 
-CREATE KEYSPACE IF NOT EXISTS hiregooddevs
+CREATE KEYSPACE IF NOT EXISTS gitrate
 WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 
 
-USE hiregooddevs;
+USE gitrate;
 
 
 CREATE TABLE IF NOT EXISTS users (
