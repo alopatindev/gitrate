@@ -1,9 +1,11 @@
 package gitrate.analysis.github
 
+import gitrate.utils.TestUtils
+
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{fixture, Outcome}
 
-class GithubReceiverSuite extends fixture.WordSpec with Eventually {
+class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtils {
 
   import gitrate.utils.HttpClientFactory.Headers
 
@@ -11,9 +13,7 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually {
   import java.util.concurrent.atomic.AtomicInteger
   import java.util.concurrent.ConcurrentLinkedQueue
 
-  import play.api.libs.json.{Json, JsValue}
-
-  import scala.io.Source
+  import play.api.libs.json.JsValue
 
   "GithubReceiver" can {
 
@@ -113,26 +113,8 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually {
     FixtureParam(receiver, requests, responses, queriesReloads)
   }
 
-  private val firstResponse = loadResource("GithubFirstPageFixture.json")
-  private val secondResponse = loadResource("GithubLastPageFixture.json")
-  private val errorResponse = loadResource("GithubErrorFixture.json")
-
-  // TODO: move to utils
-
-  type ConcurrentQueue = ConcurrentLinkedQueue[String]
-
-  implicit class ConcurrentQueueUtils(queue: ConcurrentQueue) {
-    import scala.collection.JavaConverters._
-
-    def count(pattern: String): Int =
-      queue.iterator.asScala.count { _ contains pattern }
-  }
-
-  private def loadResource(filename: String): JsValue = {
-    val text = Source
-      .fromFile(s"src/test/resources/$filename")
-      .mkString
-    Json.parse(text)
-  }
+  private val firstResponse = loadJsonResource("GithubFirstPageFixture.json")
+  private val secondResponse = loadJsonResource("GithubLastPageFixture.json")
+  private val errorResponse = loadJsonResource("GithubErrorFixture.json")
 
 }
