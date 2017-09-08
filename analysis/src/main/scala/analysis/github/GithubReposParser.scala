@@ -1,87 +1,97 @@
 package gitrate.analysis.github
 
+import gitrate.utils.HttpClientFactory.HttpGetFunction
+
+import java.net.URL
+import play.api.libs.json.{JsValue, JsDefined, JsArray, JsBoolean, JsString}
+
 class GithubReposParser(val minRepoAgeDays: Int,
-                        val minOwnerToAllCommitsRatio: Float,
-                        val supportedLanguages: Seq[String],
-                        val minTargetRepos: Int) {
+                        val minOwnerToAllCommitsRatio: Double,
+                        val supportedLanguages: Set[String],
+                        val minTargetRepos: Int,
+                        val httpGetBlocking: HttpGetFunction[JsValue]) {
 
-  import java.util.Date
+  def parseRepo(json: JsValue, login: Option[String]): Option[GithubRepo] =
+    parseRepoAndOwner(json, login).map { case (repo, _) => repo }
 
-  import org.apache.commons.codec.binary.Base64.decodeBase64
-  import org.apache.spark.sql.catalyst.util.DateTimeUtils.stringToTime
+  def parseRepoAndOwner(json: JsValue, login: Option[String] = None): Option[(GithubRepo, Option[GithubRepoOwner])] = {
+    val props = (json \ "id",
+                 json \ "name",
+                 json \ "createdAt",
+                 json \ "pushedAt",
+                 json \ "primaryLanguage" \ "name",
+                 json \ "languages" \ "nodes")
 
-  import play.api.libs.json._
-
-  def parseAndFilterWithOwner(r: JsValue): Option[(JsValue, GithubRepo)] =
-    (r \ "id",
-     r \ "name",
-     r \ "createdAt",
-     r \ "pushedAt",
-     r \ "primaryLanguage" \ "name",
-     r \ "languages" \ "nodes",
-     r \ "owner") match {
-      case (JsDefined(JsString(idBase64)),
+    props match {
+      case (JsDefined(JsString(repoIdBase64)),
             JsDefined(JsString(name)),
-            JsDefined(JsString(created)),
-            JsDefined(JsString(updated)),
-            JsDefined(JsString(primaryLanguage)),
-            JsDefined(JsArray(languages)),
-            JsDefined(owner)) =>
-        val repo =
-          GithubRepo(idBase64,
-                     name,
-                     stringToTime(created),
-                     stringToTime(updated),
-                     primaryLanguage,
-                     languages.toStringSeq,
-                     isFork = false,
-                     isMirror = false)
-        Some(owner -> repo)
-      case _ => None
-    }
-
-  def parseAndFilter(r: JsValue): Option[GithubRepo] = {
-    (r \ "id",
-     r \ "name",
-     r \ "owner" \ "id",
-     r \ "isFork",
-     r \ "isMirror",
-     r \ "createdAt",
-     r \ "pushedAt",
-     r \ "primaryLanguage" \ "name",
-     r \ "languages" \ "nodes") match {
-      case (JsDefined(JsString(idBase64)),
-            JsDefined(JsString(name)),
-            JsDefined(JsString(ownerIdBase64)),
-            JsDefined(JsBoolean(isFork)),
-            JsDefined(JsBoolean(isMirror)),
-            JsDefined(JsString(created)),
-            JsDefined(JsString(updated)),
+            JsDefined(JsString(createdRaw)),
+            JsDefined(JsString(updatedRaw)),
             JsDefined(JsString(primaryLanguage)),
             JsDefined(JsArray(languages))) =>
-        val repo =
-          GithubRepo(idBase64,
-                     name,
-                     stringToTime(created),
-                     stringToTime(updated),
-                     primaryLanguage,
-                     languages.toStringSeq,
-                     isFork,
-                     isMirror)
-        val userId: Option[String] = parseAndFilterUserId(ownerIdBase64)
-        userId.map(id => id -> repo)
+        val (isFork, isMirror, owner) = parseOptionalProps(json)
+
+        val ownerLogin = (login, owner) match {
+          case (Some(login), _) => Some(login)
+          case (_, Some(owner)) => Some(owner.login)
+          case _                => None
+        }
+
+        val repo = ownerLogin.map(
+          login =>
+            GithubRepo(repoIdBase64,
+                       name,
+                       createdRaw,
+                       updatedRaw,
+                       primaryLanguage,
+                       languages.map(_.asOpt[String]).flatten,
+                       isFork,
+                       isMirror,
+                       login,
+                       this))
+
+        repo.map(r => (r, owner))
       case _ => None
     }
-  } //.filter { case (ownerId, _) => ownerId == expectedOwnerId }
-    .map { case (_, repo) => repo }
+  }
 
-  implicit class JsArrayConverter(array: Seq[JsValue]) {
+  private def parseOptionalProps(json: JsValue): (Boolean, Boolean, Option[GithubRepoOwner]) = {
+    val (isFork, isMirror) = (json \ "isFork", json \ "isMirror") match {
+      case (JsDefined(JsBoolean(isFork)), JsDefined(JsBoolean(isMirror))) =>
+        (isFork, isMirror)
+      case _ =>
+        (false, false) // GraphQL query already has them
+    }
 
-    def toStringSeq: Seq[String] =
-      array
-        .map(_.asOpt[String])
-        .flatten
+    (isFork, isMirror, parseOwner(json))
+  }
 
+  private def parseOwner(json: JsValue): Option[GithubRepoOwner] = {
+    val owner = (json \ "owner")
+    (owner \ "id", owner \ "login", owner \ "pinnedRepositories" \ "nodes", owner \ "repositories" \ "nodes") match {
+      case (JsDefined(JsString(userIdBase64)),
+            JsDefined(JsString(login)),
+            JsDefined(JsArray(pinnedRepos)),
+            JsDefined(JsArray(repos))) =>
+        parseUserId(userIdBase64).map(userId => GithubRepoOwner(userId, login, pinnedRepos, repos))
+      case _ => None
+    }
+  }
+
+  case class GithubRepoOwner(val userId: Int, val login: String, pinnedReposRaw: Seq[JsValue], reposRaw: Seq[JsValue]) {
+
+    val pinnedRepos = parseRepos(pinnedReposRaw)
+    val repos = parseRepos(reposRaw)
+
+    private def parseRepos(repos: Seq[JsValue]): Seq[GithubRepo] =
+      repos.flatMap(repo => parseRepo(repo, Some(login)))
+
+  }
+
+  def apiV3Blocking(path: String): JsValue = {
+    val url = new URL(s"https://api.github.com/${path}")
+    val headers = Map("Accept" -> "application/vnd.github.v3.json")
+    httpGetBlocking(url, headers)
   }
 
 }

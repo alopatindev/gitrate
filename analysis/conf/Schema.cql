@@ -9,15 +9,15 @@ USE gitrate;
 
 
 CREATE TABLE IF NOT EXISTS users (
-    id timeuuid,
+    id TIMEUUID,
 
-    github_id TEXT,
+    github_id INT,
     github_login TEXT,
-    github_avatar_url TEXT,
 
     full_name TEXT,
     description TEXT,
     location TEXT,
+    company TEXT,
 
     position TEXT,
     developer_level TEXT, // null/unknown, not_developer, junior, middle, senior
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS users (
     job_seeker BOOLEAN,
     available_for_relocation BOOLEAN,
 
-    verified_languages FROZEN<LIST<TEXT>>, // TODO: vs SET?
+    verified_languages FROZEN<LIST<TEXT>>,
     verified_technologies FROZEN<LIST<TEXT>>,
     languages FROZEN<LIST<TEXT>>,
     technologies FROZEN<LIST<TEXT>>,
@@ -60,7 +60,7 @@ WITH CLUSTERING ORDER BY (
 
 CREATE TABLE IF NOT EXISTS repositories (
     github_repo_id TEXT,
-    user_id INT,
+    user_id TIMEUUID,
     name TEXT,
     languages FROZEN<LIST<TEXT>>,
     technologies FROZEN<LIST<TEXT>>,

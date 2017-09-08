@@ -11,7 +11,6 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
 
   import java.net.URL
   import java.util.concurrent.atomic.AtomicInteger
-  import java.util.concurrent.ConcurrentLinkedQueue
 
   import play.api.libs.json.JsValue
 
@@ -86,7 +85,7 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
     def fakeOnLoadQueries(): Seq[GithubSearchQuery] = {
       queriesReloads.incrementAndGet()
       Seq(
-        GithubSearchQuery("FIRST_QUERY", "filename", 0, 0, 0, 0, ""),
+        GithubSearchQuery("FIRST_QUERY", "", 0, 0, 0, 0, ""),
         GithubSearchQuery("INVALID_QUERY", "", 0, 0, 0, 0, "")
       )
     }

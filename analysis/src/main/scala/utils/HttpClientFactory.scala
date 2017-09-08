@@ -11,9 +11,16 @@ object HttpClientFactory {
 
   type Headers = Map[String, String]
   type Parser[Output] = (InputStream => Output)
+  type HttpGetFunction[Output] = (URL, Headers) => Output
   type HttpPostFunction[Input, Output] = (URL, Input, Headers) => Output
 
-  private val DefaultTimeout = 10 seconds
+  val DefaultTimeout = 10 seconds
+
+  def getFunction[Output](parse: Parser[Output], timeout: Duration = DefaultTimeout): HttpGetFunction[Output] =
+    (url: URL, headers: Headers) =>
+      httpClient(url, headers, timeout)
+        .execute(parse)
+        .body
 
   def postFunction[Input, Output](parse: Parser[Output],
                                   timeout: Duration = DefaultTimeout): HttpPostFunction[Input, Output] =

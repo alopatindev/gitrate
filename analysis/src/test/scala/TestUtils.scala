@@ -15,14 +15,6 @@ trait TestUtils {
       queue.iterator.asScala.count { _ contains pattern }
   }
 
-  implicit class SeqUtils[T](xs: Seq[T]) {
-    def hasDuplicates = xs.groupBy(i => i).mapValues(_.length).forall {
-      case (_, count) => count > 1
-    }
-
-    def hasOnlyUniqueItems = !hasDuplicates
-  }
-
   def loadJsonResource(filename: String): JsValue = {
     val text = Source
       .fromFile(s"src/test/resources/$filename")
