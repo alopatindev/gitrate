@@ -1,6 +1,9 @@
 package gitrate.analysis.github
 
-case class GithubReposParser() {
+class GithubReposParser(val minRepoAgeDays: Int,
+                        val minOwnerToAllCommitsRatio: Float,
+                        val supportedLanguages: Seq[String],
+                        val minTargetRepos: Int) {
 
   import java.util.Date
 
@@ -9,7 +12,7 @@ case class GithubReposParser() {
 
   import play.api.libs.json._
 
-  def parseWithOwner(r: JsValue): Option[(JsValue, GithubRepo)] =
+  def parseAndFilterWithOwner(r: JsValue): Option[(JsValue, GithubRepo)] =
     (r \ "id",
      r \ "name",
      r \ "createdAt",
@@ -37,7 +40,7 @@ case class GithubReposParser() {
       case _ => None
     }
 
-  def parse(r: JsValue, expectedOwnerId: String): Option[GithubRepo] = {
+  def parseAndFilter(r: JsValue): Option[GithubRepo] = {
     (r \ "id",
      r \ "name",
      r \ "owner" \ "id",
@@ -49,7 +52,7 @@ case class GithubReposParser() {
      r \ "languages" \ "nodes") match {
       case (JsDefined(JsString(idBase64)),
             JsDefined(JsString(name)),
-            JsDefined(JsString(ownerId)),
+            JsDefined(JsString(ownerIdBase64)),
             JsDefined(JsBoolean(isFork)),
             JsDefined(JsBoolean(isMirror)),
             JsDefined(JsString(created)),
@@ -65,10 +68,11 @@ case class GithubReposParser() {
                      languages.toStringSeq,
                      isFork,
                      isMirror)
-        Some(ownerId -> repo)
+        val userId: Option[String] = parseAndFilterUserId(ownerIdBase64)
+        userId.map(id => id -> repo)
       case _ => None
     }
-  }.filter { case (ownerId, _) => ownerId == expectedOwnerId }
+  } //.filter { case (ownerId, _) => ownerId == expectedOwnerId }
     .map { case (_, repo) => repo }
 
   implicit class JsArrayConverter(array: Seq[JsValue]) {

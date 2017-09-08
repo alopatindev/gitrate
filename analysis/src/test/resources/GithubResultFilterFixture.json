@@ -30,7 +30,7 @@
           },
           "owner": {
             "id": "MDEyOk9yZ2FuaXphdGlvbjI1MDE0Mjcy",
-            "login": "not-user",
+            "login": "organization-user",
             "pinnedRepositories": {
               "nodes": []
             },
@@ -219,47 +219,21 @@
             },
             "repositories": {
               "nodes": [{
-                  "id": "MDEwOlJlcG9zaXRvcnk5ODA4MzQyMA==",
-                  "name": "repo-by-owner",
-                  "owner": {
-                    "id": "MDQ6VXNlcjY1MDI0MDE="
-                  },
-                  "isFork": false,
-                  "isMirror": false,
-                  "createdAt": "2017-07-23T08:03:11Z",
-                  "pushedAt": "2017-07-23T08:12:26Z",
-                  "primaryLanguage": {
-                    "name": "JavaScript"
-                  },
-                  "languages": {
-                    "nodes": [{
-                        "name": "CSS"
-                      },
-                      {
-                        "name": "HTML"
-                      },
-                      {
-                        "name": "JavaScript"
-                      }
-                    ]
-                  }
-                },
-                {
                   "id": "MDEwOlJlcG9zaXRvcnk5Nzk5MDAxNA==",
-                  "name": "repo-with-unknown-as-primary",
+                  "name": "repo-with-UNKNOWN-as-primary",
                   "owner": {
                     "id": "MDQ6VXNlcjY1MDI0MDE="
                   },
                   "isFork": false,
                   "isMirror": false,
-                  "createdAt": "2017-07-21T22:06:59Z",
+                  "createdAt": "2013-07-21T22:06:59Z",
                   "pushedAt": "2017-07-22T04:46:11Z",
                   "primaryLanguage": {
                     "name": "unknown-language"
                   },
                   "languages": {
                     "nodes": [{
-                        "name": "JavaScript"
+                        "name": "unknown-language"
                       },
                       {
                         "name": "Python"
@@ -269,54 +243,19 @@
                       },
                       {
                         "name": "Objective-C"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "id": "MDEwOlJlcG9zaXRvcnk5ODAxNTcxOA==",
-                  "name": "repo-with-javascript-as-primary",
-                  "owner": {
-                    "id": "MDQ6VXNlcjY1MDI0MDE="
-                  },
-                  "isFork": true,
-                  "isMirror": false,
-                  "createdAt": "2017-07-22T07:41:40Z",
-                  "pushedAt": "2017-07-12T17:17:17Z",
-                  "primaryLanguage": {
-                    "name": "JavaScript"
-                  },
-                  "languages": {
-                    "nodes": [{
-                        "name": "JavaScript"
-                      },
-                      {
-                        "name": "Python"
-                      },
-                      {
-                        "name": "Java"
-                      },
-                      {
-                        "name": "Ruby"
-                      },
-                      {
-                        "name": "Objective-C"
-                      },
-                      {
-                        "name": "Shell"
                       }
                     ]
                   }
                 },
                 {
                   "id": "MDEwOlJlcG9zaXRvcnk5NzkwMjU3NA==",
-                  "name": "Spoon-Knife",
+                  "name": "forked-repo",
                   "owner": {
                     "id": "MDQ6VXNlcjY1MDI0MDE="
                   },
                   "isFork": true,
                   "isMirror": false,
-                  "createdAt": "2017-07-21T03:34:11Z",
+                  "createdAt": "2016-07-21T03:34:11Z",
                   "pushedAt": "2017-07-21T04:28:38Z",
                   "primaryLanguage": {
                     "name": "HTML"
@@ -333,7 +272,7 @@
                 },
                 {
                   "id": "MDEwOlJlcG9zaXRvcnk4NTM0NTg4Mg==",
-                  "name": "express",
+                  "name": "YOUNG-repo",
                   "owner": {
                     "id": "MDQ6VXNlcjY1MDI0MDE="
                   },
@@ -352,146 +291,21 @@
                 },
                 {
                   "id": "MDEwOlJlcG9zaXRvcnk4MjQyODg5Mg==",
-                  "name": "tes-performance-calculator",
+                  "name": "repo-with-mostly-commits-by-OTHERS",
                   "owner": {
                     "id": "MDQ6VXNlcjY1MDI0MDE="
                   },
                   "isFork": false,
                   "isMirror": false,
-                  "createdAt": "2017-02-19T02:05:30Z",
+                  "createdAt": "2016-02-19T02:05:30Z",
                   "pushedAt": "2017-02-19T02:05:36Z",
-                  "primaryLanguage": {
-                    "name": "Matlab"
-                  },
-                  "languages": {
-                    "nodes": [{
-                      "name": "Matlab"
-                    }]
-                  }
-                },
-                {
-                  "id": "MDEwOlJlcG9zaXRvcnkzNzc4NTcyOA==",
-                  "name": "tes-breakthrough-simulator",
-                  "owner": {
-                    "id": "MDQ6VXNlcjY1MDI0MDE="
-                  },
-                  "isFork": false,
-                  "isMirror": false,
-                  "createdAt": "2015-06-20T20:59:23Z",
-                  "pushedAt": "2017-02-19T02:07:25Z",
-                  "primaryLanguage": {
-                    "name": "Matlab"
-                  },
-                  "languages": {
-                    "nodes": [{
-                        "name": "Matlab"
-                      },
-                      {
-                        "name": "M"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "id": "MDEwOlJlcG9zaXRvcnkzNzc4NTczNA==",
-                  "name": "transport-phenomena-app",
-                  "owner": {
-                    "id": "MDQ6VXNlcjY1MDI0MDE="
-                  },
-                  "isFork": false,
-                  "isMirror": false,
-                  "createdAt": "2015-06-20T20:59:34Z",
-                  "pushedAt": "2017-02-18T07:24:43Z",
-                  "primaryLanguage": {
-                    "name": "Matlab"
-                  },
-                  "languages": {
-                    "nodes": [{
-                      "name": "Matlab"
-                    }]
-                  }
-                },
-                {
-                  "id": "MDEwOlJlcG9zaXRvcnk2MjgzOTM1NA==",
-                  "name": "uo-engineering-powerpoint-template",
-                  "owner": {
-                    "id": "MDQ6VXNlcjY1MDI0MDE="
-                  },
-                  "isFork": false,
-                  "isMirror": false,
-                  "createdAt": "2016-07-07T21:32:02Z",
-                  "pushedAt": "2017-01-16T18:00:23Z",
-                  "primaryLanguage": null,
-                  "languages": {
-                    "nodes": []
-                  }
-                },
-                {
-                  "id": "MDEwOlJlcG9zaXRvcnkzNzc4NTcxNA==",
-                  "name": "isotherm-fitting-app",
-                  "owner": {
-                    "id": "MDQ6VXNlcjY1MDI0MDE="
-                  },
-                  "isFork": false,
-                  "isMirror": false,
-                  "createdAt": "2015-06-20T20:59:11Z",
-                  "pushedAt": "2017-02-18T06:56:31Z",
-                  "primaryLanguage": {
-                    "name": "Matlab"
-                  },
-                  "languages": {
-                    "nodes": [{
-                      "name": "Matlab"
-                    }]
-                  }
-                },
-                {
-                  "id": "MDEwOlJlcG9zaXRvcnk3ODg4OTc0Ng==",
-                  "name": "shopify-shopicruit",
-                  "owner": {
-                    "id": "MDQ6VXNlcjY1MDI0MDE="
-                  },
-                  "isFork": false,
-                  "isMirror": false,
-                  "createdAt": "2017-01-13T21:54:31Z",
-                  "pushedAt": "2017-02-18T06:36:05Z",
                   "primaryLanguage": {
                     "name": "JavaScript"
                   },
                   "languages": {
                     "nodes": [{
-                        "name": "HTML"
-                      },
-                      {
-                        "name": "JavaScript"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "id": "MDEwOlJlcG9zaXRvcnk3ODUwNTc5Ng==",
-                  "name": "tatumalenko.github.io",
-                  "owner": {
-                    "id": "MDQ6VXNlcjY1MDI0MDE="
-                  },
-                  "isFork": false,
-                  "isMirror": false,
-                  "createdAt": "2017-01-10T06:45:52Z",
-                  "pushedAt": "2017-07-19T13:32:48Z",
-                  "primaryLanguage": {
-                    "name": "HTML"
-                  },
-                  "languages": {
-                    "nodes": [{
-                        "name": "HTML"
-                      },
-                      {
-                        "name": "JavaScript"
-                      },
-                      {
-                        "name": "CSS"
-                      }
-                    ]
+                      "name": "JavaScript"
+                    }]
                   }
                 }
               ]
@@ -891,7 +705,7 @@
         },
         {
           "id": "MDEwOlJlcG9zaXRvcnk5ODAwNjg0Mw==",
-          "name": "hermityang.github.io",
+          "name": "YOUNG-repo-2",
           "createdAt": "2017-07-22T04:31:54Z",
           "pushedAt": "2017-07-22T04:39:50Z",
           "primaryLanguage": {
@@ -920,34 +734,54 @@
             },
             "repositories": {
               "nodes": [{
-                "id": "MDEwOlJlcG9zaXRvcnk5ODAwNjg0Mw==",
-                "name": "hermityang.github.io",
-                "owner": {
-                  "id": "MDQ6VXNlcjYxNzkwOA=="
+                  "id": "MDEwOlJlcG9zaXRvcnk5ODAwNjg0Mw==",
+                  "name": "hermityang.github.io",
+                  "owner": {
+                    "id": "MDQ6VXNlcjYxNzkwOA=="
+                  },
+                  "isFork": false,
+                  "isMirror": false,
+                  "createdAt": "2017-07-22T04:31:54Z",
+                  "pushedAt": "2017-07-22T04:39:50Z",
+                  "primaryLanguage": {
+                    "name": "JavaScript"
+                  },
+                  "languages": {
+                    "nodes": [{
+                        "name": "ApacheConf"
+                      },
+                      {
+                        "name": "HTML"
+                      },
+                      {
+                        "name": "CSS"
+                      },
+                      {
+                        "name": "JavaScript"
+                      }
+                    ]
+                  }
                 },
-                "isFork": false,
-                "isMirror": false,
-                "createdAt": "2017-07-22T04:31:54Z",
-                "pushedAt": "2017-07-22T04:39:50Z",
-                "primaryLanguage": {
-                  "name": "JavaScript"
-                },
-                "languages": {
-                  "nodes": [{
+                {
+                  "id": "MDEwOlJlcG9zaXRvcnk3NjUK",
+                  "name": "repo2",
+                  "owner": {
+                    "id": "MDQ6VXNlcjYxNzkwOA=="
+                  },
+                  "isFork": false,
+                  "isMirror": false,
+                  "createdAt": "2012-07-22T04:31:54Z",
+                  "pushedAt": "2017-07-22T04:39:50Z",
+                  "primaryLanguage": {
+                    "name": "JavaScript"
+                  },
+                  "languages": {
+                    "nodes": [{
                       "name": "ApacheConf"
-                    },
-                    {
-                      "name": "HTML"
-                    },
-                    {
-                      "name": "CSS"
-                    },
-                    {
-                      "name": "JavaScript"
-                    }
-                  ]
+                    }]
+                  }
                 }
-              }]
+              ]
             }
           }
         },

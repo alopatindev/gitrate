@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
 
-import play.api.libs.json.{Json, JsValue, JsLookupResult, JsDefined, JsUndefined}
+import play.api.libs.json.{Json, JsValue, JsLookupResult, JsDefined, JsUndefined, JsBoolean, JsString}
 
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -77,8 +77,8 @@ class GithubReceiver(conf: GithubConf, storageLevel: StorageLevel = StorageLevel
 
     def getNextPage(pageInfo: JsLookupResult): Option[String] =
       (pageInfo \ "hasNextPage", pageInfo \ "endCursor") match {
-        case (JsDefined(hasNextPage), JsDefined(endCursor)) if hasNextPage.toString.toBoolean =>
-          val nextPage = Some(endCursor.toString)
+        case (JsDefined(JsBoolean(hasNextPage)), JsDefined(JsString(endCursor))) if hasNextPage =>
+          val nextPage = Some(endCursor)
           logDebug(s"next page is $nextPage")
           nextPage
         case _ =>

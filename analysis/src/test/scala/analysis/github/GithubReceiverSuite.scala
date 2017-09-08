@@ -91,6 +91,10 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
       )
     }
 
+    val firstResponse = loadJsonResource("GithubFirstPageFixture.json")
+    val secondResponse = loadJsonResource("GithubLastPageFixture.json")
+    val errorResponse = loadJsonResource("GithubErrorFixture.json")
+
     def fakeHttpPostBlocking(url: URL, data: JsValue, headers: Headers): JsValue = {
       val dataString = data.toString
       requests.add(dataString)
@@ -112,9 +116,5 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
 
     FixtureParam(receiver, requests, responses, queriesReloads)
   }
-
-  private val firstResponse = loadJsonResource("GithubFirstPageFixture.json")
-  private val secondResponse = loadJsonResource("GithubLastPageFixture.json")
-  private val errorResponse = loadJsonResource("GithubErrorFixture.json")
 
 }
