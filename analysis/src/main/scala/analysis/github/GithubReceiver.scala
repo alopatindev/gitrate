@@ -1,6 +1,6 @@
 package gitrate.analysis.github
 
-import gitrate.utils.HttpClientFactory.HttpPostFunction
+import gitrate.utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 import gitrate.utils.{LogUtils, ResourceUtils}
 
 import java.net.URL
@@ -20,13 +20,23 @@ case class GithubConf(val apiToken: String,
                       val maxResults: Int,
                       val maxRepositories: Int,
                       val maxPinnedRepositories: Int,
-                      val maxLanguages: Int)
+                      val maxLanguages: Int,
+                      val minRepoAgeDays: Int,
+                      val minTargetRepos: Int,
+                      val minOwnerToAllCommitsRatio: Double,
+                      supportedLanguagesRaw: String,
+                      val httpGetBlocking: HttpGetFunction[JsValue],
+                      val httpPostBlocking: HttpPostFunction[JsValue, JsValue]) {
 
-class GithubReceiver(conf: GithubConf, storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK)(
-    httpPostBlocking: HttpPostFunction[JsValue, JsValue],
-    onLoadQueries: () => Seq[GithubSearchQuery],
-    onStoreResult: (GithubReceiver, String) => Unit
-) extends Receiver[String](storageLevel: StorageLevel)
+  val supportedLanguages: Set[String] = supportedLanguagesRaw.split(",").toSet
+
+}
+
+class GithubReceiver(conf: GithubConf,
+                     onLoadQueries: () => Seq[GithubSearchQuery],
+                     onStoreResult: (GithubReceiver, String) => Unit,
+                     storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK)
+    extends Receiver[String](storageLevel: StorageLevel)
     with LogUtils
     with ResourceUtils {
 
@@ -37,7 +47,6 @@ class GithubReceiver(conf: GithubConf, storageLevel: StorageLevel = StorageLevel
 
   override def onStart(): Unit = {
     logInfo()
-
     started.set(true)
     run()
   }
@@ -116,7 +125,7 @@ class GithubReceiver(conf: GithubConf, storageLevel: StorageLevel = StorageLevel
     val args = Map(
       "searchQuery" -> query,
       "page" -> page
-        .map(p => "after: " + p)
+        .map(p => s"""after: "$p"""")
         .getOrElse(""),
       "type" -> "REPOSITORY",
       "maxResults" -> conf.maxResults.toString,
@@ -140,7 +149,7 @@ class GithubReceiver(conf: GithubConf, storageLevel: StorageLevel = StorageLevel
       "Content-Type" -> "application/json"
     )
 
-    httpPostBlocking(apiURL, data, headers)
+    conf.httpPostBlocking(apiURL, data, headers)
   }
 
 }

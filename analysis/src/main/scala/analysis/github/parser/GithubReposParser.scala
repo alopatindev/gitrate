@@ -2,16 +2,12 @@ package gitrate.analysis.github.parser
 
 import GithubParser.{GithubRepo, parseUserId}
 
-import gitrate.utils.HttpClientFactory.HttpGetFunction
+import gitrate.analysis.github.GithubConf
 
 import java.net.URL
 import play.api.libs.json.{JsValue, JsDefined, JsArray, JsBoolean, JsString}
 
-class GithubReposParser(val minRepoAgeDays: Int,
-                        val minOwnerToAllCommitsRatio: Double,
-                        val supportedLanguages: Set[String],
-                        val minTargetRepos: Int,
-                        val httpGetBlocking: HttpGetFunction[JsValue]) {
+class GithubReposParser(val conf: GithubConf) {
 
   def parseRepo(json: JsValue, login: Option[String]): Option[GithubRepo] =
     parseRepoAndOwner(json, login).map { case (repo, _) => repo }
@@ -92,8 +88,11 @@ class GithubReposParser(val minRepoAgeDays: Int,
 
   def apiV3Blocking(path: String): JsValue = {
     val url = new URL(s"https://api.github.com/${path}")
-    val headers = Map("Accept" -> "application/vnd.github.v3.json")
-    httpGetBlocking(url, headers)
+    val headers = Map(
+      "Authorization" -> s"token ${conf.apiToken}",
+      "Accept" -> "application/vnd.github.v3.json"
+    )
+    conf.httpGetBlocking(url, headers)
   }
 
 }

@@ -9,6 +9,7 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
   import play.api.libs.json.{JsValue, Json}
 
   import GithubParser.{GithubRepo, GithubUser, parseUserId}
+  import gitrate.analysis.github.GithubConf
   import gitrate.utils.HttpClientFactory.Headers
 
   "GithubUsersParser" can {
@@ -174,12 +175,22 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
       }
     }
 
-    val reposParser = new GithubReposParser(minRepoAgeDays = 2 * 30,
-                                            minOwnerToAllCommitsRatio = 0.7,
-                                            supportedLanguages = Set("JavaScript", "Python"),
-                                            minTargetRepos = 2,
-                                            httpGetBlocking = fakeHttpGetBlocking)
-    val githubParser = new GithubParser(reposParser)
+    def stubHttpPostBlocking(url: URL, data: JsValue, headers: Headers): JsValue = Json.parse("{}")
+
+    val conf = new GithubConf(
+      apiToken = "API_TOKEN",
+      maxResults = 0,
+      maxRepositories = 0,
+      maxPinnedRepositories = 0,
+      maxLanguages = 0,
+      minRepoAgeDays = 2 * 30,
+      minTargetRepos = 2,
+      minOwnerToAllCommitsRatio = 0.7,
+      supportedLanguagesRaw = "JavaScript,Python",
+      httpGetBlocking = fakeHttpGetBlocking,
+      httpPostBlocking = stubHttpPostBlocking
+    )
+    val githubParser = new GithubParser(conf)
     val searchResponse: JsValue = loadJsonResource("/GithubParserFixture.json")
     val input: JsValue = (searchResponse \ "data" \ "search").get
     val theFixture = FixtureParam(githubParser, input)

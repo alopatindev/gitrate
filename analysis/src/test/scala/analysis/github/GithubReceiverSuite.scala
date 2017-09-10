@@ -12,7 +12,7 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
   import java.net.URL
   import java.util.concurrent.atomic.AtomicInteger
 
-  import play.api.libs.json.JsValue
+  import play.api.libs.json.{Json, JsValue}
 
   "GithubReceiver" can {
 
@@ -94,6 +94,8 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
     val secondResponse = loadJsonResource("GithubLastPageFixture.json")
     val errorResponse = loadJsonResource("GithubErrorFixture.json")
 
+    def stubHttpGetBlocking(url: URL, headers: Headers): JsValue = Json.parse("{}")
+
     def fakeHttpPostBlocking(url: URL, data: JsValue, headers: Headers): JsValue = {
       val dataString = data.toString
       requests.add(dataString)
@@ -110,8 +112,21 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
       val _ = responses.add(result)
     }
 
-    val fakeConf = GithubConf("", 0, 0, 0, 0)
-    val receiver = new GithubReceiver(fakeConf)(fakeHttpPostBlocking, fakeOnLoadQueries, fakeOnStoreResult)
+    val fakeConf = GithubConf(
+      apiToken = "",
+      maxResults = 0,
+      maxRepositories = 0,
+      maxPinnedRepositories = 0,
+      maxLanguages = 0,
+      minRepoAgeDays = 0,
+      minTargetRepos = 0,
+      minOwnerToAllCommitsRatio = 0.0,
+      supportedLanguagesRaw = "",
+      httpGetBlocking = stubHttpGetBlocking,
+      httpPostBlocking = fakeHttpPostBlocking
+    )
+
+    val receiver = new GithubReceiver(fakeConf, fakeOnLoadQueries, fakeOnStoreResult)
 
     FixtureParam(receiver, requests, responses, queriesReloads)
   }

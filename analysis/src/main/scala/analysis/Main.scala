@@ -1,42 +1,21 @@
 package gitrate.analysis
 
+import github.{GithubConf, GithubReceiver, GithubSearchQuery}
 import gitrate.utils.HttpClientFactory
-import gitrate.utils.HttpClientFactory.HttpPostFunction
+import gitrate.utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 import gitrate.utils.{LogUtils, SparkUtils}
 
-import github.{GithubConf, GithubReceiver, GithubSearchQuery}
 import play.api.libs.json.{Json, JsValue}
 
 object Main extends LogUtils with SparkUtils {
 
-  def main(args: Array[String]): Unit = {
-    val properties = Seq(
-      "stream.batchDurationSeconds",
-      "github.apiToken",
-      "github.maxResults",
-      "github.maxRepositories",
-      "github.maxPinnedRepositories",
-      "github.maxLanguages"
-    ).flatMap(sys.props.get)
-
-    properties match {
-      case Seq(batchDurationSeconds, apiToken, maxResults, maxRepositories, maxPinnedRepositories, maxLanguages) =>
-        val githubConf = GithubConf(apiToken,
-                                    maxResults.toInt,
-                                    maxRepositories.toInt,
-                                    maxPinnedRepositories.toInt,
-                                    maxLanguages.toInt)
-        run(batchDurationSeconds.toInt, githubConf)
-      case _ => logError(s"Invalid configuration $properties")
-    }
-  }
+  def main(args: Array[String]): Unit = loadConfig().foreach((run _).tupled)
 
   private def run(batchDurationSeconds: Int, githubConf: GithubConf): Unit = {
-    val sc = createSparkContext()
+    val _ = createSparkContext()
     val ssc = createStreamingContext(batchDurationSeconds)
 
-    val httpPostBlocking: HttpPostFunction[JsValue, JsValue] = HttpClientFactory.postFunction(Json.parse)
-    val receiver = new GithubReceiver(githubConf)(httpPostBlocking, onLoadQueries, onStoreResult)
+    val receiver = new GithubReceiver(githubConf, onLoadQueries, onStoreResult)
     val stream = ssc.receiverStream(receiver)
     // TODO: checkpoint
 
@@ -44,7 +23,7 @@ object Main extends LogUtils with SparkUtils {
     ssc.start()
     ssc.awaitTermination()
 
-    sc.stop()
+    ssc.stop(stopSparkContext = true, stopGracefully = true)
   }
 
   // runs on executor
@@ -69,5 +48,55 @@ WHERE partition = 0 AND enabled = true;
 
   // runs on executor
   def onStoreResult(receiver: GithubReceiver, result: String): Unit = receiver.store(result)
+
+  private def loadConfig(): Option[(Int, GithubConf)] = {
+    val httpGetBlocking: HttpGetFunction[JsValue] = HttpClientFactory.getFunction(Json.parse)
+    val httpPostBlocking: HttpPostFunction[JsValue, JsValue] = HttpClientFactory.postFunction(Json.parse)
+
+    val properties = Seq(
+      "stream.batchDurationSeconds",
+      "github.apiToken",
+      "github.maxResults",
+      "github.maxRepositories",
+      "github.maxPinnedRepositories",
+      "github.maxLanguages",
+      "github.minRepoAgeDays",
+      "github.minTargetRepos",
+      "github.minOwnerToAllCommitsRatio",
+      "github.supportedLanguages"
+    ).flatMap(sys.props.get)
+
+    properties match {
+      case Seq(batchDurationSeconds,
+               apiToken,
+               maxResults,
+               maxRepositories,
+               maxPinnedRepositories,
+               maxLanguages,
+               minRepoAgeDays,
+               minTargetRepos,
+               minOwnerToAllCommitsRatio,
+               supportedLanguagesRaw) =>
+        val githubConf = GithubConf(
+          apiToken = apiToken,
+          maxResults = maxResults.toInt,
+          maxRepositories = maxRepositories.toInt,
+          maxPinnedRepositories = maxPinnedRepositories.toInt,
+          maxLanguages = maxLanguages.toInt,
+          minRepoAgeDays = minRepoAgeDays.toInt,
+          minTargetRepos = minTargetRepos.toInt,
+          minOwnerToAllCommitsRatio = minOwnerToAllCommitsRatio.toDouble,
+          supportedLanguagesRaw = supportedLanguagesRaw,
+          httpGetBlocking = httpGetBlocking,
+          httpPostBlocking = httpPostBlocking
+        )
+
+        Some((batchDurationSeconds.toInt, githubConf))
+
+      case _ =>
+        logError(s"Invalid configuration $properties")
+        None
+    }
+  }
 
 }

@@ -4,3 +4,7 @@
 -Dgithub.maxRepositories=20
 -Dgithub.maxPinnedRepositories=6
 -Dgithub.maxLanguages=20
+-Dgithub.minRepoAgeDays=60
+-Dgithub.minOwnerToAllCommitsRatio=0.7
+-Dgithub.supportedLanguages=JavaScript
+-Dgithub.minTargetRepos=6

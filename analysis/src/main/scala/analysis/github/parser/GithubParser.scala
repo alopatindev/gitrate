@@ -1,5 +1,6 @@
 package gitrate.analysis.github.parser
 
+import gitrate.analysis.github.GithubConf
 import gitrate.utils.HttpClientFactory.DefaultTimeout
 import gitrate.utils.LogUtils
 
@@ -14,7 +15,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
 import scala.util.Try
 
-class GithubParser(reposParser: GithubReposParser) {
+class GithubParser(conf: GithubConf) {
 
   import GithubParser.GithubUser
 
@@ -28,9 +29,11 @@ class GithubParser(reposParser: GithubReposParser) {
       node <- nodes
       (repo, Some(owner)) <- reposParser.parseRepoAndOwner(node)
       targetRepos = (repo :: (owner.pinnedRepos ++ owner.repos).toList).filter(_.isTarget)
-      if targetRepos.length >= reposParser.minTargetRepos
+      if targetRepos.length >= conf.minTargetRepos
     } yield GithubUser(owner.userId, owner.login, targetRepos, reposParser)
   }
+
+  private val reposParser = new GithubReposParser(conf)
 
 }
 
@@ -54,8 +57,8 @@ object GithubParser extends LogUtils {
     val updated = stringToTime(updatedRaw)
 
     private val isPotentiallyTarget = {
-      val targetLanguage = (reposParser.supportedLanguages contains primaryLanguage)
-      val targetAge = daysBetween(created, updated) >= reposParser.minRepoAgeDays
+      val targetLanguage = (reposParser.conf.supportedLanguages contains primaryLanguage)
+      val targetAge = daysBetween(created, updated) >= reposParser.conf.minRepoAgeDays
       !isFork && !isMirror && targetLanguage && targetAge
     }
 
@@ -68,7 +71,7 @@ object GithubParser extends LogUtils {
         (response \ "all", response \ "owner") match {
           case (JsDefined(JsArray(all)), JsDefined(JsArray(owner))) =>
             val ratio = arraySum(owner) / arraySum(all)
-            ratio >= reposParser.minOwnerToAllCommitsRatio
+            ratio >= reposParser.conf.minOwnerToAllCommitsRatio
           case _ => false
         }
       } else {
@@ -85,7 +88,6 @@ object GithubParser extends LogUtils {
     def location: Option[String] = detailString("location")
     def company: Option[String] = detailString("company")
 
-    // FIXME: "The publicly visible email address only displays for authenticated API users"
     def email: Option[String] = detailString("email")
     def blog: Option[String] = detailString("blog")
 
