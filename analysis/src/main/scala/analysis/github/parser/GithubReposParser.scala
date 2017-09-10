@@ -1,4 +1,6 @@
-package gitrate.analysis.github
+package gitrate.analysis.github.parser
+
+import GithubParser.{GithubRepo, parseUserId}
 
 import gitrate.utils.HttpClientFactory.HttpGetFunction
 

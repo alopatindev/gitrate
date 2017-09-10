@@ -1,16 +1,40 @@
-package gitrate.analysis
+package gitrate.analysis.github.parser
 
 import gitrate.utils.HttpClientFactory.DefaultTimeout
+import gitrate.utils.LogUtils
 
 import java.util.Date
+
 import org.apache.commons.codec.binary.Base64.decodeBase64
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.stringToTime
+
 import play.api.libs.json.{JsArray, JsDefined, JsValue, JsNumber}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
 import scala.util.Try
 
-package object github {
+class GithubParser(reposParser: GithubReposParser) {
+
+  import GithubParser.GithubUser
+
+  def parseUsersAndRepos(searchResult: JsValue): Seq[GithubUser] = {
+    val nodes: Seq[JsValue] = (searchResult \ "nodes") match {
+      case JsDefined(JsArray(nodes)) => nodes
+      case _                         => Seq()
+    }
+
+    for {
+      node <- nodes
+      (repo, Some(owner)) <- reposParser.parseRepoAndOwner(node)
+      targetRepos = (repo :: (owner.pinnedRepos ++ owner.repos).toList).filter(_.isTarget)
+      if targetRepos.length >= reposParser.minTargetRepos
+    } yield GithubUser(owner.userId, owner.login, targetRepos, reposParser)
+  }
+
+}
+
+object GithubParser extends LogUtils {
 
   case class GithubRepo(val idBase64: String,
                         val name: String,
@@ -50,7 +74,7 @@ package object github {
       } else {
         false
       }
-    } // TODO: logErrors
+    }.logErrors()
 
   }
 
@@ -80,8 +104,7 @@ package object github {
           response
         case _ => throw new IllegalStateException(s"Sanity check failed, response was $response")
       }
-    }
-    // TODO: logErrors
+    }.logErrors()
 
     private[this] def detailsBlocking: Option[JsValue] =
       Try(Await.result(details, DefaultTimeout)).toOption
@@ -90,7 +113,7 @@ package object github {
 
   def parseUserId(idBase64: String): Option[Int] = {
     base64ToString(idBase64) match {
-      case userIdRegex(prefix, userType, id) if userType == "User" => Some(id.toInt)
+      case UserIdRegex(prefix, userType, id) if userType == "User" => Some(id.toInt)
       case _                                                       => None
     }
   }
@@ -114,6 +137,6 @@ package object github {
   def base64ToString(data: String): String =
     new String(decodeBase64(data))
 
-  private[this] val userIdRegex = """^(\d*?):(.*?)(\d*)$""".r
+  private[this] val UserIdRegex = """^(\d*?):(.*?)(\d*)$""".r
 
 }

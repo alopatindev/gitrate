@@ -1,12 +1,14 @@
-package gitrate.analysis.github
+package gitrate.analysis.github.parser
 
 import gitrate.utils.TestUtils
 import org.scalatest.{fixture, Outcome}
 
-class GithubUsersParserSuite extends fixture.WordSpec with TestUtils {
+class GithubParserSuite extends fixture.WordSpec with TestUtils {
 
   import java.net.URL
   import play.api.libs.json.{JsValue, Json}
+
+  import GithubParser.{GithubRepo, GithubUser, parseUserId}
   import gitrate.utils.HttpClientFactory.Headers
 
   "GithubUsersParser" can {
