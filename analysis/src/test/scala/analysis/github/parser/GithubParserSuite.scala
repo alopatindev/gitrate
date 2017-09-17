@@ -8,16 +8,23 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
   import java.net.URL
   import play.api.libs.json.{JsValue, Json}
 
-  import GithubParser.{GithubRepo, GithubUser, parseUserId}
   import gitrate.analysis.github.GithubConf
   import gitrate.utils.HttpClientFactory.Headers
+
+  import org.apache.log4j.{Level, Logger}
+  import org.apache.spark.{SparkConf, SparkContext}
+
+  Logger.getLogger("org.apache.spark").setLevel(Level.ERROR)
 
   "GithubUsersParser" can {
 
     "filter GitHub API output" should {
 
-      "ignore users with invalid type (e.g. organization)" in { fixture =>
+      "not ignore target users" in { fixture =>
         assert(fixture containsUser "target-user")
+      }
+
+      "ignore users with invalid type (e.g. organization)" in { fixture =>
         assert(!(fixture containsUser "organization-user"))
       }
 
@@ -43,12 +50,14 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
         assert(!fixture.userHasRepo("target-user", "repo-with-UNKNOWN-as-primary"))
       }
 
-      "returns found repos and then pinned repos as priority" in { fixture =>
-        assert(
-          fixture.reposOfUser("target-user").take(4).toSeq === Seq("repo-found",
-                                                                   "repo-pinned1",
-                                                                   "repo-pinned2",
-                                                                   "another-target-repo"))
+      "return found repos and then pinned repos as priority" in { fixture =>
+        val expected = List("repo-found", "repo-pinned1", "repo-pinned2", "another-target-repo")
+        assert(fixture.reposOfUser("target-user").take(4).toList === expected)
+      }
+
+      "ignore duplicated repos" in { fixture =>
+        val repos = fixture.reposOfUser("target-user")
+        assert(repos.toSet.size === repos.length)
       }
 
       "ignore users with too little number of target repositories" in { fixture =>
@@ -56,7 +65,7 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
       }
 
       "ignore recently analyzed users" ignore { fixture =>
-        assert(!(fixture containsUser "user-with-a-single-repo"))
+        assert(!(fixture containsUser "recently-analyzed-user"))
       }
 
       "ignore recently analyzed repos" ignore { fixture =>
@@ -80,19 +89,6 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
             assert(user.blog === Some("https://target-user.github.io"))
             assert(user.jobSeeker === Some(true))
           })
-      }
-
-    }
-
-    "package object" should {
-
-      "parse and filter user IDs" in { fixture =>
-        val user = "MDQ6VXNlcjY1MDI0MDE="
-        val organization = "MDEyOk9yZ2FuaXphdGlvbjI1MDE0Mjcy"
-        val invalid = "invalid"
-        assert(parseUserId(user) === Some(6502401))
-        assert(parseUserId(organization).isEmpty)
-        assert(parseUserId(invalid).isEmpty)
       }
 
     }
@@ -177,7 +173,7 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
 
     def stubHttpPostBlocking(url: URL, data: JsValue, headers: Headers): JsValue = Json.parse("{}")
 
-    val conf = new GithubConf(
+    val conf = GithubConf(
       apiToken = "API_TOKEN",
       maxResults = 0,
       maxRepositories = 0,
@@ -190,17 +186,30 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
       httpGetBlocking = fakeHttpGetBlocking,
       httpPostBlocking = stubHttpPostBlocking
     )
+
     val githubParser = new GithubParser(conf)
-    val searchResponse: JsValue = loadJsonResource("/GithubParserFixture.json")
-    val input: JsValue = (searchResponse \ "data" \ "search").get
+
+    val inputJsValue: JsValue = (loadJsonResource("/GithubParserFixture.json") \ "data" \ "search").get
+    val input: Seq[String] = Seq(inputJsValue.toString)
+
     val theFixture = FixtureParam(githubParser, input)
     try {
       withFixture(test.toNoArgTest(theFixture))
-    } finally {}
+    } finally {
+      SparkContext.getOrCreate().stop()
+    }
   }
 
-  case class FixtureParam(val githubParser: GithubParser, val input: JsValue) {
-    val users: Seq[GithubUser] = githubParser.parseUsersAndRepos(input)
+  case class FixtureParam(val githubParser: GithubParser, val input: Seq[String]) {
+    private val sparkContext = {
+      val sparkConf = new SparkConf()
+        .setAppName("GithubParserSuite")
+        .setMaster("local")
+      new SparkContext(sparkConf)
+    }
+
+    val users: Seq[GithubUser] = githubParser
+      .parseAndFilterJSONs(sparkContext.parallelize(input))
 
     def repos: Seq[GithubRepo] = users.flatMap(u => u.repos)
 

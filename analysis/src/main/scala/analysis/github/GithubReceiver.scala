@@ -113,7 +113,11 @@ class GithubReceiver(conf: GithubConf,
     (searchResult, errors) match {
       case (JsDefined(searchResult: JsValue), _) =>
         val result = searchResult.toString // JSON string is easier to serialize
-        onStoreResult(this, result)
+        if (started.get()) {
+          onStoreResult(this, result)
+        } else {
+          logError("receiver is not started")
+        }
       case (_, JsDefined(errors: JsValue)) => logError(errors)
       case (JsUndefined(), JsUndefined())  => throw new IllegalStateException
     }

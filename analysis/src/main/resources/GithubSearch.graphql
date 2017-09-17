@@ -47,7 +47,7 @@ fragment repositoryConnections on RepositoryConnection {
     id
     name
     owner {
-      login
+      id
     }
     isFork
     isMirror

@@ -1,6 +1,7 @@
 package gitrate.analysis
 
-import github.{GithubConf, GithubReceiver, GithubSearchQuery}
+import github.{GithubConf, GithubReceiver, GithubSearchQuery, GithubSearchInputDStream /*, GithubUser*/}
+import github.parser._
 import gitrate.utils.HttpClientFactory
 import gitrate.utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 import gitrate.utils.{LogUtils, SparkUtils}
@@ -15,11 +16,20 @@ object Main extends LogUtils with SparkUtils {
     val _ = createSparkContext()
     val ssc = createStreamingContext(batchDurationSeconds)
 
-    val receiver = new GithubReceiver(githubConf, onLoadQueries, onStoreResult)
-    val stream = ssc.receiverStream(receiver)
     // TODO: checkpoint
+    GithubSearchInputDStream
+      .createStream(ssc, githubConf, onLoadQueries, onStoreResult)
+      .foreachRDD { rdd =>
+        val githubParser = new GithubParser(githubConf)
+        githubParser.parseAndFilterJSONs(rdd).foreach { (user: GithubUser) =>
+          println(s"repo id=${user.id} login=${user.login} repos=${user.repos}")
+        }
+      }
 
-    stream.print()
+    //val receiver = new GithubReceiver(githubConf, onLoadQueries, onStoreResult)
+    //val stream = ssc.receiverStream(receiver)
+    //stream.print()
+
     ssc.start()
     ssc.awaitTermination()
 
