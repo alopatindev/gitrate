@@ -209,7 +209,7 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
     }
 
     val users: Seq[GithubUser] = githubParser
-      .parseAndFilterJSONs(sparkContext.parallelize(input))
+      .parseAndFilterUsers(sparkContext.parallelize(input))
 
     def repos: Seq[GithubRepo] = users.flatMap(u => u.repos)
 

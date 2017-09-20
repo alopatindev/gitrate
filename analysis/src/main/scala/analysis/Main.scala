@@ -21,7 +21,7 @@ object Main extends LogUtils with SparkUtils {
       .createStream(ssc, githubConf, onLoadQueries, onStoreResult)
       .foreachRDD { rdd =>
         val githubParser = new GithubParser(githubConf)
-        githubParser.parseAndFilterJSONs(rdd).foreach { (user: GithubUser) =>
+        githubParser.parseAndFilterUsers(rdd).foreach { (user: GithubUser) =>
           println(s"repo id=${user.id} login=${user.login} repos=${user.repos}")
         }
       }

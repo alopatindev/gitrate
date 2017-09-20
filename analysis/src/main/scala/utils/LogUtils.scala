@@ -2,7 +2,7 @@ package gitrate.utils
 
 import org.apache.log4j.{Level, Logger, LogManager}
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.util.Try
 
@@ -51,7 +51,7 @@ trait LogUtils {
   }
 
   implicit class FutureLogged[T](future: Future[T]) {
-    def logErrors(): Future[T] = {
+    def logErrors()(implicit ec: ExecutionContext): Future[T] = {
       future.failed.foreach(throwable => logError(throwable))
       future
     }
