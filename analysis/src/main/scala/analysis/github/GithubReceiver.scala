@@ -1,6 +1,5 @@
 package gitrate.analysis.github
 
-import gitrate.utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 import gitrate.utils.{LogUtils, ResourceUtils}
 
 import java.net.URL
@@ -16,25 +15,9 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Try
 
-case class GithubConf(val apiToken: String,
-                      val maxResults: Int,
-                      val maxRepositories: Int,
-                      val maxPinnedRepositories: Int,
-                      val maxLanguages: Int,
-                      val minRepoAgeDays: Int,
-                      val minTargetRepos: Int,
-                      val minOwnerToAllCommitsRatio: Double,
-                      supportedLanguagesRaw: String,
-                      val httpGetBlocking: HttpGetFunction[JsValue],
-                      val httpPostBlocking: HttpPostFunction[JsValue, JsValue]) {
-
-  val supportedLanguages: Set[String] = supportedLanguagesRaw.split(",").toSet
-
-}
-
 class GithubReceiver(conf: GithubConf,
-                     onLoadQueries: () => Seq[GithubSearchQuery],
-                     onStoreResult: (GithubReceiver, String) => Unit,
+                     loadQueriesFn: () => Seq[GithubSearchQuery],
+                     storeResultFn: (GithubReceiver, String) => Unit,
                      storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK)
     extends Receiver[String](storageLevel: StorageLevel)
     with LogUtils
@@ -63,7 +46,7 @@ class GithubReceiver(conf: GithubConf,
     def helper(): Unit = {
       if (started.get()) {
         logInfo("reloading queries")
-        val queries = onLoadQueries()
+        val queries = loadQueriesFn()
 
         if (queries.isEmpty) {
           logError("list of queries is empty!")
@@ -114,7 +97,7 @@ class GithubReceiver(conf: GithubConf,
       case (JsDefined(searchResult: JsValue), _) =>
         val result = searchResult.toString // JSON string is easier to serialize
         if (started.get()) {
-          onStoreResult(this, result)
+          storeResultFn(this, result)
         } else {
           logError("receiver is not started")
         }

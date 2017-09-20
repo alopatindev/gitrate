@@ -1,7 +1,7 @@
 package gitrate.analysis
 
-import github.{GithubConf, GithubReceiver, GithubSearchQuery, GithubSearchInputDStream /*, GithubUser*/}
-import github.parser._
+import github.{GithubConf, GithubReceiver, GithubSearchQuery, GithubSearchInputDStream}
+import github.parser.{GithubParser, GithubUser}
 import gitrate.utils.HttpClientFactory
 import gitrate.utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 import gitrate.utils.{LogUtils, SparkUtils}
@@ -17,18 +17,18 @@ object Main extends LogUtils with SparkUtils {
     val ssc = createStreamingContext(batchDurationSeconds)
 
     // TODO: checkpoint
-    GithubSearchInputDStream
-      .createStream(ssc, githubConf, onLoadQueries, onStoreResult)
-      .foreachRDD { rdd =>
-        val githubParser = new GithubParser(githubConf)
-        githubParser.parseAndFilterUsers(rdd).foreach { (user: GithubUser) =>
-          println(s"repo id=${user.id} login=${user.login} repos=${user.repos}")
-        }
-      }
+    val stream = new GithubSearchInputDStream(ssc, githubConf, loadQueries, storeResult)
 
-    //val receiver = new GithubReceiver(githubConf, onLoadQueries, onStoreResult)
-    //val stream = ssc.receiverStream(receiver)
-    //stream.print()
+    stream.foreachRDD { rdd =>
+      val githubParser = new GithubParser(githubConf)
+      githubParser.parseAndFilterUsers(rdd).foreach { (user: GithubUser) =>
+        logInfo(s"repo id=${user.id} login=${user.login} repos=${user.repos}")
+      }
+    }
+
+    // val receiver = new GithubReceiver(githubConf, onLoadQueries, onStoreResult)
+    // val stream = ssc.receiverStream(receiver)
+    // stream.print()
 
     ssc.start()
     ssc.awaitTermination()
@@ -37,7 +37,7 @@ object Main extends LogUtils with SparkUtils {
   }
 
   // runs on executor
-  def onLoadQueries(): Seq[GithubSearchQuery] = {
+  def loadQueries(): Seq[GithubSearchQuery] = {
     logInfo()
     val query = """
 SELECT
@@ -57,24 +57,13 @@ WHERE partition = 0 AND enabled = true;
   }
 
   // runs on executor
-  def onStoreResult(receiver: GithubReceiver, result: String): Unit = receiver.store(result)
+  def storeResult(receiver: GithubReceiver, result: String): Unit = receiver.store(result)
 
   private def loadConfig(): Option[(Int, GithubConf)] = {
     val httpGetBlocking: HttpGetFunction[JsValue] = HttpClientFactory.getFunction(Json.parse)
     val httpPostBlocking: HttpPostFunction[JsValue, JsValue] = HttpClientFactory.postFunction(Json.parse)
 
-    val properties = Seq(
-      "stream.batchDurationSeconds",
-      "github.apiToken",
-      "github.maxResults",
-      "github.maxRepositories",
-      "github.maxPinnedRepositories",
-      "github.maxLanguages",
-      "github.minRepoAgeDays",
-      "github.minTargetRepos",
-      "github.minOwnerToAllCommitsRatio",
-      "github.supportedLanguages"
-    ).flatMap(sys.props.get)
+    val properties = ConfigProperties.flatMap(sys.props.get)
 
     properties match {
       case Seq(batchDurationSeconds,
@@ -86,6 +75,8 @@ WHERE partition = 0 AND enabled = true;
                minRepoAgeDays,
                minTargetRepos,
                minOwnerToAllCommitsRatio,
+               minRepoUpdateIntervalDays,
+               minUserUpdateIntervalDays,
                supportedLanguagesRaw) =>
         val githubConf = GithubConf(
           apiToken = apiToken,
@@ -96,6 +87,8 @@ WHERE partition = 0 AND enabled = true;
           minRepoAgeDays = minRepoAgeDays.toInt,
           minTargetRepos = minTargetRepos.toInt,
           minOwnerToAllCommitsRatio = minOwnerToAllCommitsRatio.toDouble,
+          minRepoUpdateIntervalDays = minRepoUpdateIntervalDays.toInt,
+          minUserUpdateIntervalDays = minRepoUpdateIntervalDays.toInt,
           supportedLanguagesRaw = supportedLanguagesRaw,
           httpGetBlocking = httpGetBlocking,
           httpPostBlocking = httpPostBlocking
@@ -108,5 +101,20 @@ WHERE partition = 0 AND enabled = true;
         None
     }
   }
+
+  private val ConfigProperties = Seq(
+    "stream.batchDurationSeconds",
+    "github.apiToken",
+    "github.maxResults",
+    "github.maxRepositories",
+    "github.maxPinnedRepositories",
+    "github.maxLanguages",
+    "github.minRepoAgeDays",
+    "github.minTargetRepos",
+    "github.minOwnerToAllCommitsRatio",
+    "github.minRepoUpdateIntervalDays",
+    "github.minUserUpdateIntervalDays",
+    "github.supportedLanguages"
+  )
 
 }

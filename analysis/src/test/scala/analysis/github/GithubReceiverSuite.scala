@@ -121,6 +121,8 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
       minRepoAgeDays = 0,
       minTargetRepos = 0,
       minOwnerToAllCommitsRatio = 0.0,
+      minRepoUpdateIntervalDays = 0,
+      minUserUpdateIntervalDays = 0,
       supportedLanguagesRaw = "",
       httpGetBlocking = stubHttpGetBlocking,
       httpPostBlocking = fakeHttpPostBlocking

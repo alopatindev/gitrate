@@ -57,7 +57,7 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
 
       "ignore duplicated repos" in { fixture =>
         val repos = fixture.reposOfUser("target-user")
-        assert(repos.toSet.size === repos.length)
+        assert(repos.toSet.size === repos.size)
       }
 
       "ignore users with too little number of target repositories" in { fixture =>
@@ -182,12 +182,14 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
       minRepoAgeDays = 2 * 30,
       minTargetRepos = 2,
       minOwnerToAllCommitsRatio = 0.7,
+      minRepoUpdateIntervalDays = 10,
+      minUserUpdateIntervalDays = 1,
       supportedLanguagesRaw = "JavaScript,Python",
       httpGetBlocking = fakeHttpGetBlocking,
       httpPostBlocking = stubHttpPostBlocking
     )
 
-    val githubParser = new GithubParser(conf)
+    val githubParser = new GithubParser(conf) // TODO: add callbacks?
 
     val inputJsValue: JsValue = (loadJsonResource("/GithubParserFixture.json") \ "data" \ "search").get
     val input: Seq[String] = Seq(inputJsValue.toString)
@@ -208,23 +210,23 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
       new SparkContext(sparkConf)
     }
 
-    val users: Seq[GithubUser] = githubParser
+    val users: Iterable[GithubUser] = githubParser
       .parseAndFilterUsers(sparkContext.parallelize(input))
 
-    def repos: Seq[GithubRepo] = users.flatMap(u => u.repos)
+    def repos: Iterable[GithubRepo] = users.flatMap(u => u.repos)
 
-    def containsUser(login: String): Boolean = findUsers(login).isDefinedAt(0)
+    def containsUser(login: String): Boolean = !findUsers(login).isEmpty
 
-    def userHasRepo(login: String, repoName: String): Boolean = findRepos(login, repoName).isDefinedAt(0)
+    def userHasRepo(login: String, repoName: String): Boolean = !findRepos(login, repoName).isEmpty
 
-    def reposOfUser(login: String): Seq[String] =
+    def reposOfUser(login: String): Iterable[String] =
       findUsers(login).flatMap(user => user.repos.map(repo => repo.name))
 
-    def findUsers(login: String): Seq[GithubUser] = users.filter(_.login == login)
+    def findUsers(login: String): Iterable[GithubUser] = users.filter(_.login == login)
 
     def findUser(login: String): Option[GithubUser] = findUsers(login).headOption
 
-    def findRepos(login: String, repoName: String): Seq[GithubRepo] =
+    def findRepos(login: String, repoName: String): Iterable[GithubRepo] =
       findUsers(login).flatMap(user => user.repos.filter(repo => repo.name == repoName))
   }
 

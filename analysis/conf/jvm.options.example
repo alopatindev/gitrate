@@ -6,5 +6,7 @@
 -Dgithub.maxLanguages=20
 -Dgithub.minRepoAgeDays=60
 -Dgithub.minOwnerToAllCommitsRatio=0.7
+-Dgithub.minRepoUpdateIntervalDays=30
+-Dgithub.minUserUpdateIntervalDays=5
 -Dgithub.supportedLanguages=JavaScript
 -Dgithub.minTargetRepos=6
