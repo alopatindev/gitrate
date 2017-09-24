@@ -3,7 +3,6 @@
 set -e
 
 MAIN_CLASS="gitrate.analysis.Main"
-JVM_OPTS="$(tr '\n' ' ' < conf/jvm.options)"
 OUT_DIR="/tmp/spark-app"
 OUT_JAR="${OUT_DIR}/out.jar"
 
@@ -19,5 +18,4 @@ spark-submit \
     --class "${MAIN_CLASS}" \
     --name AnalyzeGithubUsers \
     --properties-file spark-defaults.conf \
-    --driver-java-options "${JVM_OPTS}" \
     "${OUT_JAR}"

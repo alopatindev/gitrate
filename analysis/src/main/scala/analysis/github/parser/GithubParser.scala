@@ -44,13 +44,13 @@ class GithubParser(val conf: GithubConf) extends Serializable with LogUtils {
       .select(explode($"nodes") as "nodes")
       .cache()
 
-    val foundRepos: Dataset[GithubSearchResult] = processFoundRepos(rawNodes)
-    val pinnedRepos: Dataset[GithubSearchResult] = processOwnerRepos(rawNodes, "pinnedRepositories")
-    val repos: Dataset[GithubSearchResult] = processOwnerRepos(rawNodes, "repositories")
+    val foundRepositories: Dataset[GithubSearchResult] = processFoundRepositories(rawNodes)
+    val pinnedRepositories: Dataset[GithubSearchResult] = processOwnerRepositories(rawNodes, "pinnedRepositories")
+    val repositories: Dataset[GithubSearchResult] = processOwnerRepositories(rawNodes, "repositories")
 
-    val results: Seq[GithubSearchResult] = foundRepos
-      .union(pinnedRepos)
-      .union(repos)
+    val results: Seq[GithubSearchResult] = foundRepositories
+      .union(pinnedRepositories)
+      .union(repositories)
       .collect()
 
     val resultsByUser = results.groupBy((result: GithubSearchResult) => (result.ownerId, result.ownerLogin))
@@ -62,23 +62,24 @@ class GithubParser(val conf: GithubConf) extends Serializable with LogUtils {
     } yield PartialGithubUser(id, login, partialRepos)
 
     val futureUsers: Iterable[Future[Try[GithubUser]]] = partialUsers
-      .filter((user: PartialGithubUser) => user.partialRepos.length >= conf.minTargetRepos)
+      .filter((user: PartialGithubUser) => user.partialRepositories.length >= conf.minTargetRepositories)
       .map((user: PartialGithubUser) => user.requestDetailsAndFilterRepos(this))
 
     val users: Iterable[GithubUser] = ConcurrencyUtils.filterSucceedFutures(futureUsers, timeout = DefaultTimeout)
 
-    users.filter((user: GithubUser) => user.repos.length >= conf.minTargetRepos) // TODO: use details
+    users.filter((user: GithubUser) => user.repositories.length >= conf.minTargetRepositories) // TODO: use details
   }
 
   private def filterRepos(rawNodes: Dataset[Row], prefix: String)(implicit sparkSession: SparkSession): Dataset[Row] = {
     import sparkSession.implicits._
 
-    rawNodes.filter($"parsedUserId.userType" === "User" &&
-      datediff(col(s"${prefix}.pushedAt"), col(s"${prefix}.createdAt")) >= conf.minRepoAgeDays && isLanguageSupported(
-      col(s"${prefix}.primaryLanguage.name")))
+    rawNodes.filter(
+      $"parsedUserId.userType" === "User" &&
+        datediff(col(s"${prefix}.pushedAt"), col(s"${prefix}.createdAt")) >= conf.minRepoAge.toDays &&
+        isLanguageSupported(col(s"${prefix}.primaryLanguage.name")))
   }
 
-  private def processFoundRepos(rawNodes: Dataset[Row])(
+  private def processFoundRepositories(rawNodes: Dataset[Row])(
       implicit sparkSession: SparkSession): Dataset[GithubSearchResult] = {
     import sparkSession.implicits._
 
@@ -102,19 +103,19 @@ class GithubParser(val conf: GithubConf) extends Serializable with LogUtils {
       .as[GithubSearchResult]
   }
 
-  private def processOwnerRepos(rawNodes: Dataset[Row], reposType: String)(
+  private def processOwnerRepositories(rawNodes: Dataset[Row], repositoryType: String)(
       implicit sparkSession: SparkSession): Dataset[GithubSearchResult] = {
     import sparkSession.implicits._
 
-    val rawRepos = rawNodes.select(
+    val rawRepositories = rawNodes.select(
       parseUserId($"nodes.owner.id") as "parsedUserId",
       $"nodes.owner.id" as "ownerIdBase64",
       $"nodes.owner.login" as "ownerLogin",
-      explode(col(s"nodes.owner.${reposType}.nodes")) as "repositories"
+      explode(col(s"nodes.owner.${repositoryType}.nodes")) as "repositories"
     )
 
-    val repos = filterRepos(rawRepos, "repositories")
-    repos
+    val repositories = filterRepos(rawRepositories, "repositories")
+    repositories
       .filter(
         $"repositories.isFork" === false && $"repositories.isMirror" === false &&
           $"repositories.owner.id" === $"ownerIdBase64")
@@ -190,7 +191,7 @@ case class GithubSearchResult(
 
 }
 
-case class PartialGithubUser(val id: Int, val login: String, val partialRepos: Seq[PartialGithubRepo])
+case class PartialGithubUser(val id: Int, val login: String, val partialRepositories: Seq[PartialGithubRepo])
     extends LogUtils {
 
   def requestDetailsAndFilterRepos(githubParser: GithubParser): Future[Try[GithubUser]] = Future {
@@ -204,9 +205,9 @@ case class PartialGithubUser(val id: Int, val login: String, val partialRepos: S
         }
       }.logErrors()
 
-      val repos: Seq[Future[Try[GithubRepo]]] = partialRepos.map(_.requestDetails(githubParser))
-      val filteredRepos: Seq[GithubRepo] = ConcurrencyUtils
-        .filterSucceedFutures(repos, timeout = DefaultTimeout)
+      val repositories: Seq[Future[Try[GithubRepo]]] = partialRepositories.map(_.requestDetails(githubParser))
+      val filteredRepositories: Seq[GithubRepo] = ConcurrencyUtils
+        .filterSucceedFutures(repositories, timeout = DefaultTimeout)
         .filter(repo => repo.ownerToAllCommitsRatio >= githubParser.conf.minOwnerToAllCommitsRatio)
         .toSeq
 
@@ -226,7 +227,7 @@ case class PartialGithubUser(val id: Int, val login: String, val partialRepos: S
       val blog: Option[String] = userDetailString("blog")
       val jobSeeker: Option[Boolean] = userDetailBoolean("hireable")
 
-      GithubUser(id, login, filteredRepos, fullName, description, location, company, email, blog, jobSeeker)
+      GithubUser(id, login, filteredRepositories, fullName, description, location, company, email, blog, jobSeeker)
     }.logErrors()
   }
 
@@ -249,7 +250,7 @@ case class PartialGithubRepo(val idBase64: String,
 
 case class GithubUser(val id: Int,
                       val login: String,
-                      val repos: Seq[GithubRepo],
+                      val repositories: Seq[GithubRepo],
                       val fullName: Option[String],
                       val description: Option[String],
                       val location: Option[String],

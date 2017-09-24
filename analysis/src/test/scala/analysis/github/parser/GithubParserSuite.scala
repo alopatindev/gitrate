@@ -5,6 +5,7 @@ import org.scalatest.{fixture, Outcome}
 
 class GithubParserSuite extends fixture.WordSpec with TestUtils {
 
+  import com.typesafe.config.ConfigFactory
   import java.net.URL
   import play.api.libs.json.{JsValue, Json}
 
@@ -28,36 +29,36 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
         assert(!(fixture containsUser "organization-user"))
       }
 
-      "not ignore target repos" in { fixture =>
+      "not ignore target repositories" in { fixture =>
         assert(fixture.userHasRepo("target-user", "repo-pinned1"))
         assert(fixture.userHasRepo("target-user", "repo-pinned2"))
       }
 
-      "ignore too young repos" in { fixture =>
+      "ignore too young repositories" in { fixture =>
         assert(!fixture.userHasRepo("target-user", "YOUNG-repo"))
         assert(!fixture.userHasRepo("hermityang", "YOUNG-repo-2"))
       }
 
-      "ignore forked repos" in { fixture =>
+      "ignore forked repositories" in { fixture =>
         assert(!fixture.userHasRepo("target-user", "forked-repo"))
       }
 
-      "ignore mirrored repos" in { fixture =>
+      "ignore mirrored repositories" in { fixture =>
         assert(!fixture.userHasRepo("target-user", "mirrored-repo"))
       }
 
-      "ignore repos with primary language we don't support" in { fixture =>
+      "ignore repositories with primary language we don't support" in { fixture =>
         assert(!fixture.userHasRepo("target-user", "repo-with-UNKNOWN-as-primary"))
       }
 
-      "return found repos and then pinned repos as priority" in { fixture =>
+      "return found repositories and then pinned repositories as a priority" in { fixture =>
         val expected = List("repo-found", "repo-pinned1", "repo-pinned2", "another-target-repo")
-        assert(fixture.reposOfUser("target-user").take(4).toList === expected)
+        assert(fixture.repositoriesOfUser("target-user").take(4).toList === expected)
       }
 
-      "ignore duplicated repos" in { fixture =>
-        val repos = fixture.reposOfUser("target-user")
-        assert(repos.toSet.size === repos.size)
+      "ignore duplicated repositories" in { fixture =>
+        val repositories = fixture.repositoriesOfUser("target-user")
+        assert(repositories.toSet.size === repositories.size)
       }
 
       "ignore users with too little number of target repositories" in { fixture =>
@@ -68,12 +69,12 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
         assert(!(fixture containsUser "recently-analyzed-user"))
       }
 
-      "ignore recently analyzed repos" ignore { fixture =>
-        // TODO: request all repos of a page at the same time?
+      "ignore recently analyzed repositories" ignore { fixture =>
+        // TODO: request all repositories of a page at the same time?
         assert(!fixture.userHasRepo("target-user", "recently-updated-repo"))
       }
 
-      "allow only repos with commits mostly made by the user" in { fixture =>
+      "allow only repositories with commits mostly made by the user" in { fixture =>
         assert(!fixture.userHasRepo("target-user", "repo-with-mostly-commits-by-OTHERS"))
       }
 
@@ -174,17 +175,7 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
     def stubHttpPostBlocking(url: URL, data: JsValue, headers: Headers): JsValue = Json.parse("{}")
 
     val conf = GithubConf(
-      apiToken = "API_TOKEN",
-      maxResults = 0,
-      maxRepositories = 0,
-      maxPinnedRepositories = 0,
-      maxLanguages = 0,
-      minRepoAgeDays = 2 * 30,
-      minTargetRepos = 2,
-      minOwnerToAllCommitsRatio = 0.7,
-      minRepoUpdateIntervalDays = 10,
-      minUserUpdateIntervalDays = 1,
-      supportedLanguagesRaw = "JavaScript,Python",
+      ConfigFactory.load("GithubParserFixture.conf"),
       httpGetBlocking = fakeHttpGetBlocking,
       httpPostBlocking = stubHttpPostBlocking
     )
@@ -213,21 +204,21 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
     val users: Iterable[GithubUser] = githubParser
       .parseAndFilterUsers(sparkContext.parallelize(input))
 
-    def repos: Iterable[GithubRepo] = users.flatMap(u => u.repos)
+    def repositories: Iterable[GithubRepo] = users.flatMap(u => u.repositories)
 
     def containsUser(login: String): Boolean = !findUsers(login).isEmpty
 
     def userHasRepo(login: String, repoName: String): Boolean = !findRepos(login, repoName).isEmpty
 
-    def reposOfUser(login: String): Iterable[String] =
-      findUsers(login).flatMap(user => user.repos.map(repo => repo.name))
+    def repositoriesOfUser(login: String): Iterable[String] =
+      findUsers(login).flatMap(user => user.repositories.map(repo => repo.name))
 
     def findUsers(login: String): Iterable[GithubUser] = users.filter(_.login == login)
 
     def findUser(login: String): Option[GithubUser] = findUsers(login).headOption
 
     def findRepos(login: String, repoName: String): Iterable[GithubRepo] =
-      findUsers(login).flatMap(user => user.repos.filter(repo => repo.name == repoName))
+      findUsers(login).flatMap(user => user.repositories.filter(repo => repo.name == repoName))
   }
 
 }

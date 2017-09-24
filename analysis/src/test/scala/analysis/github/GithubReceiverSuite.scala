@@ -9,9 +9,9 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
 
   import gitrate.utils.HttpClientFactory.Headers
 
+  import com.typesafe.config.ConfigFactory
   import java.net.URL
   import java.util.concurrent.atomic.AtomicInteger
-
   import play.api.libs.json.{Json, JsValue}
 
   "GithubReceiver" can {
@@ -113,17 +113,7 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
     }
 
     val fakeConf = GithubConf(
-      apiToken = "",
-      maxResults = 0,
-      maxRepositories = 0,
-      maxPinnedRepositories = 0,
-      maxLanguages = 0,
-      minRepoAgeDays = 0,
-      minTargetRepos = 0,
-      minOwnerToAllCommitsRatio = 0.0,
-      minRepoUpdateIntervalDays = 0,
-      minUserUpdateIntervalDays = 0,
-      supportedLanguagesRaw = "",
+      ConfigFactory.load("GithubReceiverFixture.conf"),
       httpGetBlocking = stubHttpGetBlocking,
       httpPostBlocking = fakeHttpPostBlocking
     )

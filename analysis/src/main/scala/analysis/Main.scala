@@ -6,15 +6,24 @@ import gitrate.utils.HttpClientFactory
 import gitrate.utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 import gitrate.utils.{LogUtils, SparkUtils}
 
+import com.typesafe.config.{Config, ConfigFactory}
 import play.api.libs.json.{Json, JsValue}
 
 object Main extends LogUtils with SparkUtils {
 
-  def main(args: Array[String]): Unit = loadConfig().foreach((run _).tupled)
+  def appConfig: Config = ConfigFactory.load("app.conf")
 
-  private def run(batchDurationSeconds: Int, githubConf: GithubConf): Unit = {
+  def main(args: Array[String]): Unit = {
+    val httpGetBlocking: HttpGetFunction[JsValue] = HttpClientFactory.getFunction(Json.parse)
+    val httpPostBlocking: HttpPostFunction[JsValue, JsValue] = HttpClientFactory.postFunction(Json.parse)
+
+    val githubConf = GithubConf(appConfig, httpGetBlocking, httpPostBlocking)
+    run(githubConf)
+  }
+
+  private def run(githubConf: GithubConf): Unit = {
     val _ = getOrCreateSparkContext()
-    val ssc = createStreamingContext(batchDurationSeconds)
+    val ssc = createStreamingContext()
 
     // TODO: checkpoint
     val stream = new GithubSearchInputDStream(ssc, githubConf, loadQueries, storeResult)
@@ -22,7 +31,7 @@ object Main extends LogUtils with SparkUtils {
     stream.foreachRDD { rdd =>
       val githubParser = new GithubParser(githubConf)
       githubParser.parseAndFilterUsers(rdd).foreach { (user: GithubUser) =>
-        logInfo(s"repo id=${user.id} login=${user.login} repos=${user.repos}")
+        logInfo(s"repo id=${user.id} login=${user.login} repos=${user.repositories}")
       }
     }
 
@@ -59,63 +68,5 @@ WHERE enabled = true
 
   // runs on executor
   def storeResult(receiver: GithubReceiver, result: String): Unit = receiver.store(result)
-
-  private def loadConfig(): Option[(Int, GithubConf)] = {
-    val httpGetBlocking: HttpGetFunction[JsValue] = HttpClientFactory.getFunction(Json.parse)
-    val httpPostBlocking: HttpPostFunction[JsValue, JsValue] = HttpClientFactory.postFunction(Json.parse)
-
-    val properties = ConfigProperties.flatMap(sys.props.get)
-
-    properties match {
-      case Seq(batchDurationSeconds,
-               apiToken,
-               maxResults,
-               maxRepositories,
-               maxPinnedRepositories,
-               maxLanguages,
-               minRepoAgeDays,
-               minTargetRepos,
-               minOwnerToAllCommitsRatio,
-               minRepoUpdateIntervalDays,
-               minUserUpdateIntervalDays,
-               supportedLanguagesRaw) =>
-        val githubConf = GithubConf(
-          apiToken = apiToken,
-          maxResults = maxResults.toInt,
-          maxRepositories = maxRepositories.toInt,
-          maxPinnedRepositories = maxPinnedRepositories.toInt,
-          maxLanguages = maxLanguages.toInt,
-          minRepoAgeDays = minRepoAgeDays.toInt,
-          minTargetRepos = minTargetRepos.toInt,
-          minOwnerToAllCommitsRatio = minOwnerToAllCommitsRatio.toDouble,
-          minRepoUpdateIntervalDays = minRepoUpdateIntervalDays.toInt,
-          minUserUpdateIntervalDays = minRepoUpdateIntervalDays.toInt,
-          supportedLanguagesRaw = supportedLanguagesRaw,
-          httpGetBlocking = httpGetBlocking,
-          httpPostBlocking = httpPostBlocking
-        )
-
-        Some((batchDurationSeconds.toInt, githubConf))
-
-      case _ =>
-        logError(s"Invalid configuration $properties")
-        None
-    }
-  }
-
-  private val ConfigProperties = Seq(
-    "stream.batchDurationSeconds",
-    "github.apiToken",
-    "github.maxResults",
-    "github.maxRepositories",
-    "github.maxPinnedRepositories",
-    "github.maxLanguages",
-    "github.minRepoAgeDays",
-    "github.minTargetRepos",
-    "github.minOwnerToAllCommitsRatio",
-    "github.minRepoUpdateIntervalDays",
-    "github.minUserUpdateIntervalDays",
-    "github.supportedLanguages"
-  )
 
 }

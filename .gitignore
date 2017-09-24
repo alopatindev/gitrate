@@ -23,6 +23,7 @@
 .scala_dependencies
 .settings
 conf/
+*.conf
 /lib/
 scalastyle-on-compile.generated.xml
 scalastyle-output.xml

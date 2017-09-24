@@ -10,6 +10,7 @@ scalacOptions ++= Seq(
   "-language:postfixOps",
   "-target:jvm-1.8",
   "-unchecked",
+  "-Xcheckinit",
   "-Xexperimental",
   "-Xfuture",
   "-Xlint",
@@ -33,6 +34,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-ws-standalone-json" % "1.0.4",
 
   "org.scalaj" %% "scalaj-http" % "2.3.0",
+
+  "com.typesafe" % "config" % "1.3.1",
 
   "org.scalatest" %% "scalatest" % "3.1.x-6e03d4d77" % Test,
 )
@@ -64,9 +67,5 @@ parallelExecution in Test := false
 
 fork in run := true
 cancelable in Global := true
-javaOptions in run ++= Source.fromFile("conf/jvm.options").getLines.toSeq ++ Seq(
-  //"-Dlog4j.debug=true",
-  "-Dlog4j.configuration=log4j.properties"
-)
 
 outputStrategy := Some(StdoutOutput)

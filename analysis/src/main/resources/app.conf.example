@@ -1,0 +1,22 @@
+stream.batchDuration=5 seconds
+
+github {
+  apiToken=INSERT_YOUR_GITHUB_TOKEN_HERE
+  maxResults=20
+  maxRepositories=20
+  maxPinnedRepositories=6
+  maxLanguages=20
+  minRepoAge=120 days
+  minTargetRepositories=2
+  minOwnerToAllCommitsRatio=0.7
+  minRepoUpdateInterval=30 days
+  minUserUpdateInterval=5 days
+  supportedLanguages=["JavaScript"]
+}
+
+db {
+  postgresql {
+    user = gitrate
+    database = gitrate
+  }
+}

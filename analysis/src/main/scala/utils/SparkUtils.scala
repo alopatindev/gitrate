@@ -1,5 +1,7 @@
 package gitrate.utils
 
+import com.typesafe.config.Config
+
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.{Dataset, SparkSession}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
@@ -7,19 +9,18 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 trait SparkUtils {
 
-  private val appName = "gitrate-analysis"
+  def appConfig: Config
 
   private val sparkConf = new SparkConf()
-    .setAppName(appName)
+    .setAppName("")
     .setMaster("local[*]")
 
   def getOrCreateSparkContext(): SparkContext =
     SparkContext.getOrCreate(sparkConf)
 
-  def createStreamingContext(batchDurationSeconds: Int): StreamingContext = {
+  def createStreamingContext(): StreamingContext = {
     val sc = SparkContext.getOrCreate()
-    val duration = Seconds(batchDurationSeconds.toLong)
-    new StreamingContext(sc, duration)
+    new StreamingContext(sc, batchDuration)
   }
 
   def getOrCreateSparkSession(): SparkSession =
@@ -31,11 +32,17 @@ trait SparkUtils {
     getOrCreateSparkSession().read
       .format("jdbc")
       .options(
-        Map("url" -> "jdbc:postgresql:gitrate",
-            "user" -> "gitrate", // TODO: move to config
+        Map("url" -> s"jdbc:postgresql:${postgresqlDatabase}",
+            "user" -> postgresqlUser,
             "dbtable" -> s"""(${query}) as tmp""",
             "driver" -> "org.postgresql.Driver"))
       .load
   }
+
+  private val postgresqlConfig = appConfig.getConfig("db.postgresql")
+  private val postgresqlDatabase = postgresqlConfig.getString("database")
+  private val postgresqlUser = postgresqlConfig.getString("user")
+
+  private val batchDuration = Seconds(appConfig.getDuration("stream.batchDuration").getSeconds)
 
 }

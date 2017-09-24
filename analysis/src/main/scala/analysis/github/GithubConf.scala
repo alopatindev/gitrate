@@ -2,22 +2,28 @@ package gitrate.analysis.github
 
 import gitrate.utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 
+import com.typesafe.config.Config
+import java.time.Duration
 import play.api.libs.json.JsValue
 
-case class GithubConf(val apiToken: String,
-                      val maxResults: Int,
-                      val maxRepositories: Int,
-                      val maxPinnedRepositories: Int,
-                      val maxLanguages: Int,
-                      val minRepoAgeDays: Int,
-                      val minTargetRepos: Int,
-                      val minOwnerToAllCommitsRatio: Double,
-                      val minRepoUpdateIntervalDays: Int,
-                      val minUserUpdateIntervalDays: Int,
-                      supportedLanguagesRaw: String,
+import scala.collection.JavaConverters._
+
+case class GithubConf(appConfig: Config,
                       val httpGetBlocking: HttpGetFunction[JsValue],
                       val httpPostBlocking: HttpPostFunction[JsValue, JsValue]) {
 
-  val supportedLanguages: Set[String] = supportedLanguagesRaw.split(",").toSet
+  private val githubConfig = appConfig.getConfig("github")
+
+  val apiToken: String = githubConfig.getString("apiToken")
+  val maxResults: Int = githubConfig.getInt("maxResults")
+  val maxRepositories: Int = githubConfig.getInt("maxRepositories")
+  val maxPinnedRepositories: Int = githubConfig.getInt("maxPinnedRepositories")
+  val maxLanguages: Int = githubConfig.getInt("maxLanguages")
+  val minRepoAge: Duration = githubConfig.getDuration("minRepoAge")
+  val minTargetRepositories: Int = githubConfig.getInt("minTargetRepositories")
+  val minOwnerToAllCommitsRatio: Double = githubConfig.getDouble("minOwnerToAllCommitsRatio")
+  val minRepoUpdateInterval: Duration = githubConfig.getDuration("minRepoUpdateInterval")
+  val minUserUpdateInterval: Duration = githubConfig.getDuration("minUserUpdateInterval")
+  val supportedLanguages: Set[String] = githubConfig.getStringList("supportedLanguages").asScala.toSet
 
 }
