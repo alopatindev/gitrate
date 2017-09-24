@@ -13,7 +13,7 @@ object Main extends LogUtils with SparkUtils {
   def main(args: Array[String]): Unit = loadConfig().foreach((run _).tupled)
 
   private def run(batchDurationSeconds: Int, githubConf: GithubConf): Unit = {
-    val _ = createSparkContext()
+    val _ = getOrCreateSparkContext()
     val ssc = createStreamingContext(batchDurationSeconds)
 
     // TODO: checkpoint
@@ -39,20 +39,21 @@ object Main extends LogUtils with SparkUtils {
   // runs on executor
   def loadQueries(): Seq[GithubSearchQuery] = {
     logInfo()
-    val query = """
+    val sparkSession = getOrCreateSparkSession()
+    import sparkSession.implicits._
+    executeSQL("""
 SELECT
   language,
   filename,
-  CAST(min_repo_size_kib AS INT) AS minRepoSizeKiB,
-  CAST(max_repo_size_kib AS INT) AS maxRepoSizeKiB,
-  CAST(min_stars AS INT) AS minStars,
-  CAST(max_stars AS INT) AS maxStars,
+  min_repo_size_kib AS minRepoSizeKiB,
+  max_repo_size_kib AS maxRepoSizeKiB,
+  min_stars AS minStars,
+  max_stars AS maxStars,
   pattern
-FROM gitrate.github_search_queries
-WHERE partition = 0 AND enabled = true;
-"""
-    executeCQL(query)
-      .map(row => GithubSearchQuery(row))
+FROM github_search_queries
+WHERE enabled = true
+""").as[GithubSearchQuery]
+      .collect()
       .toSeq
   }
 

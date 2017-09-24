@@ -28,7 +28,7 @@ class GithubParser(val conf: GithubConf) extends Serializable with LogUtils {
     } else {
       Try {
         val conf = rawJSONs.sparkContext.getConf
-        implicit val sparkSession = SparkSession.builder
+        implicit val sparkSession = SparkSession.builder // TODO: move to SparkUtils
           .config(conf)
           .getOrCreate()
         processUsers(rawJSONs)

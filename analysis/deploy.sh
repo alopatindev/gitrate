@@ -1,8 +1,5 @@
 #!/bin/sh
 
-#cqlsh-3.11 -e "drop keyspace gitrate;"
-cqlsh-3.11 -e "source 'conf/Schema.cql'; source 'conf/GithubSearchQueries.cql';"
-
 set -e
 
 MAIN_CLASS="gitrate.analysis.Main"

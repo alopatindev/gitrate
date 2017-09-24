@@ -1,8 +1,7 @@
 package gitrate.utils
 
-import com.datastax.driver.core.Row
-import com.datastax.spark.connector.cql.CassandraConnector
-
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.{Dataset, SparkSession}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -10,12 +9,12 @@ trait SparkUtils {
 
   private val appName = "gitrate-analysis"
 
-  def createSparkContext(): SparkContext = {
-    val sparkConf = new SparkConf()
-      .setAppName(appName)
-      .setMaster("local[*]")
-    new SparkContext(sparkConf)
-  }
+  private val sparkConf = new SparkConf()
+    .setAppName(appName)
+    .setMaster("local[*]")
+
+  def getOrCreateSparkContext(): SparkContext =
+    SparkContext.getOrCreate(sparkConf)
 
   def createStreamingContext(batchDurationSeconds: Int): StreamingContext = {
     val sc = SparkContext.getOrCreate()
@@ -23,19 +22,20 @@ trait SparkUtils {
     new StreamingContext(sc, duration)
   }
 
-  def executeCQL(query: String): Iterator[Row] = {
-    import scala.collection.JavaConverters._
-
-    val conf = SparkContext
+  def getOrCreateSparkSession(): SparkSession =
+    SparkSession.builder
+      .config(sparkConf)
       .getOrCreate()
-      .getConf
 
-    CassandraConnector(conf).withSessionDo { session =>
-      session
-        .execute(query)
-        .iterator
-        .asScala
-    }
+  def executeSQL(query: String): Dataset[Row] = {
+    getOrCreateSparkSession().read
+      .format("jdbc")
+      .options(
+        Map("url" -> "jdbc:postgresql:gitrate",
+            "user" -> "gitrate", // TODO: move to config
+            "dbtable" -> s"""(${query}) as tmp""",
+            "driver" -> "org.postgresql.Driver"))
+      .load
   }
 
 }
