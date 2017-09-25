@@ -38,6 +38,9 @@ libraryDependencies ++= Seq(
   "com.typesafe" % "config" % "1.3.1",
 
   "org.scalatest" %% "scalatest" % "3.1.x-6e03d4d77" % Test,
+
+  "com.holdenkarau" %% "spark-testing-base" % "2.2.0_0.7.4" % Test,
+  "org.apache.spark" %% "spark-hive" % sparkVersion % Test // https://github.com/holdenk/spark-testing-base/issues/148
 )
 
 dependencyOverrides ++= Seq(

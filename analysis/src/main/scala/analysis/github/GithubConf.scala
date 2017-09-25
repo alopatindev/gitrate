@@ -22,8 +22,7 @@ case class GithubConf(appConfig: Config,
   val minRepoAge: Duration = githubConfig.getDuration("minRepoAge")
   val minTargetRepositories: Int = githubConfig.getInt("minTargetRepositories")
   val minOwnerToAllCommitsRatio: Double = githubConfig.getDouble("minOwnerToAllCommitsRatio")
-  val minRepoUpdateInterval: Duration = githubConfig.getDuration("minRepoUpdateInterval")
-  val minUserUpdateInterval: Duration = githubConfig.getDuration("minUserUpdateInterval")
+  val minRepositoryUpdateInterval: Duration = githubConfig.getDuration("minRepositoryUpdateInterval")
   val supportedLanguages: Set[String] = githubConfig.getStringList("supportedLanguages").asScala.toSet
 
 }

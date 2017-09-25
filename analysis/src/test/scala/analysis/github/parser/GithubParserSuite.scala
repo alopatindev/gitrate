@@ -1,12 +1,18 @@
 package gitrate.analysis.github.parser
 
 import gitrate.utils.TestUtils
+
+import com.holdenkarau.spark.testing.DataFrameSuiteBase
 import org.scalatest.{fixture, Outcome}
 
-class GithubParserSuite extends fixture.WordSpec with TestUtils {
+class GithubParserSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
 
   import com.typesafe.config.ConfigFactory
+
   import java.net.URL
+  import java.time.Duration
+  import java.util.Calendar
+
   import play.api.libs.json.{JsValue, Json}
 
   import gitrate.analysis.github.GithubConf
@@ -14,6 +20,9 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
 
   import org.apache.log4j.{Level, Logger}
   import org.apache.spark.{SparkConf, SparkContext}
+  import org.apache.spark.sql.{Dataset, Row, SparkSession}
+  import org.apache.spark.sql.functions._
+  import org.apache.spark.sql.types.TimestampType
 
   Logger.getLogger("org.apache.spark").setLevel(Level.ERROR)
 
@@ -51,11 +60,6 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
         assert(!fixture.userHasRepo("target-user", "repo-with-UNKNOWN-as-primary"))
       }
 
-      "return found repositories and then pinned repositories as a priority" in { fixture =>
-        val expected = List("repo-found", "repo-pinned1", "repo-pinned2", "another-target-repo")
-        assert(fixture.repositoriesOfUser("target-user").take(4).toList === expected)
-      }
-
       "ignore duplicated repositories" in { fixture =>
         val repositories = fixture.repositoriesOfUser("target-user")
         assert(repositories.toSet.size === repositories.size)
@@ -65,13 +69,8 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
         assert(!(fixture containsUser "user-with-a-single-repo"))
       }
 
-      "ignore recently analyzed users" ignore { fixture =>
-        assert(!(fixture containsUser "recently-analyzed-user"))
-      }
-
-      "ignore recently analyzed repositories" ignore { fixture =>
-        // TODO: request all repositories of a page at the same time?
-        assert(!fixture.userHasRepo("target-user", "recently-updated-repo"))
+      "ignore recently analyzed repositories" in { fixture =>
+        assert(!fixture.userHasRepo("target-user", "recently-analyzed-repo"))
       }
 
       "allow only repositories with commits mostly made by the user" in { fixture =>
@@ -180,7 +179,27 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
       httpPostBlocking = stubHttpPostBlocking
     )
 
-    val githubParser = new GithubParser(conf) // TODO: add callbacks?
+    import spark.implicits._
+
+    val currentDate = (Calendar.getInstance().getTimeInMillis() / 1000L).toString
+    val oldDate = "0"
+    val currentRepositories: Dataset[Row] = spark.read
+      .json(
+        sc.parallelize(Seq(
+          s"""{
+  "raw_id": "MDEwOlJlcG9zaXRvcnk4MTQyMTAyCg==",
+  "updated_by_analyzer": ${currentDate}
+}""",
+          s"""
+{
+  "raw_id": "MDEwOlJlcG9zaXRvcnkyMDg5Mjg2MA==",
+  "updated_by_analyzer": ${oldDate}
+}
+"""
+        )))
+      .select($"raw_id", ($"updated_by_analyzer".cast(TimestampType)) as "updated_by_analyzer")
+
+    val githubParser = new GithubParser(conf, currentRepositories)
 
     val inputJsValue: JsValue = (loadJsonResource("/GithubParserFixture.json") \ "data" \ "search").get
     val input: Seq[String] = Seq(inputJsValue.toString)
@@ -188,27 +207,18 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
     val theFixture = FixtureParam(githubParser, input)
     try {
       withFixture(test.toNoArgTest(theFixture))
-    } finally {
-      SparkContext.getOrCreate().stop()
-    }
+    } finally {}
   }
 
   case class FixtureParam(val githubParser: GithubParser, val input: Seq[String]) {
-    private val sparkContext = {
-      val sparkConf = new SparkConf()
-        .setAppName("GithubParserSuite")
-        .setMaster("local")
-      new SparkContext(sparkConf)
-    }
-
     val users: Iterable[GithubUser] = githubParser
-      .parseAndFilterUsers(sparkContext.parallelize(input))
+      .parseAndFilterUsers(sc.parallelize(input))
 
     def repositories: Iterable[GithubRepo] = users.flatMap(u => u.repositories)
 
     def containsUser(login: String): Boolean = !findUsers(login).isEmpty
 
-    def userHasRepo(login: String, repoName: String): Boolean = !findRepos(login, repoName).isEmpty
+    def userHasRepo(login: String, repoName: String): Boolean = !findRepositories(login, repoName).isEmpty
 
     def repositoriesOfUser(login: String): Iterable[String] =
       findUsers(login).flatMap(user => user.repositories.map(repo => repo.name))
@@ -217,7 +227,7 @@ class GithubParserSuite extends fixture.WordSpec with TestUtils {
 
     def findUser(login: String): Option[GithubUser] = findUsers(login).headOption
 
-    def findRepos(login: String, repoName: String): Iterable[GithubRepo] =
+    def findRepositories(login: String, repoName: String): Iterable[GithubRepo] =
       findUsers(login).flatMap(user => user.repositories.filter(repo => repo.name == repoName))
   }
 

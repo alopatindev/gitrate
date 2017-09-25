@@ -1,8 +1,8 @@
 package gitrate.analysis.github.parser
 
 import gitrate.analysis.github.GithubConf
-import gitrate.utils.HttpClientFactory.DefaultTimeout
 import gitrate.utils.ConcurrencyUtils
+import gitrate.utils.HttpClientFactory.DefaultTimeout
 import gitrate.utils.LogUtils
 
 import java.net.URL
@@ -17,7 +17,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
 import scala.util.Try
 
-class GithubParser(val conf: GithubConf) extends Serializable with LogUtils {
+class GithubParser(val conf: GithubConf, currentRepositories: Dataset[Row]) extends Serializable with LogUtils {
 
   import org.apache.spark.sql.functions._
 
@@ -51,14 +51,18 @@ class GithubParser(val conf: GithubConf) extends Serializable with LogUtils {
     val results: Seq[GithubSearchResult] = foundRepositories
       .union(pinnedRepositories)
       .union(repositories)
+      .join(currentRepositories, $"repoIdBase64" === $"raw_id", joinType = "left_outer")
+      .filter($"updated_by_analyzer".isNull ||
+        datediff(current_date(), $"updated_by_analyzer") >= conf.minRepositoryUpdateInterval.toDays)
+      .select($"ownerId", $"ownerLogin", $"repoIdBase64", $"repoName", $"repoPrimaryLanguage", $"repoLanguages")
+      .distinct
+      .as[GithubSearchResult]
       .collect()
 
     val resultsByUser = results.groupBy((result: GithubSearchResult) => (result.ownerId, result.ownerLogin))
     val partialUsers: Iterable[PartialGithubUser] = for {
       ((id, login), results) <- resultsByUser
-      partialRepos = results
-        .map(_.toPartialGithubRepo)
-        .distinct
+      partialRepos = results.map(_.toPartialGithubRepo)
     } yield PartialGithubUser(id, login, partialRepos)
 
     val futureUsers: Iterable[Future[Try[GithubUser]]] = partialUsers

@@ -1,12 +1,14 @@
 package gitrate.analysis
 
-import github.{GithubConf, GithubReceiver, GithubSearchQuery, GithubSearchInputDStream}
 import github.parser.{GithubParser, GithubUser}
+import github.{GithubConf, GithubReceiver, GithubSearchQuery, GithubSearchInputDStream}
 import gitrate.utils.HttpClientFactory
 import gitrate.utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 import gitrate.utils.{LogUtils, SparkUtils}
 
 import com.typesafe.config.{Config, ConfigFactory}
+
+import org.apache.spark.sql.{Dataset, Row}
 import play.api.libs.json.{Json, JsValue}
 
 object Main extends LogUtils with SparkUtils {
@@ -29,7 +31,8 @@ object Main extends LogUtils with SparkUtils {
     val stream = new GithubSearchInputDStream(ssc, githubConf, loadQueries, storeResult)
 
     stream.foreachRDD { rdd =>
-      val githubParser = new GithubParser(githubConf)
+      val currentRepositories: Dataset[Row] = Postgres.getTable("repositories")
+      val githubParser = new GithubParser(githubConf, currentRepositories)
       githubParser.parseAndFilterUsers(rdd).foreach { (user: GithubUser) =>
         logInfo(s"repo id=${user.id} login=${user.login} repos=${user.repositories}")
       }
@@ -48,9 +51,12 @@ object Main extends LogUtils with SparkUtils {
   // runs on executor
   def loadQueries(): Seq[GithubSearchQuery] = {
     logInfo()
+
     val sparkSession = getOrCreateSparkSession()
     import sparkSession.implicits._
-    executeSQL("""
+
+    Postgres
+      .executeSQL("""
 SELECT
   language,
   filename,
@@ -61,7 +67,8 @@ SELECT
   pattern
 FROM github_search_queries
 WHERE enabled = true
-""").as[GithubSearchQuery]
+""")
+      .as[GithubSearchQuery]
       .collect()
       .toSeq
   }

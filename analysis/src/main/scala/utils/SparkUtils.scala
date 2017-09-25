@@ -12,7 +12,7 @@ trait SparkUtils {
   def appConfig: Config
 
   private val sparkConf = new SparkConf()
-    .setAppName("")
+    .setAppName("AnalyzeGithubUsers")
     .setMaster("local[*]")
 
   def getOrCreateSparkContext(): SparkContext =
@@ -28,20 +28,25 @@ trait SparkUtils {
       .config(sparkConf)
       .getOrCreate()
 
-  def executeSQL(query: String): Dataset[Row] = {
-    getOrCreateSparkSession().read
-      .format("jdbc")
-      .options(
-        Map("url" -> s"jdbc:postgresql:${postgresqlDatabase}",
-            "user" -> postgresqlUser,
-            "dbtable" -> s"""(${query}) as tmp""",
-            "driver" -> "org.postgresql.Driver"))
-      .load
-  }
+  object Postgres {
 
-  private val postgresqlConfig = appConfig.getConfig("db.postgresql")
-  private val postgresqlDatabase = postgresqlConfig.getString("database")
-  private val postgresqlUser = postgresqlConfig.getString("user")
+    def getTable(table: String): Dataset[Row] =
+      getOrCreateSparkSession().read
+        .format("jdbc")
+        .options(
+          Map("url" -> s"jdbc:postgresql:${Database}",
+              "user" -> User,
+              "dbtable" -> table,
+              "driver" -> "org.postgresql.Driver"))
+        .load
+
+    def executeSQL(query: String): Dataset[Row] = getTable(s"""(${query}) as tmp""")
+
+    private val Config = appConfig.getConfig("db.postgresql")
+    private val Database = Config.getString("database")
+    private val User = Config.getString("user")
+
+  }
 
   private val batchDuration = Seconds(appConfig.getDuration("stream.batchDuration").getSeconds)
 
