@@ -2,8 +2,7 @@ package gitrate.utils
 
 import com.typesafe.config.Config
 
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.{Dataset, SparkSession}
+import org.apache.spark.sql.{Dataset, Row, SparkSession}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkConf, SparkContext}
 

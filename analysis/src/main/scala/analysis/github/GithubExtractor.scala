@@ -1,9 +1,7 @@
-package gitrate.analysis.github.parser
+package gitrate.analysis.github
 
-import gitrate.analysis.github.GithubConf
-import gitrate.utils.ConcurrencyUtils
 import gitrate.utils.HttpClientFactory.DefaultTimeout
-import gitrate.utils.LogUtils
+import gitrate.utils.{ConcurrencyUtils, LogUtils}
 
 import java.net.URL
 
@@ -17,7 +15,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
 import scala.util.Try
 
-class GithubParser(val conf: GithubConf, currentRepositories: Dataset[Row]) extends Serializable with LogUtils {
+class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) extends Serializable with LogUtils {
 
   import org.apache.spark.sql.functions._
 
@@ -28,7 +26,7 @@ class GithubParser(val conf: GithubConf, currentRepositories: Dataset[Row]) exte
     } else {
       Try {
         val conf = rawJSONs.sparkContext.getConf
-        implicit val sparkSession = SparkSession.builder // TODO: move to SparkUtils
+        implicit val sparkSession = SparkSession.builder
           .config(conf)
           .getOrCreate()
         processUsers(rawJSONs)
@@ -198,10 +196,10 @@ case class GithubSearchResult(
 case class PartialGithubUser(val id: Int, val login: String, val partialRepositories: Seq[PartialGithubRepo])
     extends LogUtils {
 
-  def requestDetailsAndFilterRepos(githubParser: GithubParser): Future[Try[GithubUser]] = Future {
+  def requestDetailsAndFilterRepos(githubExtractor: GithubExtractor): Future[Try[GithubUser]] = Future {
     Try {
       val userDetails: Future[JsValue] = Future {
-        val response = githubParser.apiV3Blocking(s"user/${id}")
+        val response = githubExtractor.apiV3Blocking(s"user/${id}")
         (response \ "id") match {
           case JsDefined(JsNumber(userId)) if userId.toInt == id =>
             response
@@ -209,10 +207,10 @@ case class PartialGithubUser(val id: Int, val login: String, val partialReposito
         }
       }.logErrors()
 
-      val repositories: Seq[Future[Try[GithubRepo]]] = partialRepositories.map(_.requestDetails(githubParser))
+      val repositories: Seq[Future[Try[GithubRepo]]] = partialRepositories.map(_.requestDetails(githubExtractor))
       val filteredRepositories: Seq[GithubRepo] = ConcurrencyUtils
         .filterSucceedFutures(repositories, timeout = DefaultTimeout)
-        .filter(repo => repo.ownerToAllCommitsRatio >= githubParser.conf.minOwnerToAllCommitsRatio)
+        .filter(repo => repo.ownerToAllCommitsRatio >= githubExtractor.conf.minOwnerToAllCommitsRatio)
         .toSeq
 
       val userDetailsResult: Option[JsValue] = Try(Await.result(userDetails, DefaultTimeout)).toOption
@@ -243,9 +241,9 @@ case class PartialGithubRepo(val idBase64: String,
                              val languages: Seq[String],
                              ownerLogin: String) {
 
-  def requestDetails(githubParser: GithubParser): Future[Try[GithubRepo]] = Future {
+  def requestDetails(githubExtractor: GithubExtractor): Future[Try[GithubRepo]] = Future {
     Try {
-      val ownerToAllCommitsRatio = githubParser.ownerToAllCommitsRatioBlocking(login = ownerLogin, repoName = name)
+      val ownerToAllCommitsRatio = githubExtractor.ownerToAllCommitsRatioBlocking(login = ownerLogin, repoName = name)
       GithubRepo(idBase64, name, primaryLanguage, languages, ownerToAllCommitsRatio.get)
     }
   }

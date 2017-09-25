@@ -1,16 +1,15 @@
-package gitrate.analysis.github.parser
+package gitrate.analysis.github
 
 import gitrate.utils.TestUtils
 
 import com.holdenkarau.spark.testing.DataFrameSuiteBase
 import org.scalatest.{fixture, Outcome}
 
-class GithubParserSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
+class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
 
   import com.typesafe.config.ConfigFactory
 
   import java.net.URL
-  import java.time.Duration
   import java.util.Calendar
 
   import play.api.libs.json.{JsValue, Json}
@@ -19,9 +18,7 @@ class GithubParserSuite extends fixture.WordSpec with DataFrameSuiteBase with Te
   import gitrate.utils.HttpClientFactory.Headers
 
   import org.apache.log4j.{Level, Logger}
-  import org.apache.spark.{SparkConf, SparkContext}
-  import org.apache.spark.sql.{Dataset, Row, SparkSession}
-  import org.apache.spark.sql.functions._
+  import org.apache.spark.sql.{Dataset, Row}
   import org.apache.spark.sql.types.TimestampType
 
   Logger.getLogger("org.apache.spark").setLevel(Level.ERROR)
@@ -174,7 +171,7 @@ class GithubParserSuite extends fixture.WordSpec with DataFrameSuiteBase with Te
     def stubHttpPostBlocking(url: URL, data: JsValue, headers: Headers): JsValue = Json.parse("{}")
 
     val conf = GithubConf(
-      ConfigFactory.load("GithubParserFixture.conf"),
+      ConfigFactory.load("GithubExtractorFixture.conf"),
       httpGetBlocking = fakeHttpGetBlocking,
       httpPostBlocking = stubHttpPostBlocking
     )
@@ -199,19 +196,19 @@ class GithubParserSuite extends fixture.WordSpec with DataFrameSuiteBase with Te
         )))
       .select($"raw_id", ($"updated_by_analyzer".cast(TimestampType)) as "updated_by_analyzer")
 
-    val githubParser = new GithubParser(conf, currentRepositories)
+    val githubExtractor = new GithubExtractor(conf, currentRepositories)
 
-    val inputJsValue: JsValue = (loadJsonResource("/GithubParserFixture.json") \ "data" \ "search").get
+    val inputJsValue: JsValue = (loadJsonResource("/GithubExtractorFixture.json") \ "data" \ "search").get
     val input: Seq[String] = Seq(inputJsValue.toString)
 
-    val theFixture = FixtureParam(githubParser, input)
+    val theFixture = FixtureParam(githubExtractor, input)
     try {
       withFixture(test.toNoArgTest(theFixture))
     } finally {}
   }
 
-  case class FixtureParam(val githubParser: GithubParser, val input: Seq[String]) {
-    val users: Iterable[GithubUser] = githubParser
+  case class FixtureParam(val githubExtractor: GithubExtractor, val input: Seq[String]) {
+    val users: Iterable[GithubUser] = githubExtractor
       .parseAndFilterUsers(sc.parallelize(input))
 
     def repositories: Iterable[GithubRepo] = users.flatMap(u => u.repositories)

@@ -1,7 +1,6 @@
 package gitrate.analysis
 
-import github.parser.{GithubParser, GithubUser}
-import github.{GithubConf, GithubReceiver, GithubSearchQuery, GithubSearchInputDStream}
+import github.{GithubConf, GithubExtractor, GithubReceiver, GithubSearchQuery, GithubSearchInputDStream, GithubUser}
 import gitrate.utils.HttpClientFactory
 import gitrate.utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 import gitrate.utils.{LogUtils, SparkUtils}
@@ -32,8 +31,8 @@ object Main extends LogUtils with SparkUtils {
 
     stream.foreachRDD { rdd =>
       val currentRepositories: Dataset[Row] = Postgres.getTable("repositories")
-      val githubParser = new GithubParser(githubConf, currentRepositories)
-      githubParser.parseAndFilterUsers(rdd).foreach { (user: GithubUser) =>
+      val githubExtractor = new GithubExtractor(githubConf, currentRepositories)
+      githubExtractor.parseAndFilterUsers(rdd).foreach { (user: GithubUser) =>
         logInfo(s"repo id=${user.id} login=${user.login} repos=${user.repositories}")
       }
     }
