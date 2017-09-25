@@ -28,6 +28,9 @@
               }
             ]
           },
+          "defaultBranchRef": {
+            "name": "master"
+          },
           "owner": {
             "id": "MDEyOk9yZ2FuaXphdGlvbjI1MDE0Mjcy",
             "login": "organization-user",
@@ -62,6 +65,9 @@
                         "name": "TypeScript"
                       }
                     ]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -109,6 +115,9 @@
                         "name": "Batchfile"
                       }
                     ]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -144,6 +153,9 @@
                         "name": "Batchfile"
                       }
                     ]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 }
               ]
@@ -173,6 +185,9 @@
               }
             ]
           },
+          "defaultBranchRef": {
+            "name": "master"
+          },
           "owner": {
             "id": "MDQ6VXNlcjY1MDI0MDE=",
             "login": "target-user",
@@ -194,6 +209,9 @@
                     "nodes": [{
                       "name": "Python"
                     }]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -223,6 +241,9 @@
                         "name": "Objective-C"
                       }
                     ]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -242,6 +263,9 @@
                     "nodes": [{
                       "name": "Python"
                     }]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 }
               ]
@@ -274,6 +298,9 @@
                         "name": "Objective-C"
                       }
                     ]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -297,6 +324,9 @@
                         "name": "CSS"
                       }
                     ]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -320,6 +350,9 @@
                         "name": "CSS"
                       }
                     ]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -339,6 +372,9 @@
                     "nodes": [{
                       "name": "JavaScript"
                     }]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -358,6 +394,9 @@
                     "nodes": [{
                       "name": "JavaScript"
                     }]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -377,6 +416,9 @@
                     "nodes": [{
                       "name": "JavaScript"
                     }]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -400,6 +442,9 @@
                         "name": "Python"
                       }
                     ]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 }
               ]
@@ -418,6 +463,9 @@
             "nodes": [{
               "name": "JavaScript"
             }]
+          },
+          "defaultBranchRef": {
+            "name": "master"
           },
           "owner": {
             "id": "MDQ6VXNlcjYxMzkyMg==",
@@ -443,6 +491,9 @@
                     "nodes": [{
                       "name": "JavaScript"
                     }]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -462,6 +513,9 @@
                     "nodes": [{
                       "name": "JavaScript"
                     }]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -481,6 +535,9 @@
                     "nodes": [{
                       "name": "JavaScript"
                     }]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -504,6 +561,9 @@
                         "name": "CSS"
                       }
                     ]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -523,6 +583,9 @@
                     "nodes": [{
                       "name": "JavaScript"
                     }]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -546,6 +609,9 @@
                         "name": "JavaScript"
                       }
                     ]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -565,6 +631,9 @@
                     "nodes": [{
                       "name": "JavaScript"
                     }]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -584,6 +653,9 @@
                     "nodes": [{
                       "name": "JavaScript"
                     }]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -607,6 +679,9 @@
                         "name": "JavaScript"
                       }
                     ]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 }
               ]
@@ -632,6 +707,9 @@
                 "name": "CSS"
               }
             ]
+          },
+          "defaultBranchRef": {
+            "name": "master"
           },
           "owner": {
             "id": "MDQ6VXNlcjY5ODc1MTU=",
@@ -664,6 +742,9 @@
                         "name": "HTML"
                       }
                     ]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -683,6 +764,9 @@
                     "nodes": [{
                       "name": "HTML"
                     }]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -709,6 +793,9 @@
                         "name": "CSS"
                       }
                     ]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -728,6 +815,9 @@
                     "nodes": [{
                       "name": "JavaScript"
                     }]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -757,6 +847,9 @@
                         "name": "CSS"
                       }
                     ]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -772,6 +865,9 @@
                   "primaryLanguage": null,
                   "languages": {
                     "nodes": []
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 },
                 {
@@ -791,6 +887,9 @@
                     "nodes": [{
                       "name": "Java"
                     }]
+                  },
+                  "defaultBranchRef": {
+                    "name": "master"
                   }
                 }
               ]
@@ -819,6 +918,9 @@
                 "name": "JavaScript"
               }
             ]
+          },
+          "defaultBranchRef": {
+            "name": "master"
           },
           "owner": {
             "id": "MDQ6VXNlcjYxNzkwOA==",
@@ -854,6 +956,9 @@
                       "name": "JavaScript"
                     }
                   ]
+                },
+                "defaultBranchRef": {
+                  "name": "master"
                 }
               }]
             }

@@ -52,7 +52,13 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
       .join(currentRepositories, $"repoIdBase64" === $"raw_id", joinType = "left_outer")
       .filter($"updated_by_analyzer".isNull ||
         datediff(current_date(), $"updated_by_analyzer") >= conf.minRepositoryUpdateInterval.toDays)
-      .select($"ownerId", $"ownerLogin", $"repoIdBase64", $"repoName", $"repoPrimaryLanguage", $"repoLanguages")
+      .select($"ownerId",
+              $"ownerLogin",
+              $"repoIdBase64",
+              $"repoName",
+              $"repoPrimaryLanguage",
+              $"repoLanguages",
+              $"defaultBranch")
       .distinct
       .as[GithubSearchResult]
       .collect()
@@ -92,7 +98,8 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
         $"nodes.id" as "repoIdBase64",
         $"nodes.name" as "repoName",
         $"nodes.primaryLanguage.name" as "repoPrimaryLanguage",
-        $"nodes.languages.nodes.name" as "repoLanguages"
+        $"nodes.languages.nodes.name" as "repoLanguages",
+        $"nodes.defaultBranchRef.name" as "defaultBranch"
       )
 
     filterRepos(rawFoundRepos, "nodes")
@@ -101,7 +108,8 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
               $"repoIdBase64",
               $"repoName",
               $"repoPrimaryLanguage",
-              $"repoLanguages")
+              $"repoLanguages",
+              $"defaultBranch")
       .as[GithubSearchResult]
   }
 
@@ -127,7 +135,8 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
         $"repositories.id" as "repoIdBase64",
         $"repositories.name" as "repoName",
         $"repositories.primaryLanguage.name" as "repoPrimaryLanguage",
-        $"repositories.languages.nodes.name" as "repoLanguages"
+        $"repositories.languages.nodes.name" as "repoLanguages",
+        $"repositories.defaultBranchRef.name" as "defaultBranch"
       )
       .as[GithubSearchResult]
   }
@@ -185,11 +194,12 @@ case class GithubSearchResult(
     val repoIdBase64: String,
     val repoName: String,
     val repoPrimaryLanguage: String,
-    val repoLanguages: Seq[String]
+    val repoLanguages: Seq[String],
+    val defaultBranch: String
 ) {
 
   def toPartialGithubRepo: PartialGithubRepo =
-    PartialGithubRepo(repoIdBase64, repoName, repoPrimaryLanguage, repoLanguages, ownerLogin) // TODO: remove login?
+    PartialGithubRepo(repoIdBase64, repoName, repoPrimaryLanguage, repoLanguages, defaultBranch, ownerLogin)
 
 }
 
@@ -239,12 +249,13 @@ case class PartialGithubRepo(val idBase64: String,
                              val name: String,
                              val primaryLanguage: String,
                              val languages: Seq[String],
+                             val defaultBranch: String,
                              ownerLogin: String) {
 
   def requestDetails(githubExtractor: GithubExtractor): Future[Try[GithubRepo]] = Future {
     Try {
       val ownerToAllCommitsRatio = githubExtractor.ownerToAllCommitsRatioBlocking(login = ownerLogin, repoName = name)
-      GithubRepo(idBase64, name, primaryLanguage, languages, ownerToAllCommitsRatio.get)
+      GithubRepo(idBase64, name, primaryLanguage, languages, defaultBranch, ownerToAllCommitsRatio.get)
     }
   }
 
@@ -265,4 +276,5 @@ case class GithubRepo(val idBase64: String,
                       val name: String,
                       val primaryLanguage: String,
                       val languages: Seq[String],
+                      val defaultBranch: String,
                       val ownerToAllCommitsRatio: Double)

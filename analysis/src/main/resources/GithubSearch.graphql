@@ -23,6 +23,9 @@ query {
             name
           }
         }
+        defaultBranchRef {
+          name
+        }
         ...ownerRepositories
       }
     }
@@ -60,6 +63,9 @@ fragment repositoryConnections on RepositoryConnection {
       nodes {
         name
       }
+    }
+    defaultBranchRef {
+      name
     }
   }
 }

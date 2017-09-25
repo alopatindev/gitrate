@@ -17,8 +17,8 @@
             "name": "JavaScript"
           }]
         },
-        "repositoryTopics": {
-          "nodes": []
+        "defaultBranchRef": {
+          "name": "master"
         },
         "owner": {
           "id": "MDQ6Vsdfg=",
@@ -42,8 +42,8 @@
                   "name": "JavaScript"
                 }]
               },
-              "repositoryTopics": {
-                "nodes": []
+              "defaultBranchRef": {
+                "name": "master"
               }
             }]
           },
