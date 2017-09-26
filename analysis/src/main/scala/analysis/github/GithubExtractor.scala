@@ -1,6 +1,7 @@
 package gitrate.analysis.github
 
 import gitrate.utils.HttpClientFactory.DefaultTimeout
+import gitrate.utils.SparkUtils.RDDUtils
 import gitrate.utils.{ConcurrencyUtils, LogUtils}
 
 import java.net.URL
@@ -19,16 +20,13 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
 
   import org.apache.spark.sql.functions._
 
-  def parseAndFilterUsers(rawJSONs: RDD[String]): Iterable[GithubUser] = {
+  def parseAndFilterUsers(rawJSONs: RDD[String]): Iterable[GithubUser] = { // FIXME: return RDD?
     val emptySeq = Iterable()
     if (rawJSONs.isEmpty) {
       emptySeq
     } else {
       Try {
-        val conf = rawJSONs.sparkContext.getConf
-        implicit val sparkSession = SparkSession.builder
-          .config(conf)
-          .getOrCreate()
+        implicit val sparkSession = rawJSONs.toSparkSession
         processUsers(rawJSONs)
       }.logErrors().getOrElse(emptySeq)
     }

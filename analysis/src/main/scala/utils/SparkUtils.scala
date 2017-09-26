@@ -2,6 +2,7 @@ package gitrate.utils
 
 import com.typesafe.config.Config
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkConf, SparkContext}
@@ -11,7 +12,7 @@ trait SparkUtils {
   def appConfig: Config
 
   private val sparkConf = new SparkConf()
-    .setAppName("AnalyzeGithubUsers")
+    .setAppName(appConfig.getString("app.name"))
     .setMaster("local[*]")
 
   def getOrCreateSparkContext(): SparkContext =
@@ -48,5 +49,20 @@ trait SparkUtils {
   }
 
   private val batchDuration = Seconds(appConfig.getDuration("stream.batchDuration").getSeconds)
+
+}
+
+object SparkUtils {
+
+  implicit class RDDUtils(rdd: RDD[_]) {
+
+    def toSparkSession: SparkSession = {
+      val conf = rdd.sparkContext.getConf
+      SparkSession.builder
+        .config(conf)
+        .getOrCreate()
+    }
+
+  }
 
 }

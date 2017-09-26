@@ -4,10 +4,13 @@ import github.{GithubConf, GithubExtractor, GithubReceiver, GithubSearchQuery, G
 import gitrate.utils.HttpClientFactory
 import gitrate.utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 import gitrate.utils.{LogUtils, SparkUtils}
+import gitrate.utils.SparkUtils.RDDUtils
 
 import com.typesafe.config.{Config, ConfigFactory}
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Dataset, Row}
+
 import play.api.libs.json.{Json, JsValue}
 
 object Main extends LogUtils with SparkUtils {
@@ -29,17 +32,27 @@ object Main extends LogUtils with SparkUtils {
     // TODO: checkpoint
     val stream = new GithubSearchInputDStream(ssc, githubConf, loadQueries, storeResult)
 
-    stream.foreachRDD { rdd =>
-      val currentRepositories: Dataset[Row] = Postgres.getTable("repositories")
-      val githubExtractor = new GithubExtractor(githubConf, currentRepositories)
-      githubExtractor.parseAndFilterUsers(rdd).foreach { (user: GithubUser) =>
-        logInfo(s"repo id=${user.id} login=${user.login} repos=${user.repositories}")
-      }
-    }
+    // TODO: inject and broadcast table
+    val warningsToGradeCategory: Dataset[Row] =
+      Postgres.executeSQL("""
+SELECT
+  warnings.warning,
+  tags.tag,
+  grade_categories.category AS grade_category
+FROM warnings
+JOIN grade_categories ON grade_categories.id = warnings.grade_category_id
+JOIN tags ON tags.id = warnings.tag_id
+""")
 
-    // val receiver = new GithubReceiver(githubConf, onLoadQueries, onStoreResult)
-    // val stream = ssc.receiverStream(receiver)
-    // stream.print()
+    stream
+      .foreachRDD { rawGithubResult: RDD[String] =>
+        val currentRepositories: Dataset[Row] = Postgres.getTable("repositories") // TODO: inject table
+        val githubExtractor = new GithubExtractor(githubConf, currentRepositories)
+        val users: Iterable[GithubUser] = githubExtractor.parseAndFilterUsers(rawGithubResult)
+        implicit val sparkContext = rawGithubResult.sparkContext
+        implicit val sparkSession = rawGithubResult.toSparkSession
+        new Grader(appConfig, warningsToGradeCategory).grade(users)
+      }
 
     ssc.start()
     ssc.awaitTermination()
