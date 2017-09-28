@@ -22,7 +22,7 @@ function analyze_javascript () {
 
     packagejson_dir=
     for packagejson in $(find "${archive_output_dir}" -type f -regextype posix-extended \
-        -regex '.*(package|bower)\.json$' | \
+        -regex '.*/(package|bower)\.json$' | \
         sort); do
         dir=$(dirname "${packagejson}")
         if [ "${packagejson_dir}" = "" ] || [ ${packagejson_dir} = "${dir}" ]; then
@@ -39,23 +39,24 @@ function analyze_javascript () {
         rm "${packagejson}"
     done
 
-    find "${archive_output_dir}" -type f -name '.eslintrc.*' -delete
+    find "${archive_output_dir}" -type f -regextype posix-extended -regex '.*/(\.eslint.*|yarn\.lock)$' -delete
 
     for message in $(node_modules/eslint/bin/eslint.js --format json --no-color "${archive_output_dir}" | \
-        grep -E --color=no '^\[' | \
+        grep --extended-regexp '^\[' | \
         jq --monochrome-output --raw-output '.[].messages[] | "\(.ruleId)"'); do
         output warning "${message}"
         echo -n
     done
 
-    lines_of_code=$(find . -type f -name '*.js' -print0 | xargs -0 wc -l | tail -n1 | awk '{ print $1 }')
+    lines_of_code=$(find "${archive_output_dir}" -type f -name "*.js" -print0 | \
+        xargs -0 grep --invert-match --regexp='^\s*$' | wc -l)
     output lines_of_code "${lines_of_code}"
 }
 
 function analyze () {
-    repository_id=$(echo "$1" | cut -d ';' -f1)
-    archive_url=$(echo "$1" | cut -d ';' -f2)
-    languages=$(echo "$1" | cut -d ';' -f3)
+    repository_id=$(echo "$1" | cut -d ";" -f1)
+    archive_url=$(echo "$1" | cut -d ";" -f2)
+    languages=$(echo "$1" | cut -d ";" -f3)
 
     archive_output_dir="${current_dir}/data/${repository_id}"
     archive_path="${archive_output_dir}.tar.gz"
@@ -64,11 +65,18 @@ function analyze () {
     tar -xzf "${archive_path}" -C "${archive_output_dir}"
     rm "${archive_path}"
 
-    for language in $(echo "${languages}" | tr "," "\\n"); do
-        if [[ "${language}" -eq "JavaScript" ]]; then
-            analyze_javascript "${archive_output_dir}" "${repository_id}"
-        fi
-    done
+    good_filename_pattern="^[a-zA-Z0-9/._-]*$"
+    bad_filenames=$(find "${archive_output_dir}" -type f | \
+        sed "s!.*${repository_id}!!" | \
+        grep --count --invert-match --extended-regexp "${good_filename_pattern}")
+
+    if [ "${bad_filenames}" -eq 0 ]; then
+        for language in $(echo "${languages}" | tr "," "\\n"); do
+            if [[ "${language}" -eq "JavaScript" ]]; then
+                analyze_javascript "${archive_output_dir}" "${repository_id}"
+            fi
+        done
+    fi
 
     rm -r "${archive_output_dir}"
 }

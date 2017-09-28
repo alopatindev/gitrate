@@ -7,8 +7,10 @@ import com.typesafe.config.Config
 import java.net.URL
 
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{Dataset, Row, SparkSession}
 import org.apache.spark.SparkContext
+import org.apache.spark.sql.functions.{greatest, lit}
+import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.{Dataset, Row, SparkSession}
 
 class Grader(appConfig: Config, warningsToGradeCategory: Dataset[Row])(implicit sparkContext: SparkContext,
                                                                        sparkSession: SparkSession) {
@@ -44,12 +46,28 @@ class Grader(appConfig: Config, warningsToGradeCategory: Dataset[Row])(implicit 
         .toDF("idBase64", "language", "messageType", "message")
         .cache()
 
-      warningsToGradeCategory
+      val warningPerGradeCategoryCounts = warningsToGradeCategory
         .join(outputMessages.filter($"messageType" === "warning"), $"tag" === $"language" && $"warning" === $"message")
         .groupBy($"idBase64", $"language", $"grade_category")
         .count()
-        .select($"idBase64", $"language", $"grade_category", $"count")
-        .show()
+        .select($"idBase64", $"language", $"grade_category", $"count" as "warnings_per_category")
+
+      val linesOfCode = outputMessages
+        .filter($"messageType" === "lines_of_code")
+        .select($"idBase64" as "idBase64_", $"language" as "language_", $"message" as "lines_of_code")
+
+      warningPerGradeCategoryCounts
+        .join(linesOfCode, $"idBase64" === $"idBase64_" && $"language" === $"language_")
+        .select(
+          $"idBase64",
+          $"language",
+          $"grade_category",
+          (greatest(
+            lit(0.0),
+            lit(1.0) - ($"warnings_per_category".cast(DoubleType) / $"lines_of_code".cast(DoubleType)))) as "value"
+        )
+        .distinct
+        .show(truncate = false)
     }
   }
 

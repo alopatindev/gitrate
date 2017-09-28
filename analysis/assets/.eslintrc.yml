@@ -4,6 +4,8 @@ env:
   es6: true
   node: true
 extends: 'eslint:recommended'
+parserOptions:
+  sourceType: module
 plugins:
   - better
   - mocha
@@ -91,7 +93,7 @@ rules:
   yoda:
     - error
     - never
-  strict: error
+  strict: off
   init-declarations:
     - error
     - always
