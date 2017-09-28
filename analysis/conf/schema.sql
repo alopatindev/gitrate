@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS repositories (
   raw_id TEXT UNIQUE NOT NULL, -- TODO: index
   user_id INTEGER REFERENCES users NOT NULL,
   name TEXT NOT NULL,
+  lines_of_code INTEGER NOT NULL, -- TODO: index
   updated_by_analyzer TIMESTAMP DEFAULT NOW() NOT NULL
 );
 
@@ -192,12 +193,18 @@ CREATE OR REPLACE VIEW main_page AS
       SELECT MAX(repositories.updated_by_analyzer)
       FROM repositories
       WHERE repositories.user_id = users.id
-    ) AS updated_by_analyzer
+    ) AS updated_by_analyzer,
+    (
+      SELECT SUM(repositories.lines_of_code)
+      FROM repositories
+      WHERE user_id = users.id
+    ) AS total_lines_of_code
   FROM users
   INNER JOIN developers ON developers.user_id = users.id
   WHERE users.developer = TRUE
   ORDER BY
     avg_grade DESC,
-    updated_by_analyzer DESC
+    updated_by_analyzer DESC,
+    total_lines_of_code DESC -- TODO: filtering instead of ordering?
   LIMIT 20
   OFFSET 0;
