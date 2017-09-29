@@ -12,7 +12,11 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
   import com.typesafe.config.ConfigFactory
   import java.net.URL
   import java.util.concurrent.atomic.AtomicInteger
+  import org.apache.log4j.{Level, Logger}
   import play.api.libs.json.{Json, JsValue}
+
+  Logger.getLogger("org.apache.spark").setLevel(Level.ERROR)
+  Logger.getLogger("GithubReceiver").setLevel(Level.OFF)
 
   "GithubReceiver" can {
 
@@ -90,9 +94,9 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
       )
     }
 
-    val firstResponse = loadJsonResource("GithubFirstPageFixture.json")
-    val secondResponse = loadJsonResource("GithubLastPageFixture.json")
-    val errorResponse = loadJsonResource("GithubErrorFixture.json")
+    val firstResponse = loadJsonResource("github/FirstPageFixture.json")
+    val secondResponse = loadJsonResource("github/LastPageFixture.json")
+    val errorResponse = loadJsonResource("github/ErrorFixture.json")
 
     def stubHttpGetBlocking(url: URL, headers: Headers): JsValue = Json.parse("{}")
 
@@ -113,7 +117,7 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
     }
 
     val fakeConf = GithubConf(
-      ConfigFactory.load("GithubReceiverFixture.conf"),
+      ConfigFactory.load("github/GithubReceiverFixture.conf"),
       httpGetBlocking = stubHttpGetBlocking,
       httpPostBlocking = fakeHttpPostBlocking
     )

@@ -52,7 +52,9 @@ JOIN tags ON tags.id = warnings.tag_id
         val users: Iterable[GithubUser] = githubExtractor.parseAndFilterUsers(rawGithubResult)
         implicit val sparkContext = rawGithubResult.sparkContext
         implicit val sparkSession = rawGithubResult.toSparkSession
-        new Grader(appConfig, warningsToGradeCategory.value).grade(users)
+        val grader = new Grader(appConfig, warningsToGradeCategory.value)
+        val gradedRepositories: Iterable[GradedRepository] = grader.gradeGithubUsers(users)
+      // TODO: save(users, gradedRepositories)
       }
 
     ssc.start()

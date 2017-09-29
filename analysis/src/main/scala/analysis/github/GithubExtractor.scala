@@ -61,7 +61,8 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
       .as[GithubSearchResult]
       .collect()
 
-    val resultsByUser = results.groupBy((result: GithubSearchResult) => (result.ownerId, result.ownerLogin))
+    val resultsByUser: Map[(Int, String), Seq[GithubSearchResult]] =
+      results.groupBy((result: GithubSearchResult) => (result.ownerId, result.ownerLogin))
     val partialUsers: Iterable[PartialGithubUser] = for {
       ((id, login), results) <- resultsByUser
       partialRepos = results.map(_.toPartialGithubRepo)
@@ -155,7 +156,7 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
     }.logErrors()
 
   def apiV3Blocking(path: String): JsValue = {
-    val url = new URL(s"https://api.github.com/${path}")
+    val url = new URL(s"${githubApiURL}/${path}")
     val headers = Map(
       "Authorization" -> s"token ${conf.apiToken}",
       "Accept" -> "application/vnd.github.v3.json"
@@ -252,8 +253,10 @@ case class PartialGithubRepo(val idBase64: String,
 
   def requestDetails(githubExtractor: GithubExtractor): Future[Try[GithubRepo]] = Future {
     Try {
+      // TODO: domain as a constant
       val ownerToAllCommitsRatio = githubExtractor.ownerToAllCommitsRatioBlocking(login = ownerLogin, repoName = name)
-      GithubRepo(idBase64, name, primaryLanguage, languages, defaultBranch, ownerToAllCommitsRatio.get)
+      val archiveURL = new URL(s"${githubURL}/${ownerLogin}/${name}/archive/${defaultBranch}.tar.gz")
+      GithubRepo(idBase64, name, primaryLanguage, languages, defaultBranch, archiveURL, ownerToAllCommitsRatio.get)
     }
   }
 
@@ -275,4 +278,5 @@ case class GithubRepo(val idBase64: String,
                       val primaryLanguage: String,
                       val languages: Seq[String],
                       val defaultBranch: String,
+                      val archiveURL: URL,
                       val ownerToAllCommitsRatio: Double)

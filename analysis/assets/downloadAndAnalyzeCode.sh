@@ -22,8 +22,7 @@ function analyze_javascript () {
 
     packagejson_dir=
     for packagejson in $(find "${archive_output_dir}" -type f -regextype posix-extended \
-        -regex '.*/(package|bower)\.json$' | \
-        sort); do
+        -regex '.*/(package|bower)\.json$' | sort); do
         dir=$(dirname "${packagejson}")
         if [ "${packagejson_dir}" = "" ] || [ ${packagejson_dir} = "${dir}" ]; then
             packagejson_dir="${dir}"
@@ -45,7 +44,6 @@ function analyze_javascript () {
         grep --extended-regexp '^\[' | \
         jq --monochrome-output --raw-output '.[].messages[] | "\(.ruleId)"'); do
         output warning "${message}"
-        echo -n
     done
 
     lines_of_code=$(find "${archive_output_dir}" -type f -name "*.js" -print0 | \

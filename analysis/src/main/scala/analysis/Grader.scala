@@ -4,27 +4,30 @@ import github.GithubUser
 
 import com.typesafe.config.Config
 
-import java.net.URL
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.functions.{greatest, lit}
+import org.apache.spark.sql.functions.{avg, greatest, lit}
 import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
 
 class Grader(appConfig: Config, warningsToGradeCategory: Dataset[Row])(implicit sparkContext: SparkContext,
                                                                        sparkSession: SparkSession) {
 
-  def grade(users: Iterable[GithubUser]): Unit = {
+  def gradeGithubUsers(users: Iterable[GithubUser]): Iterable[GradedRepository] = {
+    val resultsByRepository: Map[String, Iterable[GraderResult]] = processGithubUsers(users).groupBy(_.idBase64)
+    for {
+      (idBase64, results) <- resultsByRepository
+      grades = results.map(_.toGrade)
+    } yield GradedRepository(idBase64, grades.toSeq)
+  }
+
+  private def processGithubUsers(users: Iterable[GithubUser]): Iterable[GraderResult] = {
     import sparkSession.implicits._
 
-    users.foreach { (user: GithubUser) =>
-      // save(user) // TODO: fullName, description...
+    users.flatMap { user: GithubUser =>
       val repositories = user.repositories.map { repo =>
-        // TODO: domain as constant
-        val archiveURL = new URL(s"https://github.com/${user.login}/${repo.name}/archive/${repo.defaultBranch}.tar.gz")
         val languages: String = (repo.languages.toSet + repo.primaryLanguage).mkString(",")
-        s"${repo.idBase64};${archiveURL};${languages}"
+        s"${repo.idBase64};${repo.archiveURL};${languages}"
       }
 
       val repositoriesRDD: RDD[String] = sparkContext
@@ -46,31 +49,42 @@ class Grader(appConfig: Config, warningsToGradeCategory: Dataset[Row])(implicit 
         .toDF("idBase64", "language", "messageType", "message")
         .cache()
 
-      val warningPerGradeCategoryCounts = warningsToGradeCategory
+      val warningCounts = warningsToGradeCategory
         .join(outputMessages.filter($"messageType" === "warning"), $"tag" === $"language" && $"warning" === $"message")
         .groupBy($"idBase64", $"language", $"grade_category")
         .count()
-        .select($"idBase64", $"language", $"grade_category", $"count" as "warnings_per_category")
+        .select($"idBase64", $"language", $"grade_category" as "gradeCategory", $"count" as "warningsPerCategory")
 
       val linesOfCode = outputMessages
         .filter($"messageType" === "lines_of_code")
-        .select($"idBase64" as "idBase64_", $"language" as "language_", $"message" as "lines_of_code")
+        .select($"idBase64" as "idBase64_", $"language" as "language_", $"message" as "linesOfCode")
 
-      warningPerGradeCategoryCounts
+      val graderResults: Dataset[GraderResult] = warningCounts
         .join(linesOfCode, $"idBase64" === $"idBase64_" && $"language" === $"language_")
         .select(
           $"idBase64",
           $"language",
-          $"grade_category",
-          (greatest(
-            lit(0.0),
-            lit(1.0) - ($"warnings_per_category".cast(DoubleType) / $"lines_of_code".cast(DoubleType)))) as "value"
+          $"gradeCategory",
+          (greatest(lit(0.0), lit(1.0) - ($"warningsPerCategory".cast(DoubleType) / $"linesOfCode".cast(DoubleType)))) as "value"
         )
         .distinct
-        .show(truncate = false)
+        .drop("language")
+        .groupBy($"idBase64", $"gradeCategory")
+        .agg(avg($"value") as "value")
+        .as[GraderResult]
+
+      graderResults.show(truncate = false)
+      graderResults.collect()
     }
   }
 
   private val assetsDirectory = appConfig.getString("app.assetsDir")
 
+}
+
+case class Grade(val gradeCategory: String, val value: Double)
+case class GradedRepository(val idBase64: String, val grades: Seq[Grade])
+
+case class GraderResult(val idBase64: String, val gradeCategory: String, val value: Double) {
+  def toGrade = Grade(gradeCategory, value)
 }

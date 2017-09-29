@@ -21,9 +21,11 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
   import org.apache.spark.sql.{Dataset, Row}
   import org.apache.spark.sql.types.TimestampType
 
-  Logger.getLogger("org.apache.spark").setLevel(Level.ERROR)
+  for (i <- Seq("org.apache.spark", "org.apache.hadoop.hive", "GithubExtractor")) {
+    Logger.getLogger(i).setLevel(Level.ERROR)
+  }
 
-  "GithubUsersParser" can {
+  "GithubExtractor" can {
 
     "filter GitHub API output" should {
 
@@ -90,68 +92,10 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
 
     }
 
-    // TODO: separate module?
-    /*"fetch additional info" should {
-      "detect services used" in {
-        assert(
-          fixture.servicesOf("alopatindev", "qdevicemonitor") === Seq("travis-ci.org", "appveyor.com")
-          fixture.servicesOf("alopatindev", "find-telegram-bot") === Seq(
-            "travis-ci.org",
-            "codecov.io",
-            "codeclimate.com",
-            "semaphoreci.com",
-            "bithound.io",
-            "versioneye.com",
-            "david-dm.org",
-            "dependencyci.com",
-            "snyk.io",
-            "npmjs.com"
-          ))
-      }
-    }
-
-    // TODO: separate module per language?
-    "external containerized program" should {
-      "download repo" in {
-        fixture.downloadRepo("alopatindev", "find-telegram-bot")
-        eventually {
-          assert(fixture.fileExists("/tmp/gitrate-analyzer/alopatindev/find-telegram-bot/.gitignore"))
-        }
-      }
-      "detect dependencies" in {
-        fixture.downloadRepo("alopatindev", "find-telegram-bot")
-        eventually {
-          assert(fixture.rawDependenciesOf("alopatindev", "find-telegram-bot") === Seq("phantom", "telegraf", "winston", "bithound", "codecov", "eslint", "eslint-plugin-better", "eslint-plugin-mocha", "eslint-plugin-private-props", "eslint-plugin-promise", "istanbul", "mocha", "mocha-logger", "nodemon"))
-        }
-      }
-      "rename dependencies and ignore aliases" in {
-        assert(fixture.dependenciesOf("alopatindev", "find-telegram-bot") contains "PhantomJS")
-        assert(!(fixture.dependenciesOf("alopatindev", "find-telegram-bot") contains "phantomjs"))
-      }
-      "cleanup temporary files when done" in {
-        fixture.cleanup("alopatindev", "find-telegram-bot")
-        eventually {
-          assert(!fixture.fileExists("/tmp/gitrate-analyzer/alopatindev/find-telegram-bot/.gitignore"))
-        }
-      }
-    }
-
-    // TODO: separate module?
-    "static analysis" should {
-      "apply analysis of supported languages used in the repo" in { ??? }
-      "run on the same machine and container as wget" in { ??? }
-      "return bad grades when code is bad" in { ??? }
-      "return good grades when code is good" in { ??? }
-      //"return code coverage grade" in { ??? }
-      "return all supported grade types" in { ??? }
-      //"ignore code that can't compile" in { ??? } // it can fail because of dependencies we don't have
-      "ignore users with too low total grade" in { ??? }
-    }*/
-
   }
 
   override def withFixture(test: OneArgTest): Outcome = {
-    val userResponse: JsValue = loadJsonResource("/GithubUserDetailsFixture.json")
+    val userResponse: JsValue = loadJsonResource("/github/UserDetailsFixture.json")
 
     def fakeHttpGetBlocking(url: URL, headers: Headers): JsValue = {
       val urlString = url.toString
@@ -171,7 +115,7 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
     def stubHttpPostBlocking(url: URL, data: JsValue, headers: Headers): JsValue = Json.parse("{}")
 
     val conf = GithubConf(
-      ConfigFactory.load("GithubExtractorFixture.conf"),
+      ConfigFactory.load("github/GithubExtractorFixture.conf"),
       httpGetBlocking = fakeHttpGetBlocking,
       httpPostBlocking = stubHttpPostBlocking
     )
@@ -198,7 +142,7 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
 
     val githubExtractor = new GithubExtractor(conf, currentRepositories)
 
-    val inputJsValue: JsValue = (loadJsonResource("/GithubExtractorFixture.json") \ "data" \ "search").get
+    val inputJsValue: JsValue = (loadJsonResource("/github/GithubExtractorFixture.json") \ "data" \ "search").get
     val input: Seq[String] = Seq(inputJsValue.toString)
 
     val theFixture = FixtureParam(githubExtractor, input)
