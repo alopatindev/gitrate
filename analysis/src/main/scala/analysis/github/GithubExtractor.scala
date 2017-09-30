@@ -253,7 +253,6 @@ case class PartialGithubRepo(val idBase64: String,
 
   def requestDetails(githubExtractor: GithubExtractor): Future[Try[GithubRepo]] = Future {
     Try {
-      // TODO: domain as a constant
       val ownerToAllCommitsRatio = githubExtractor.ownerToAllCommitsRatioBlocking(login = ownerLogin, repoName = name)
       val archiveURL = new URL(s"${githubURL}/${ownerLogin}/${name}/archive/${defaultBranch}.tar.gz")
       GithubRepo(idBase64, name, primaryLanguage, languages, defaultBranch, archiveURL, ownerToAllCommitsRatio.get)
