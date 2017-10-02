@@ -45,9 +45,7 @@ class Grader(val appConfig: Config,
                                  s"--whitelist=${assetsDirectory}",
                                  s"${assetsDirectory}/downloadAndAnalyzeCode.sh")
 
-    val scriptArguments: List[String] =
-      if (withCleanup) List("--with-cleanup")
-      else List()
+    val scriptArguments: List[String] = List("--with-cleanup").filter(_ => withCleanup)
 
     val scriptOutputFields = 4
     scriptInputRDD
@@ -62,23 +60,67 @@ class Grader(val appConfig: Config,
   def processAnalyzerScriptResults(outputMessages: Dataset[AnalyzerScriptResult]): Iterable[GraderResult] = {
     outputMessages.cache()
 
-    val dependencies = outputMessages
+    val zero = lit(literal = 0.0)
+    val one = lit(literal = 1.0)
+    val results: Dataset[PartialGraderResult] = warningCounts(outputMessages)
+      .join(linesOfCode(outputMessages), $"idBase64" === $"idBase64_" && $"language" === $"language_")
+      .drop("idBase64_", "language_")
+      .join(dependencies(outputMessages), $"idBase64" === $"idBase64_" && $"language" === $"language_")
+      .distinct
+      .select(
+        $"idBase64",
+        $"language",
+        $"dependencies",
+        $"gradeCategory",
+        $"warningsPerCategory".cast(DoubleType) as "warningsPerCategory",
+        $"linesOfCode".cast(DoubleType) as "linesOfCode"
+      )
+      .select(
+        $"idBase64",
+        $"language",
+        $"dependencies",
+        $"gradeCategory",
+        (greatest(
+          zero,
+          one - ($"warningsPerCategory" / $"linesOfCode")
+        )) as "value"
+      )
+      .drop("language")
+      .groupBy($"idBase64", $"gradeCategory", $"dependencies")
+      .agg(avg($"value") as "value")
+      .as[PartialGraderResult]
+
+    results.show(truncate = false)
+    results
+      .collect()
+      .map(_.toGraderResult(weightedTechnologies))
+  }
+
+  private def linesOfCode(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] =
+    outputMessages
+      .filter($"messageType" === "lines_of_code")
+      .select($"idBase64" as "idBase64_", $"language" as "language_", $"message" as "linesOfCode")
+
+  private def dependencies(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] =
+    outputMessages
       .select($"idBase64", $"language", $"message")
       .filter($"messageType" === "dependence")
       .groupBy($"idBase64", $"language")
       .agg(collect_set($"message") as "dependencies")
       .select($"idBase64" as "idBase64_", $"language" as "language_", $"dependencies")
 
+  private def warningCounts(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] = {
+    val gradeCategories = "Maintainable,Testable,Robust,Secure,Automated,Performant" // TODO: load from database?
     val zerosPerCategory = outputMessages
       .select(
         $"idBase64",
         $"language",
-        explode(split(lit("Maintainable,Testable,Robust,Secure,Automated,Performant"), ",")) as "gradeCategory", // TODO: load from database?
-        lit(0) as "count"
+        explode(split(lit(gradeCategories), ",")) as "gradeCategory",
+        lit(literal = 0) as "count"
       )
       .distinct
 
-    val warningCounts = warningsToGradeCategory
+    warningsToGradeCategory
       .join(outputMessages.filter($"messageType" === "warning"),
             $"tag" === $"language" && $"warning" === $"message",
             joinType = "left")
@@ -87,30 +129,6 @@ class Grader(val appConfig: Config,
       .union(zerosPerCategory)
       .groupBy($"idBase64", $"language", $"gradeCategory")
       .agg($"idBase64", $"language", $"gradeCategory", max("count") as "warningsPerCategory")
-
-    val linesOfCode = outputMessages
-      .filter($"messageType" === "lines_of_code")
-      .select($"idBase64" as "idBase64_", $"language" as "language_", $"message" as "linesOfCode")
-
-    val results: Dataset[PartialGraderResult] = warningCounts
-      .join(linesOfCode, $"idBase64" === $"idBase64_" && $"language" === $"language_")
-      .drop("idBase64_", "language_")
-      .join(dependencies, $"idBase64" === $"idBase64_" && $"language" === $"language_")
-      .select(
-        $"idBase64",
-        $"language",
-        $"dependencies",
-        $"gradeCategory",
-        (greatest(lit(0.0), lit(1.0) - ($"warningsPerCategory".cast(DoubleType) / $"linesOfCode".cast(DoubleType)))) as "value"
-      )
-      .distinct
-      .drop("language")
-      .groupBy($"idBase64", $"gradeCategory", $"dependencies")
-      .agg(avg($"value") as "value")
-      .as[PartialGraderResult]
-
-    results.show(truncate = false)
-    results.collect().map(_.toGraderResult(weightedTechnologies))
   }
 
   private val assetsDirectory = appConfig.getString("app.assetsDir")
@@ -141,7 +159,7 @@ case class PartialGraderResult(val idBase64: String,
 
 case class GraderResult(val idBase64: String, val tags: Set[String], val gradeCategory: String, val value: Double) {
 
-  def toGrade = Grade(gradeCategory, value)
+  def toGrade: Grade = Grade(gradeCategory, value)
 
 }
 

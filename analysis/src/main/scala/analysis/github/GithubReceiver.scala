@@ -23,7 +23,7 @@ class GithubReceiver(conf: GithubConf,
     with LogUtils
     with ResourceUtils {
 
-  private val apiURL = new URL(s"${githubApiURL}/graphql")
+  private val apiURL = new URL(s"${GithubApiURL}/graphql")
   @transient private lazy val queryTemplate: String = resourceToString("/GithubSearch.graphql")
 
   private val started = new AtomicBoolean(false) // scalastyle:ignore

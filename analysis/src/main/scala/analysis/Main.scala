@@ -36,29 +36,13 @@ object Main extends LogUtils with SparkUtils {
 
     val warningsToGradeCategory: Dataset[WarningToGradeCategory] =
       Postgres
-        .executeSQL("""
-SELECT
-  warnings.warning,
-  tags.tag,
-  grade_categories.category AS gradeCategory
-FROM warnings
-INNER JOIN grade_categories ON grade_categories.id = warnings.grade_category_id
-INNER JOIN tags ON tags.id = warnings.tag_id
-""")
+        .executeSQL(WarningsToGradeCategoryQuery)
         .as[WarningToGradeCategory]
         .cache()
 
     val weightedTechnologies: Seq[String] =
       Postgres
-        .executeSQL(s"""
-SELECT tag
-FROM tags
-INNER JOIN tag_categories ON tag_categories.id = tags.category_id
-WHERE
-  tag_categories.category_rest_id = 'technologies'
-  AND tags.weight > 0
-LIMIT 1
-""")
+        .executeSQL(WeightedTechnologiesQuery)
         .as[String]
         .collect()
 
@@ -110,5 +94,26 @@ WHERE enabled = true
 
   // runs on executor
   def storeResult(receiver: GithubReceiver, result: String): Unit = receiver.store(result)
+
+  private val WarningsToGradeCategoryQuery =
+    """
+SELECT
+  warnings.warning,
+  tags.tag,
+  grade_categories.category AS gradeCategory
+FROM warnings
+INNER JOIN grade_categories ON grade_categories.id = warnings.grade_category_id
+INNER JOIN tags ON tags.id = warnings.tag_id
+"""
+
+  private val WeightedTechnologiesQuery = """
+SELECT tag
+FROM tags
+INNER JOIN tag_categories ON tag_categories.id = tags.category_id
+WHERE
+  tag_categories.category_rest_id = 'technologies'
+  AND tags.weight > 0
+LIMIT 1
+"""
 
 }

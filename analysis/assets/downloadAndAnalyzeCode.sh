@@ -30,9 +30,8 @@ function analyze_javascript () {
                 done
             done
 
-            (jq --monochrome-output --raw-output ".scripts | values[]" "${packagejson}" | grep -E "^node " || \
-                grep -RE "^#\!/usr/bin/(env node|node)" "${archive_output_dir}") >> /dev/null
-            if [ "$?" = 0 ]; then
+            if (jq --monochrome-output --raw-output ".scripts | values[]" "${packagejson}" | grep -E "^node " || \
+                grep -RE "^#!/usr/bin/(env node|node)" "${archive_output_dir}") >> /dev/null; then
                 output dependence "Node.js"
             fi
         else
@@ -78,7 +77,7 @@ function analyze () {
 
     if [ "${bad_filenames}" -eq 0 ]; then
         for language in $(echo "${languages}" | tr "," "\\n"); do
-            if [[ "${language}" -eq "JavaScript" ]]; then
+            if [[ "${language}" = JavaScript ]]; then
                 analyze_javascript "${archive_output_dir}" "${repository_id}"
             fi
         done

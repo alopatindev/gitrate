@@ -15,10 +15,6 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
   import java.io.File
   import java.util.UUID
 
-  for (i <- Seq("org.apache.spark", "org.apache.hadoop.hive", "Grader")) {
-    Logger.getLogger(i).setLevel(Level.ERROR)
-  }
-
   "Grader" can {
 
     "runAnalyzerScript" should {
@@ -212,7 +208,10 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
     val branch = "master"
 
-    def runAnalyzerScript(login: String, repoName: String, language: String, withCleanup: Boolean = true)
+    def runAnalyzerScript(login: String, // scalastyle:ignore
+                          repoName: String,
+                          language: String,
+                          withCleanup: Boolean = true)
       : (Dataset[AnalyzerScriptResult], (String) => Boolean, (String, String) => Boolean, String) = {
       val repoId = UUID.randomUUID().toString
       val archiveURL = s"https://github.com/${login}/${repoName}/archive/${branch}.tar.gz"

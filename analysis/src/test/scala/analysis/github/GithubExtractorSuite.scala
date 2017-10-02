@@ -21,10 +21,6 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
   import org.apache.spark.sql.{Dataset, Row}
   import org.apache.spark.sql.types.TimestampType
 
-  for (i <- Seq("org.apache.spark", "org.apache.hadoop.hive", "GithubExtractor")) {
-    Logger.getLogger(i).setLevel(Level.ERROR)
-  }
-
   "GithubExtractor" can {
 
     "filter GitHub API output" should {
@@ -120,27 +116,7 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
       httpPostBlocking = stubHttpPostBlocking
     )
 
-    import spark.implicits._
-
-    val currentDate = (Calendar.getInstance().getTimeInMillis() / 1000L).toString
-    val oldDate = "0"
-    val currentRepositories: Dataset[Row] = spark.read
-      .json(
-        sc.parallelize(Seq(
-          s"""{
-  "raw_id": "MDEwOlJlcG9zaXRvcnk4MTQyMTAyCg==",
-  "updated_by_analyzer": ${currentDate}
-}""",
-          s"""
-{
-  "raw_id": "MDEwOlJlcG9zaXRvcnkyMDg5Mjg2MA==",
-  "updated_by_analyzer": ${oldDate}
-}
-"""
-        )))
-      .select($"raw_id", ($"updated_by_analyzer".cast(TimestampType)) as "updated_by_analyzer")
-
-    val githubExtractor = new GithubExtractor(conf, currentRepositories)
+    val githubExtractor = new GithubExtractor(conf, currentRepositories())
 
     val inputJsValue: JsValue = (loadJsonResource("/github/GithubExtractorFixture.json") \ "data" \ "search").get
     val input: Seq[String] = Seq(inputJsValue.toString)
@@ -170,6 +146,28 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
 
     def findRepositories(login: String, repoName: String): Iterable[GithubRepo] =
       findUsers(login).flatMap(user => user.repositories.filter(repo => repo.name == repoName))
+  }
+
+  private def currentRepositories(): Dataset[Row] = {
+    import spark.implicits._
+
+    val currentDate = (Calendar.getInstance().getTimeInMillis() / 1000L).toString
+    val oldDate = "0"
+    spark.read
+      .json(
+        sc.parallelize(Seq(
+          s"""{
+  "raw_id": "MDEwOlJlcG9zaXRvcnk4MTQyMTAyCg==",
+  "updated_by_analyzer": ${currentDate}
+}""",
+          s"""
+{
+  "raw_id": "MDEwOlJlcG9zaXRvcnkyMDg5Mjg2MA==",
+  "updated_by_analyzer": ${oldDate}
+}
+"""
+        )))
+      .select($"raw_id", ($"updated_by_analyzer".cast(TimestampType)) as "updated_by_analyzer")
   }
 
 }

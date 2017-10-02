@@ -15,9 +15,6 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
   import org.apache.log4j.{Level, Logger}
   import play.api.libs.json.{Json, JsValue}
 
-  Logger.getLogger("org.apache.spark").setLevel(Level.ERROR)
-  Logger.getLogger("GithubReceiver").setLevel(Level.OFF)
-
   "GithubReceiver" can {
 
     "store" should {

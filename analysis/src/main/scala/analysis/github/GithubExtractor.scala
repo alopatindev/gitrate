@@ -155,7 +155,7 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
     }.logErrors()
 
   def apiV3Blocking(path: String): JsValue = {
-    val url = new URL(s"${githubApiURL}/${path}")
+    val url = new URL(s"${GithubApiURL}/${path}")
     val headers = Map(
       "Authorization" -> s"token ${conf.apiToken}",
       "Accept" -> "application/vnd.github.v3.json"
@@ -253,7 +253,7 @@ case class PartialGithubRepo(val idBase64: String,
   def requestDetails(githubExtractor: GithubExtractor): Future[Try[GithubRepo]] = Future {
     Try {
       val ownerToAllCommitsRatio = githubExtractor.ownerToAllCommitsRatioBlocking(login = ownerLogin, repoName = name)
-      val archiveURL = new URL(s"${githubURL}/${ownerLogin}/${name}/archive/${defaultBranch}.tar.gz")
+      val archiveURL = new URL(s"${GithubURL}/${ownerLogin}/${name}/archive/${defaultBranch}.tar.gz")
       GithubRepo(idBase64, name, primaryLanguage, languages, defaultBranch, archiveURL, ownerToAllCommitsRatio.get)
     }
   }
