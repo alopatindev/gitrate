@@ -32,23 +32,28 @@ class Grader(val appConfig: Config,
         s"${repo.idBase64};${repo.archiveURL};${languages}"
       }
 
-      val outputMessages: Dataset[AnalyzerScriptResult] = runAnalyzerScript(scriptInput)
+      val outputMessages: Dataset[AnalyzerScriptResult] = runAnalyzerScript(scriptInput, withCleanup = true)
       processAnalyzerScriptResults(outputMessages)
     }
   }
 
-  def runAnalyzerScript(scriptInput: Seq[String]): Dataset[AnalyzerScriptResult] = {
+  def runAnalyzerScript(scriptInput: Seq[String], withCleanup: Boolean): Dataset[AnalyzerScriptResult] = {
     val scriptInputRDD: RDD[String] = sparkContext.parallelize(scriptInput)
-    val outputFields = 4
+
+    val firejailArguments = List("--quiet",
+                                 "--blacklist=/home",
+                                 s"--whitelist=${assetsDirectory}",
+                                 s"${assetsDirectory}/downloadAndAnalyzeCode.sh")
+
+    val scriptArguments: List[String] =
+      if (withCleanup) List("--with-cleanup")
+      else List()
+
+    val scriptOutputFields = 4
     scriptInputRDD
-      .pipe(
-        Seq("firejail",
-            "--quiet",
-            "--blacklist=/home",
-            s"--whitelist=${assetsDirectory}",
-            s"${assetsDirectory}/downloadAndAnalyzeCode.sh"))
+      .pipe("firejail" :: firejailArguments ++ scriptArguments)
       .map(_.split(";"))
-      .filter(_.length == outputFields)
+      .filter(_.length == scriptOutputFields)
       .map { case Array(idBase64, language, messageType, message) => (idBase64, language, messageType, message) }
       .toDF("idBase64", "language", "messageType", "message")
       .as[AnalyzerScriptResult]

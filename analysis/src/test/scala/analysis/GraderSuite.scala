@@ -12,6 +12,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
   import com.typesafe.config.ConfigFactory
   import java.io.File
+  import java.util.UUID
 
   for (i <- Seq("org.apache.spark", "org.apache.hadoop.hive", "Grader")) {
     Logger.getLogger(i).setLevel(Level.ERROR)
@@ -23,28 +24,28 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
       "ignore repositories that contain files or directories with bad names" in { fixture =>
         val login = "himanshuchandra"
-        val repoId = "test_0"
         val repoName = "react.js-codes"
         val language = "JavaScript"
-        val results: Seq[AnalyzerScriptResult] = fixture
-          .runAnalyzerScript(login, repoId, repoName, language)
-          .collect()
-        val invalidResults = results.filter(_.idBase64 == repoId)
+        val (results, _, repoId) = fixture.runAnalyzerScript(login, repoName, language)
+        val invalidResults = results.collect().filter(_.idBase64 == repoId)
         assert(invalidResults.isEmpty)
       }
 
       "remove temporary files when done" in { fixture =>
         val login = "alopatindev"
-        val repoId = "test_1"
         val repoName = "find-telegram-bot"
         val language = "JavaScript"
-        val _ = fixture.runAnalyzerScript(login, repoId, repoName, language).collect()
-        val assetsDir = fixture.grader.appConfig.getString("app.assetsDir")
-        val directoryExists = new File(s"${assetsDir}/data/${repoId}").exists()
+        val (results, pathExists, _) = fixture.runAnalyzerScript(login, repoName, language)
+        val _ = results.collect()
+        val directoryExists = pathExists("/")
         assert(!directoryExists)
       }
 
       "process multiple languages" in { fixture =>
+        ???
+      }
+
+      "ignore repository if script fails" in { fixture =>
         ???
       }
 
@@ -54,13 +55,11 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
       "compute lines of code" in { fixture =>
         val login = "alopatindev"
-        val repoId = "test_2"
         val repoName = "find-telegram-bot"
         val language = "JavaScript"
-        val results: Seq[AnalyzerScriptResult] = fixture
-          .runAnalyzerScript(login, repoId, repoName, language)
-          .collect()
+        val (results, _, _) = fixture.runAnalyzerScript(login, repoName, language)
         val linesOfCode: Option[Int] = results
+          .collect()
           .filter(result => result.language == language && result.messageType == "lines_of_code")
           .headOption
           .map(_.message.toInt)
@@ -69,13 +68,11 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
       "detect dependencies" in { fixture =>
         val login = "alopatindev"
-        val repoId = "test_3"
         val repoName = "find-telegram-bot"
         val language = "JavaScript"
-        val results: Seq[AnalyzerScriptResult] = fixture
-          .runAnalyzerScript(login, repoId, repoName, language)
-          .collect()
+        val (results, _, _) = fixture.runAnalyzerScript(login, repoName, language)
         val dependencies: Set[String] = results
+          .collect()
           .filter(result => result.language == language && result.messageType == "dependence")
           .map(_.message)
           .toSet
@@ -85,20 +82,62 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(!(dependencies contains "PhantomJS"))
       }
 
-//      "remove node_modules, package.json, bower.json, *.eslint*, yarn.lock" in { fixture => ??? }
-//      "remove minified files" in { fixture => ??? } // https://github.com/Masth0/TextRandom
-//      "remove third-party libraries" in { fixture => ??? }
-//      "remove comments" in { fixture => ??? }
+      "detect Node.js dependence" in { fixture =>
+        def hasDependence(login: String, repoName: String): Boolean = {
+          val language = "JavaScript"
+          val (results, _, _) = fixture.runAnalyzerScript(login, repoName, language)
+          val dependencies: Set[String] = results
+            .collect()
+            .filter(result => result.language == language && result.messageType == "dependence")
+            .map(_.message)
+            .toSet
+          dependencies contains "Node.js"
+        }
+
+        assert(hasDependence(login = "alopatindev", repoName = "find-telegram-bot"))
+        assert(hasDependence(login = "gorillamania", repoName = "package.json-validator"))
+        assert(!hasDependence(login = "jquery", repoName = "jquery.com"))
+      }
+
+      "process absent dependencies" in { fixture =>
+        ???
+      }
+
+      "remove node_modules, package.json, bower.json, *.eslint*, yarn.lock" in { fixture =>
+        val login = "alopatindev"
+        val repoName = "find-telegram-bot"
+        val language = "JavaScript"
+        val (results, pathExists, _) = fixture.runAnalyzerScript(login, repoName, language, withCleanup = false)
+        val _ = results.collect()
+        assert(!pathExists("/node_modules"))
+        assert(!pathExists("/package.json"))
+        assert(!pathExists("/bower.json"))
+        assert(!pathExists("/.eslintrc.yml"))
+        assert(!pathExists("/yarn.lock"))
+      }
+
+      // https://github.com/Masth0/TextRandom
+      "remove minified files" in { fixture =>
+        ???
+      }
+
+      "remove third-party libraries" in { fixture =>
+        ???
+      }
+
+      "remove comments" in { fixture =>
+        ???
+      }
+
     }
 
     "processAnalyzerScriptResults" should {
 
       "ignore dependence of dependence" in { fixture =>
         val login = "alopatindev"
-        val repoId = "test_4"
         val repoName = "find-telegram-bot"
         val language = "JavaScript"
-        val results: Iterable[GraderResult] = fixture.processAnalyzerScriptResults(login, repoId, repoName, language)
+        val (results: Iterable[GraderResult], _, _) = fixture.processAnalyzerScriptResults(login, repoName, language)
         val tags = results.head.tags
         assert(tags contains "ESLint")
         assert(!(tags contains "eslint"))
@@ -158,22 +197,32 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
   case class FixtureParam(val grader: Grader) {
 
-    def runAnalyzerScript(login: String,
-                          repoId: String,
-                          repoName: String,
-                          language: String): Dataset[AnalyzerScriptResult] = {
-      val branch = "master"
+    val branch = "master"
+
+    def runAnalyzerScript(
+        login: String,
+        repoName: String,
+        language: String,
+        withCleanup: Boolean = true): (Dataset[AnalyzerScriptResult], (String) => Boolean, String) = {
+      val repoId = UUID.randomUUID().toString
       val archiveURL = s"https://github.com/${login}/${repoName}/archive/${branch}.tar.gz"
       val input: Seq[String] = Seq(s"${repoId};${archiveURL};${language}")
-      grader.runAnalyzerScript(input)
+
+      val results = grader.runAnalyzerScript(input, withCleanup)
+
+      val assetsDir = grader.appConfig.getString("app.assetsDir")
+      def pathExists(path: String): Boolean =
+        new File(s"${assetsDir}/data/${repoId}/${repoName}-${branch}${path}").exists()
+
+      (results, pathExists, repoId)
     }
 
     def processAnalyzerScriptResults(login: String,
-                                     repoId: String,
                                      repoName: String,
-                                     language: String): Iterable[GraderResult] = {
-      val outputMessages = runAnalyzerScript(login, repoId, repoName, language)
-      grader.processAnalyzerScriptResults(outputMessages)
+                                     language: String): (Iterable[GraderResult], (String) => Boolean, String) = {
+      val (outputMessages, pathExists, repoId) = runAnalyzerScript(login, repoName, language)
+      val results = grader.processAnalyzerScriptResults(outputMessages)
+      (results, pathExists, repoId)
     }
 
   }

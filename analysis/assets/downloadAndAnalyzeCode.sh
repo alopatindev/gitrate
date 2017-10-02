@@ -3,8 +3,6 @@
 # (stdin) input format: "repository_id;archive_uri;language1,language2,..."
 # (stdout) output format: "repository_id;language;message_type;message"
 
-current_dir=$(dirname "$0")
-
 function analyze_javascript () {
     archive_output_dir="$1"
     repository_id="$2"
@@ -31,6 +29,12 @@ function analyze_javascript () {
                     output dependence "${dep}"
                 done
             done
+
+            (jq --monochrome-output --raw-output ".scripts | values[]" "${packagejson}" | grep -E "^node " || \
+                grep -RE "^#\!/usr/bin/(env node|node)" "${archive_output_dir}") >> /dev/null
+            if [ "$?" = 0 ]; then
+                output dependence "Node.js"
+            fi
         else
             # that's probably a third-party library that was copy-pasted to the repository
             rm -r "${dir}"
@@ -59,6 +63,7 @@ function analyze () {
     archive_output_dir="${current_dir}/data/${repository_id}"
     archive_path="${archive_output_dir}.tar.gz"
     wget --quiet "${archive_url}" -O "${archive_path}"
+    rm -rf "${archive_output_dir}"
     mkdir -p "${archive_output_dir}"
     tar -xzf "${archive_path}" -C "${archive_output_dir}"
     rm "${archive_path}"
@@ -76,10 +81,21 @@ function analyze () {
         done
     fi
 
-    rm -r "${archive_output_dir}"
+    if [ "$cleanup" = true ]; then
+        rm -r "${archive_output_dir}"
+    fi
 }
 
+current_dir=$(dirname "$0")
 cd "${current_dir}" || exit 1
+
+cleanup=false
+while true; do
+  case "$1" in
+    --with-cleanup ) cleanup=true; shift ;;
+    * ) break ;;
+  esac
+done
 
 while read -r line; do
     analyze "${line}"
