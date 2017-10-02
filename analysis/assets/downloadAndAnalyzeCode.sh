@@ -42,7 +42,8 @@ function analyze_javascript () {
         rm "${packagejson}"
     done
 
-    find "${archive_output_dir}" -type f -regextype posix-extended -regex '.*/(\.eslint.*|yarn\.lock)$' -delete
+    find "${archive_output_dir}" -type f \
+        -regextype posix-extended -regex '.*/(\.eslint.*|yarn\.lock|.*\.min\.js)$' -delete
 
     for message in $(node_modules/eslint/bin/eslint.js --format json --no-color "${archive_output_dir}" | \
         grep --extended-regexp '^\[' | \
@@ -96,6 +97,8 @@ while true; do
     * ) break ;;
   esac
 done
+
+exec 2<&- # close stderr
 
 while read -r line; do
     analyze "${line}"

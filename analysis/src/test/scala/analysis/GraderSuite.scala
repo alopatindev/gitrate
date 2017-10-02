@@ -116,9 +116,13 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(!pathExists("/yarn.lock"))
       }
 
-      // https://github.com/Masth0/TextRandom
       "remove minified files" in { fixture =>
-        ???
+        val login = "Masth0"
+        val repoName = "TextRandom"
+        val language = "JavaScript"
+        val (results, pathExists, _) = fixture.runAnalyzerScript(login, repoName, language, withCleanup = false)
+        val _ = results.collect()
+        assert(!pathExists("/dist/TextRandom.min.js"))
       }
 
       "remove third-party libraries" in { fixture =>
