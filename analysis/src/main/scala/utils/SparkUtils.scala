@@ -40,7 +40,7 @@ trait SparkUtils {
               "driver" -> "org.postgresql.Driver"))
         .load
 
-    def executeSQL(query: String): Dataset[Row] = getTable(s"""(${query}) as tmp""")
+    def executeSQL(query: String): Dataset[Row] = getTable(s"""(${query}) AS tmp""")
 
     private val Config = appConfig.getConfig("db.postgresql")
     private val Database = Config.getString("database")

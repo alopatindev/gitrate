@@ -8,6 +8,7 @@ import java.net.URL
 
 import org.apache.commons.codec.binary.Base64.decodeBase64
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
 
 import play.api.libs.json.{JsArray, JsDefined, JsValue, JsNumber}
@@ -18,9 +19,7 @@ import scala.util.Try
 
 class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) extends Serializable with LogUtils {
 
-  import org.apache.spark.sql.functions._
-
-  def parseAndFilterUsers(rawJSONs: RDD[String]): Iterable[GithubUser] = { // FIXME: return RDD?
+  def parseAndFilterUsers(rawJSONs: RDD[String]): Iterable[GithubUser] = {
     val emptySeq = Iterable()
     if (rawJSONs.isEmpty) {
       emptySeq

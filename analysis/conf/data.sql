@@ -123,6 +123,16 @@ INSERT INTO tag_categories (
   'Programming Language'
 );
 
+INSERT INTO tag_categories (
+  id,
+  category_rest_id,
+  category
+) VALUES (
+  DEFAULT,
+  'technologies',
+  'Technology'
+);
+
 INSERT INTO tags (
   id,
   category_id,
@@ -138,6 +148,23 @@ INSERT INTO tags (
   DEFAULT,
   DEFAULT
 );
+
+INSERT INTO tags (
+  id,
+  category_id,
+  tag,
+  keywords,
+  weight,
+  clicked
+) VALUES (
+  DEFAULT,
+  (SELECT id FROM tag_categories WHERE category_rest_id = 'technologies'),
+  'ESLint',
+  'lint;analysis',
+  1,
+  DEFAULT
+);
+
 
 INSERT INTO tags_users (
   id,

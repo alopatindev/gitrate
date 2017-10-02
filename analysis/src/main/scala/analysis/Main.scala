@@ -8,9 +8,9 @@ import gitrate.utils.{LogUtils, SparkUtils}
 
 import com.typesafe.config.{Config, ConfigFactory}
 
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{Dataset, Row}
+import org.apache.spark.SparkContext
+import org.apache.spark.sql.{Dataset, Row, SparkSession}
 
 import play.api.libs.json.{Json, JsValue}
 
@@ -27,20 +27,40 @@ object Main extends LogUtils with SparkUtils {
   }
 
   private def run(githubConf: GithubConf): Unit = {
-    val sparkContext = getOrCreateSparkContext()
+    val _ = getOrCreateSparkContext()
+
+    val sparkSession = getOrCreateSparkSession()
+    import sparkSession.implicits._
+
     val ssc = createStreamingContext()
 
-    val warningsToGradeCategory: Broadcast[Dataset[Row]] =
-      sparkContext.broadcast(
-        Postgres.executeSQL("""
+    val warningsToGradeCategory: Dataset[WarningToGradeCategory] =
+      Postgres
+        .executeSQL("""
 SELECT
   warnings.warning,
   tags.tag,
-  grade_categories.category AS grade_category
+  grade_categories.category AS gradeCategory
 FROM warnings
-JOIN grade_categories ON grade_categories.id = warnings.grade_category_id
-JOIN tags ON tags.id = warnings.tag_id
-"""))
+INNER JOIN grade_categories ON grade_categories.id = warnings.grade_category_id
+INNER JOIN tags ON tags.id = warnings.tag_id
+""")
+        .as[WarningToGradeCategory]
+        .cache()
+
+    val weightedTechnologies: Seq[String] =
+      Postgres
+        .executeSQL(s"""
+SELECT tag
+FROM tags
+INNER JOIN tag_categories ON tag_categories.id = tags.category_id
+WHERE
+  tag_categories.category_rest_id = 'technologies'
+  AND tags.weight > 0
+LIMIT 1
+""")
+        .as[String]
+        .collect()
 
     // TODO: checkpoint
     val stream = new GithubSearchInputDStream(ssc, githubConf, loadQueries, storeResult)
@@ -50,10 +70,10 @@ JOIN tags ON tags.id = warnings.tag_id
         val currentRepositories: Dataset[Row] = Postgres.getTable("repositories")
         val githubExtractor = new GithubExtractor(githubConf, currentRepositories)
         val users: Iterable[GithubUser] = githubExtractor.parseAndFilterUsers(rawGithubResult)
-        implicit val sparkContext = rawGithubResult.sparkContext
-        implicit val sparkSession = rawGithubResult.toSparkSession
-        val grader = new Grader(appConfig, warningsToGradeCategory.value)
-        val gradedRepositories: Iterable[GradedRepository] = grader.gradeGithubUsers(users)
+        implicit val sparkContext: SparkContext = rawGithubResult.sparkContext
+        implicit val sparkSession: SparkSession = rawGithubResult.toSparkSession
+        val grader = new Grader(appConfig, warningsToGradeCategory, weightedTechnologies)
+        val gradedRepositories: Iterable[GradedRepository] = grader.gradeUsers(users)
       // TODO: save(users, gradedRepositories)
       }
 

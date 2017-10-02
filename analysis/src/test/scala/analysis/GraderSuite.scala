@@ -93,16 +93,16 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
     "processAnalyzerScriptResults" should {
 
-      "drop dependence of dependence" in { fixture =>
+      "ignore dependence of dependence" in { fixture =>
         val login = "alopatindev"
         val repoId = "test_4"
         val repoName = "find-telegram-bot"
         val language = "JavaScript"
         val results: Iterable[GraderResult] = fixture.processAnalyzerScriptResults(login, repoId, repoName, language)
-        val dependencies = results.head.dependencies.toSet
-        assert(dependencies contains "ESLint")
-        assert(!(dependencies contains "eslint"))
-        assert(!(dependencies contains "eslint-plugin-promise"))
+        val tags = results.head.tags
+        assert(tags contains "ESLint")
+        assert(!(tags contains "eslint"))
+        assert(!(tags contains "eslint-plugin-promise"))
       }
 
 //      "return bad grades when code is bad" in { ??? }
@@ -145,9 +145,11 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         Seq(
           ("eqeqeq", "JavaScript", "Robust")
         ))
-      .toDF("warning", "tag", "grade_category")
+      .toDF("warning", "tag", "gradeCategory")
+      .as[WarningToGradeCategory]
 
-    val grader = new Grader(appConfig, warningsToGradeCategory)
+    val weightedTechnologies = Seq("ESLint")
+    val grader = new Grader(appConfig, warningsToGradeCategory, weightedTechnologies)
     val theFixture = FixtureParam(grader)
     try {
       withFixture(test.toNoArgTest(theFixture))
