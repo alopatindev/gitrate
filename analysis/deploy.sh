@@ -22,7 +22,7 @@ cp -v ./conf/spark-defaults.conf "${ASSETS_DIR}/"
 cd "${ASSETS_DIR}"
 
 # TODO: versions
-npm install eslint eslint-plugin-better eslint-plugin-mocha eslint-plugin-private-props eslint-plugin-promise
+npm install eslint eslint-plugin-better eslint-plugin-mocha eslint-plugin-private-props eslint-plugin-promise decomment
 
 spark-submit \
     --deploy-mode cluster \

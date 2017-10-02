@@ -45,6 +45,8 @@ function analyze_javascript () {
     find "${archive_output_dir}" -type f \
         -regextype posix-extended -regex '.*/(\.eslint.*|yarn\.lock|.*\.min\.js)$' -delete
 
+    find "${archive_output_dir}" -type f -name "*.js" -exec node "stripComments.js" {} ";"
+
     for message in $(node_modules/eslint/bin/eslint.js --format json --no-color "${archive_output_dir}" | \
         grep --extended-regexp '^\[' | \
         jq --monochrome-output --raw-output '.[].messages[] | "\(.ruleId)"'); do

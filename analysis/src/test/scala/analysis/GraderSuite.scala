@@ -11,6 +11,7 @@ import org.scalatest.{fixture, Outcome}
 class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
 
   import com.typesafe.config.ConfigFactory
+  import scala.io.Source
   import java.io.File
   import java.util.UUID
 
@@ -26,7 +27,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val login = "himanshuchandra"
         val repoName = "react.js-codes"
         val language = "JavaScript"
-        val (results, _, repoId) = fixture.runAnalyzerScript(login, repoName, language)
+        val (results, _, _, repoId) = fixture.runAnalyzerScript(login, repoName, language)
         val invalidResults = results.collect().filter(_.idBase64 == repoId)
         assert(invalidResults.isEmpty)
       }
@@ -35,7 +36,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val login = "alopatindev"
         val repoName = "find-telegram-bot"
         val language = "JavaScript"
-        val (results, pathExists, _) = fixture.runAnalyzerScript(login, repoName, language)
+        val (results, pathExists, _, _) = fixture.runAnalyzerScript(login, repoName, language)
         val _ = results.collect()
         val directoryExists = pathExists("/")
         assert(!directoryExists)
@@ -57,7 +58,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val login = "alopatindev"
         val repoName = "find-telegram-bot"
         val language = "JavaScript"
-        val (results, _, _) = fixture.runAnalyzerScript(login, repoName, language)
+        val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, language)
         val linesOfCode: Option[Int] = results
           .collect()
           .filter(result => result.language == language && result.messageType == "lines_of_code")
@@ -70,7 +71,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val login = "alopatindev"
         val repoName = "find-telegram-bot"
         val language = "JavaScript"
-        val (results, _, _) = fixture.runAnalyzerScript(login, repoName, language)
+        val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, language)
         val dependencies: Set[String] = results
           .collect()
           .filter(result => result.language == language && result.messageType == "dependence")
@@ -85,7 +86,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
       "detect Node.js dependence" in { fixture =>
         def hasDependence(login: String, repoName: String): Boolean = {
           val language = "JavaScript"
-          val (results, _, _) = fixture.runAnalyzerScript(login, repoName, language)
+          val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, language)
           val dependencies: Set[String] = results
             .collect()
             .filter(result => result.language == language && result.messageType == "dependence")
@@ -107,7 +108,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val login = "alopatindev"
         val repoName = "find-telegram-bot"
         val language = "JavaScript"
-        val (results, pathExists, _) = fixture.runAnalyzerScript(login, repoName, language, withCleanup = false)
+        val (results, pathExists, _, _) = fixture.runAnalyzerScript(login, repoName, language, withCleanup = false)
         val _ = results.collect()
         assert(!pathExists("/node_modules"))
         assert(!pathExists("/package.json"))
@@ -120,7 +121,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val login = "Masth0"
         val repoName = "TextRandom"
         val language = "JavaScript"
-        val (results, pathExists, _) = fixture.runAnalyzerScript(login, repoName, language, withCleanup = false)
+        val (results, pathExists, _, _) = fixture.runAnalyzerScript(login, repoName, language, withCleanup = false)
         val _ = results.collect()
         assert(!pathExists("/dist/TextRandom.min.js"))
       }
@@ -130,7 +131,14 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
       }
 
       "remove comments" in { fixture =>
-        ???
+        val login = "Masth0"
+        val repoName = "TextRandom"
+        val language = "JavaScript"
+        val (results, _, fileContainsText, _) =
+          fixture.runAnalyzerScript(login, repoName, language, withCleanup = false)
+        val _ = results.collect()
+        assert(!fileContainsText("/src/TextRandom.js", "Create or remove span"))
+        assert(!fileContainsText("/src/TextRandom.js", "Animate random characters"))
       }
 
     }
@@ -141,7 +149,8 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val login = "alopatindev"
         val repoName = "find-telegram-bot"
         val language = "JavaScript"
-        val (results: Iterable[GraderResult], _, _) = fixture.processAnalyzerScriptResults(login, repoName, language)
+        val (results: Iterable[GraderResult], _, _, _) =
+          fixture.processAnalyzerScriptResults(login, repoName, language)
         val tags = results.head.tags
         assert(tags contains "ESLint")
         assert(!(tags contains "eslint"))
@@ -203,11 +212,8 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
     val branch = "master"
 
-    def runAnalyzerScript(
-        login: String,
-        repoName: String,
-        language: String,
-        withCleanup: Boolean = true): (Dataset[AnalyzerScriptResult], (String) => Boolean, String) = {
+    def runAnalyzerScript(login: String, repoName: String, language: String, withCleanup: Boolean = true)
+      : (Dataset[AnalyzerScriptResult], (String) => Boolean, (String, String) => Boolean, String) = {
       val repoId = UUID.randomUUID().toString
       val archiveURL = s"https://github.com/${login}/${repoName}/archive/${branch}.tar.gz"
       val input: Seq[String] = Seq(s"${repoId};${archiveURL};${language}")
@@ -215,18 +221,26 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
       val results = grader.runAnalyzerScript(input, withCleanup)
 
       val assetsDir = grader.appConfig.getString("app.assetsDir")
-      def pathExists(path: String): Boolean =
-        new File(s"${assetsDir}/data/${repoId}/${repoName}-${branch}${path}").exists()
 
-      (results, pathExists, repoId)
+      def file(path: String): File =
+        new File(s"${assetsDir}/data/${repoId}/${repoName}-${branch}${path}")
+
+      def pathExists(path: String): Boolean =
+        file(path).exists()
+
+      def fileContainsText(path: String, pattern: String): Boolean =
+        Source.fromFile(file(path)).mkString contains pattern
+
+      (results, pathExists, fileContainsText, repoId)
     }
 
-    def processAnalyzerScriptResults(login: String,
-                                     repoName: String,
-                                     language: String): (Iterable[GraderResult], (String) => Boolean, String) = {
-      val (outputMessages, pathExists, repoId) = runAnalyzerScript(login, repoName, language)
+    def processAnalyzerScriptResults(
+        login: String,
+        repoName: String,
+        language: String): (Iterable[GraderResult], (String) => Boolean, (String, String) => Boolean, String) = {
+      val (outputMessages, pathExists, fileContainsText, repoId) = runAnalyzerScript(login, repoName, language)
       val results = grader.processAnalyzerScriptResults(outputMessages)
-      (results, pathExists, repoId)
+      (results, pathExists, fileContainsText, repoId)
     }
 
   }
