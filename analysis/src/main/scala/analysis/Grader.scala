@@ -41,21 +41,18 @@ class Grader(val appConfig: Config,
     val scriptInputRDD: RDD[String] = sparkContext.parallelize(scriptInput)
 
     val maxTimeToRun = s"${maxExternalScriptDuration.getSeconds}s"
+    val timeLimitedRunner = List(s"${assetsDirectory}/runWithTimeout.sh", maxTimeToRun)
 
-    val firejailArguments = List(
-      "--quiet",
-      "--blacklist=/home",
-      s"--whitelist=${assetsDirectory}",
-      s"${assetsDirectory}/runWithTimeout.sh",
-      maxTimeToRun,
-      s"${assetsDirectory}/downloadAndAnalyzeCode.sh"
-    )
+    val sandboxRunner = List("firejail", "--quiet", "--blacklist=/home", s"--whitelist=${assetsDirectory}")
 
-    val scriptArguments: List[String] = List("--with-cleanup").filter(_ => withCleanup)
+    val scriptArguments = List("--with-cleanup").filter(_ => withCleanup)
+    val script = s"${assetsDirectory}/downloadAndAnalyzeCode.sh" :: scriptArguments
+
+    val command: List[String] = timeLimitedRunner ++ sandboxRunner ++ script
 
     val scriptOutputFields = 4
     scriptInputRDD
-      .pipe("firejail" :: firejailArguments ++ scriptArguments)
+      .pipe(command)
       .map(_.split(";"))
       .filter(_.length == scriptOutputFields)
       .map { case Array(idBase64, language, messageType, message) => (idBase64, language, messageType, message) }

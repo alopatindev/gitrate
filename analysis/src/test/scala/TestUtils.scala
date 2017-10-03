@@ -1,7 +1,13 @@
 package gitrate.utils
 
+import java.time.Duration
 import java.util.concurrent.ConcurrentLinkedQueue
+
+import org.scalatest.compatible.Assertion
+import org.scalatest.Matchers._
+
 import play.api.libs.json.{Json, JsValue}
+
 import scala.io.Source
 
 trait TestUtils {
@@ -13,6 +19,15 @@ trait TestUtils {
 
     def count(pattern: String): Int =
       queue.iterator.asScala.count { _ contains pattern }
+  }
+
+  // org.scalatest.concurrent.TimeLimitedTests isn't flexible enough
+  def shouldRunAtMost(limit: Duration)(f: => Unit): Assertion = {
+    val beginTime = System.currentTimeMillis()
+    f
+    val endTime = System.currentTimeMillis()
+    val deltaTime: Long = endTime - beginTime
+    assert(deltaTime === (limit.toMillis +- 3000L))
   }
 
   def loadJsonResource(filename: String): JsValue = {

@@ -38,7 +38,14 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
       }
 
       "run with time limit" in { fixture =>
-        ???
+        val login = "facebook"
+        val repoName = "react"
+        val language = "JavaScript"
+        val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, language)
+        val limit = fixture.grader.appConfig.getDuration("app.maxExternalScriptDuration")
+        shouldRunAtMost(limit) {
+          val _ = results.collect()
+        }
       }
 
       "process multiple languages" in { fixture =>
