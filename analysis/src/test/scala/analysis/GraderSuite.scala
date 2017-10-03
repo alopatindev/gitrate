@@ -4,7 +4,6 @@ import gitrate.utils.TestUtils
 
 import com.holdenkarau.spark.testing.DataFrameSuiteBase
 
-import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.{Dataset, SparkSession}
 import org.scalatest.{fixture, Outcome}
 
@@ -36,6 +35,10 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val _ = results.collect()
         val directoryExists = pathExists("/")
         assert(!directoryExists)
+      }
+
+      "run with time limit" in { fixture =>
+        ???
       }
 
       "process multiple languages" in { fixture =>
@@ -96,8 +99,28 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(!hasDependence(login = "jquery", repoName = "jquery.com"))
       }
 
-      "process absent dependencies" in { fixture =>
-        ???
+      "handle absent dependencies" in { fixture =>
+        val login = "Marak"
+        val repoName = "hellonode"
+        val language = "JavaScript"
+        val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, language)
+        val dependencies: Set[String] = results
+          .collect()
+          .filter(result => result.language == language && result.messageType == "dependence")
+          .map(_.message)
+          .toSet
+        assert(dependencies.isEmpty)
+      }
+
+      "ignore repositories without package.json or bower.json" in { fixture =>
+        val login = "moisseev"
+        val repoName = "BackupPC_Timeline"
+        val language = "JavaScript"
+        val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, language)
+        val messages = results
+          .collect()
+          .filter(result => result.language == language)
+        assert(messages.isEmpty)
       }
 
       "remove node_modules, package.json, package-lock.json, bower.json, *.eslint*, yarn.lock, .gitignore" in {

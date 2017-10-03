@@ -41,20 +41,25 @@ function analyze_javascript () {
         rm "${packagejson}"
     done
 
-    find "${archive_output_dir}" -type f \
-        -regextype posix-extended -regex '.*/(\.eslint.*|yarn\.lock|.*\.min\.js|package-lock\.json|\.gitignore)$' -delete
+    if [ "${packagejson_dir}" != "" ]; then
+        find "${archive_output_dir}" \
+            -type f \
+            -regextype posix-extended \
+            -regex '.*/(\.eslint.*|yarn\.lock|.*\.min\.js|package-lock\.json|\.gitignore)$' \
+            -delete
 
-    find "${archive_output_dir}" -type f -name "*.js" -exec node "stripComments.js" {} ";"
+        find "${archive_output_dir}" -type f -name "*.js" -exec node "stripComments.js" "{}" ";"
 
-    for message in $(node_modules/eslint/bin/eslint.js --format json --no-color "${archive_output_dir}" | \
-        grep --extended-regexp '^\[' | \
-        jq --monochrome-output --raw-output '.[].messages[] | "\(.ruleId)"'); do
-        output warning "${message}"
-    done
+        for message in $(node_modules/eslint/bin/eslint.js --format json --no-color "${archive_output_dir}" | \
+            grep --extended-regexp '^\[' | \
+            jq --monochrome-output --raw-output '.[].messages[] | "\(.ruleId)"'); do
+            output warning "${message}"
+        done
 
-    lines_of_code=$(find "${archive_output_dir}" -type f -name "*.js" -print0 | \
-        xargs -0 grep --invert-match --regexp='^\s*$' | wc -l)
-    output lines_of_code "${lines_of_code}"
+        lines_of_code=$(find "${archive_output_dir}" -type f -name "*.js" -print0 | \
+            xargs -0 grep --invert-match --regexp='^\s*$' | wc -l)
+        output lines_of_code "${lines_of_code}"
+    fi
 }
 
 function analyze () {
@@ -99,7 +104,8 @@ while true; do
   esac
 done
 
-exec 2<&- # close stderr
+# redirect stderr to null
+exec 2>/dev/null
 
 while read -r line; do
     analyze "${line}"

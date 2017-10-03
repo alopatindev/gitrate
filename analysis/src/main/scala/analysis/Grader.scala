@@ -40,10 +40,14 @@ class Grader(val appConfig: Config,
   def runAnalyzerScript(scriptInput: Seq[String], withCleanup: Boolean): Dataset[AnalyzerScriptResult] = {
     val scriptInputRDD: RDD[String] = sparkContext.parallelize(scriptInput)
 
-    val firejailArguments = List("--quiet",
-                                 "--blacklist=/home",
-                                 s"--whitelist=${assetsDirectory}",
-                                 s"${assetsDirectory}/downloadAndAnalyzeCode.sh")
+    val firejailArguments = List(
+      "--quiet",
+      "--blacklist=/home",
+      s"--whitelist=${assetsDirectory}",
+      s"${assetsDirectory}/runWithTimeout.sh",
+      "30s", // TODO: config
+      s"${assetsDirectory}/downloadAndAnalyzeCode.sh"
+    )
 
     val scriptArguments: List[String] = List("--with-cleanup").filter(_ => withCleanup)
 
