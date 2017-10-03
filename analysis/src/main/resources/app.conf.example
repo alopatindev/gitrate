@@ -1,5 +1,6 @@
 app.name = AnalyzeGithubUsers
 app.assetsDir = /tmp/AnalyzeGithubUsers
+app.maxExternalScriptDuration = 30 seconds
 
 stream.batchDuration = 5 seconds
 

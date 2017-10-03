@@ -40,12 +40,14 @@ class Grader(val appConfig: Config,
   def runAnalyzerScript(scriptInput: Seq[String], withCleanup: Boolean): Dataset[AnalyzerScriptResult] = {
     val scriptInputRDD: RDD[String] = sparkContext.parallelize(scriptInput)
 
+    val maxTimeToRun = s"${maxExternalScriptDuration.getSeconds}s"
+
     val firejailArguments = List(
       "--quiet",
       "--blacklist=/home",
       s"--whitelist=${assetsDirectory}",
       s"${assetsDirectory}/runWithTimeout.sh",
-      "30s", // TODO: config
+      maxTimeToRun,
       s"${assetsDirectory}/downloadAndAnalyzeCode.sh"
     )
 
@@ -136,6 +138,7 @@ class Grader(val appConfig: Config,
   }
 
   private val assetsDirectory = appConfig.getString("app.assetsDir")
+  private val maxExternalScriptDuration = appConfig.getDuration("app.maxExternalScriptDuration")
 
 }
 
