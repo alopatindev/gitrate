@@ -252,10 +252,9 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
       val results = grader.runAnalyzerScript(input, withCleanup)
 
-      val assetsDir = grader.appConfig.getString("app.assetsDir")
+      val scriptsDir = grader.appConfig.getString("app.scriptsDir")
 
-      def file(path: String): File =
-        new File(s"${assetsDir}/data/${repoId}/${repoName}-${branch}${path}")
+      def file(path: String): File = new File(s"${scriptsDir}/data/${repoId}/${repoName}-${branch}${path}")
 
       def pathExists(path: String): Boolean =
         file(path).exists()

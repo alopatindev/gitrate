@@ -41,12 +41,12 @@ class Grader(val appConfig: Config,
     val scriptInputRDD: RDD[String] = sparkContext.parallelize(scriptInput)
 
     val maxTimeToRun = s"${maxExternalScriptDuration.getSeconds}s"
-    val timeLimitedRunner = List(s"${assetsDirectory}/runWithTimeout.sh", maxTimeToRun)
+    val timeLimitedRunner = List(s"${scriptsDirectory}/runWithTimeout.sh", maxTimeToRun)
 
-    val sandboxRunner = List("firejail", "--quiet", "--blacklist=/home", s"--whitelist=${assetsDirectory}")
+    val sandboxRunner = List("firejail", "--quiet", "--blacklist=/home", s"--whitelist=${scriptsDirectory}")
 
     val scriptArguments = List("--with-cleanup").filter(_ => withCleanup)
-    val script = s"${assetsDirectory}/downloadAndAnalyzeCode.sh" :: scriptArguments
+    val script = s"${scriptsDirectory}/downloadAndAnalyzeCode.sh" :: scriptArguments
 
     val command: List[String] = timeLimitedRunner ++ sandboxRunner ++ script
 
@@ -134,7 +134,7 @@ class Grader(val appConfig: Config,
       .agg($"idBase64", $"language", $"gradeCategory", max("count") as "warningsPerCategory")
   }
 
-  private val assetsDirectory = appConfig.getString("app.assetsDir")
+  private val scriptsDirectory = appConfig.getString("app.scriptsDir")
   private val maxExternalScriptDuration = appConfig.getDuration("app.maxExternalScriptDuration")
 
 }

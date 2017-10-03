@@ -7,19 +7,19 @@ cd "${current_dir}" || exit 1
 
 CONFIG_PATH="src/main/resources/app.conf"
 APP_NAME="$(grep 'app\.name' "${CONFIG_PATH}" | cut -d ' ' -f3)"
-ASSETS_DIR="$(grep 'app\.assetsDir' "${CONFIG_PATH}" | cut -d ' ' -f3)"
+SCRIPTS_DIR="$(grep 'app\.scriptsDir' "${CONFIG_PATH}" | cut -d ' ' -f3)"
 MAIN_CLASS="gitrate.analysis.Main"
-OUT_JAR="${ASSETS_DIR}/out.jar"
+OUT_JAR="${SCRIPTS_DIR}/out.jar"
 
-rm -rvf "${ASSETS_DIR}"
-cp -rv assets "${ASSETS_DIR}"
-mkdir -p "${ASSETS_DIR}/data"
+rm -rvf "${SCRIPTS_DIR}"
+cp -rv scripts "${SCRIPTS_DIR}"
+mkdir -p "${SCRIPTS_DIR}/data"
 
 sbt assembly
 cp -v ./target/scala-*/*-assembly-*.jar "${OUT_JAR}"
-cp -v ./conf/spark-defaults.conf "${ASSETS_DIR}/"
+cp -v ./conf/spark-defaults.conf "${SCRIPTS_DIR}/"
 
-cd "${ASSETS_DIR}"
+cd "${SCRIPTS_DIR}"
 
 # TODO: versions
 npm install eslint eslint-plugin-better eslint-plugin-mocha eslint-plugin-private-props eslint-plugin-promise decomment
