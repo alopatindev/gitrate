@@ -42,7 +42,7 @@ function analyze_javascript () {
     done
 
     find "${archive_output_dir}" -type f \
-        -regextype posix-extended -regex '.*/(\.eslint.*|yarn\.lock|.*\.min\.js)$' -delete
+        -regextype posix-extended -regex '.*/(\.eslint.*|yarn\.lock|.*\.min\.js|package-lock\.json|\.gitignore)$' -delete
 
     find "${archive_output_dir}" -type f -name "*.js" -exec node "stripComments.js" {} ";"
 

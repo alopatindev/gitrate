@@ -100,17 +100,20 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         ???
       }
 
-      "remove node_modules, package.json, bower.json, *.eslint*, yarn.lock" in { fixture =>
-        val login = "alopatindev"
-        val repoName = "find-telegram-bot"
-        val language = "JavaScript"
-        val (results, pathExists, _, _) = fixture.runAnalyzerScript(login, repoName, language, withCleanup = false)
-        val _ = results.collect()
-        assert(!pathExists("/node_modules"))
-        assert(!pathExists("/package.json"))
-        assert(!pathExists("/bower.json"))
-        assert(!pathExists("/.eslintrc.yml"))
-        assert(!pathExists("/yarn.lock"))
+      "remove node_modules, package.json, package-lock.json, bower.json, *.eslint*, yarn.lock, .gitignore" in {
+        fixture =>
+          val login = "alopatindev"
+          val repoName = "find-telegram-bot"
+          val language = "JavaScript"
+          val (results, pathExists, _, _) = fixture.runAnalyzerScript(login, repoName, language, withCleanup = false)
+          val _ = results.collect()
+          assert(!pathExists("/node_modules"))
+          assert(!pathExists("/package.json"))
+          assert(!pathExists("/package-lock.json"))
+          assert(!pathExists("/bower.json"))
+          assert(!pathExists("/.eslintrc.yml"))
+          assert(!pathExists("/yarn.lock"))
+          assert(!pathExists("/.gitignore"))
       }
 
       "remove minified files" in { fixture =>
