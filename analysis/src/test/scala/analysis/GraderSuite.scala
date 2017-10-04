@@ -12,6 +12,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
   import com.typesafe.config.ConfigFactory
   import scala.io.Source
   import java.io.File
+  import java.net.URL
   import java.util.UUID
 
   "Grader" can {
@@ -34,6 +35,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val (results, pathExists, _, _) = fixture.runAnalyzerScript(login, repoName, language)
         val _ = results.collect()
         val directoryExists = pathExists("/")
+        // TODO: archive
         assert(!directoryExists)
       }
 
@@ -130,20 +132,33 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(messages.isEmpty)
       }
 
-      "remove node_modules, package.json, package-lock.json, bower.json, *.eslint*, yarn.lock, .gitignore" in {
-        fixture =>
-          val login = "alopatindev"
-          val repoName = "find-telegram-bot"
-          val language = "JavaScript"
-          val (results, pathExists, _, _) = fixture.runAnalyzerScript(login, repoName, language, withCleanup = false)
-          val _ = results.collect()
-          assert(!pathExists("/node_modules"))
-          assert(!pathExists("/package.json"))
-          assert(!pathExists("/package-lock.json"))
-          assert(!pathExists("/bower.json"))
-          assert(!pathExists("/.eslintrc.yml"))
-          assert(!pathExists("/yarn.lock"))
-          assert(!pathExists("/.gitignore"))
+      "ignore repositories that contain node_modules directory" in { fixture =>
+        ???
+      }
+
+      "ignore repository when url from package.json / bower.json doesn't match with git url" in { fixture =>
+        val login = "mquandalle"
+        val repoName = "react-native-vector-icons"
+        val language = "JavaScript"
+        val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, language)
+        val messages = results
+          .collect()
+          .filter(result => result.language == language)
+        assert(messages.isEmpty)
+      }
+
+      "remove package.json, package-lock.json, bower.json, *.eslint*, yarn.lock, .gitignore" in { fixture =>
+        val login = "alopatindev"
+        val repoName = "find-telegram-bot"
+        val language = "JavaScript"
+        val (results, pathExists, _, _) = fixture.runAnalyzerScript(login, repoName, language, withCleanup = false)
+        val _ = results.collect()
+        assert(!pathExists("/package.json"))
+        assert(!pathExists("/package-lock.json"))
+        assert(!pathExists("/bower.json"))
+        assert(!pathExists("/.eslintrc.yml"))
+        assert(!pathExists("/yarn.lock"))
+        assert(!pathExists("/.gitignore"))
       }
 
       "remove minified files" in { fixture =>
@@ -247,8 +262,9 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
                           withCleanup: Boolean = true)
       : (Dataset[AnalyzerScriptResult], (String) => Boolean, (String, String) => Boolean, String) = {
       val repoId = UUID.randomUUID().toString
-      val archiveURL = s"https://github.com/${login}/${repoName}/archive/${branch}.tar.gz"
-      val input: Seq[String] = Seq(s"${repoId};${archiveURL};${language}")
+      val archiveURL = new URL(s"https://github.com/${login}/${repoName}/archive/${branch}.tar.gz")
+      val languages = Set(language)
+      val input: Seq[String] = Seq(grader.makeScriptInput(repoId, repoName, login, archiveURL, languages))
 
       val results = grader.runAnalyzerScript(input, withCleanup)
 
@@ -256,8 +272,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
       def file(path: String): File = new File(s"${scriptsDir}/data/${repoId}/${repoName}-${branch}${path}")
 
-      def pathExists(path: String): Boolean =
-        file(path).exists()
+      def pathExists(path: String): Boolean = file(path).exists()
 
       def fileContainsText(path: String, pattern: String): Boolean =
         Source.fromFile(file(path)).mkString contains pattern

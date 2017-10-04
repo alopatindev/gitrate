@@ -10,6 +10,8 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
 
+import java.net.URL
+
 class Grader(val appConfig: Config,
              warningsToGradeCategory: Dataset[WarningToGradeCategory],
              weightedTechnologies: Seq[String])(implicit sparkContext: SparkContext, sparkSession: SparkSession) {
@@ -28,14 +30,21 @@ class Grader(val appConfig: Config,
   private def processUsers(users: Iterable[GithubUser]): Iterable[GraderResult] = {
     users.flatMap { user: GithubUser =>
       val scriptInput = user.repositories.map { repo =>
-        val languages: String = (repo.languages.toSet + repo.primaryLanguage).mkString(",")
-        s"${repo.idBase64};${repo.archiveURL};${languages}"
+        val languages: Set[String] = (repo.languages.toSet + repo.primaryLanguage)
+        makeScriptInput(repo.idBase64, repo.name, user.login, repo.archiveURL, languages)
       }
 
       val outputMessages: Dataset[AnalyzerScriptResult] = runAnalyzerScript(scriptInput, withCleanup = true)
       processAnalyzerScriptResults(outputMessages)
     }
   }
+
+  def makeScriptInput(repoIdBase64: String,
+                      repoName: String,
+                      login: String,
+                      archiveURL: URL,
+                      languages: Set[String]): String =
+    s"${repoIdBase64};${repoName};${login};${archiveURL};${languages.mkString(",")}"
 
   def runAnalyzerScript(scriptInput: Seq[String], withCleanup: Boolean): Dataset[AnalyzerScriptResult] = {
     val scriptInputRDD: RDD[String] = sparkContext.parallelize(scriptInput)

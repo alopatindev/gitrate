@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 
-# (stdin) input format: "repository_id;archive_uri;language1,language2,..."
+# (stdin) input format: "repository_id;repository_name;login;archive_uri;language1,language2,..."
 # (stdout) output format: "repository_id;language;message_type;message"
 
 function analyze_javascript () {
-    archive_output_dir="$1"
-    repository_id="$2"
+    repository_id="$1"
+    repository_name="$2"
+    login="$3"
+    archive_output_dir="$4"
 
     function output () {
         language="JavaScript"
@@ -64,8 +66,10 @@ function analyze_javascript () {
 
 function analyze () {
     repository_id=$(echo "$1" | cut -d ";" -f1)
-    archive_url=$(echo "$1" | cut -d ";" -f2)
-    languages=$(echo "$1" | cut -d ";" -f3)
+    repository_name=$(echo "$1" | cut -d ";" -f2)
+    login=$(echo "$1" | cut -d ";" -f3)
+    archive_url=$(echo "$1" | cut -d ";" -f4)
+    languages=$(echo "$1" | cut -d ";" -f5)
 
     archive_output_dir="${current_dir}/data/${repository_id}"
     archive_path="${archive_output_dir}.tar.gz"
@@ -83,7 +87,7 @@ function analyze () {
     if [ "${bad_filenames}" -eq 0 ]; then
         for language in $(echo "${languages}" | tr "," "\\n"); do
             if [[ "${language}" = JavaScript ]]; then
-                analyze_javascript "${archive_output_dir}" "${repository_id}"
+                analyze_javascript "${repository_id}" "${repository_name}" "${login}" "${archive_output_dir}"
             fi
         done
     fi
