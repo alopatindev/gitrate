@@ -16,51 +16,62 @@ function analyze_javascript () {
         echo "${repository_id};${language};${message_type};${message}"
     }
 
-    for i in $(find "${archive_output_dir}" -type d -name "node_modules" | sort); do
-        rm -r "$i"
-    done
-
-    packagejson_dir=
+    valid_git_url=true
     for packagejson in $(find "${archive_output_dir}" -type f -regextype posix-extended \
-        -regex '.*/(package|bower)\.json$' | sort); do
-        dir=$(dirname "${packagejson}")
-        if [ "${packagejson_dir}" = "" ] || [ ${packagejson_dir} = "${dir}" ]; then
-            packagejson_dir="${dir}"
-            for key in "dependencies" "devDependencies" ; do
-                for dep in $(jq --monochrome-output --raw-output ".${key} | keys[]" "${packagejson}"); do
-                    output dependence "${dep}"
-                done
-            done
-
-            if (jq --monochrome-output --raw-output ".scripts | values[]" "${packagejson}" | grep -E "^node " || \
-                grep -RE "^#!/usr/bin/(env node|node)" "${archive_output_dir}") >> /dev/null; then
-                output dependence "Node.js"
-            fi
-        else
-            # that's probably a third-party library that was copy-pasted to the repository
-            rm -r "${dir}"
+        -regex '.*/(package|bower)\.json$'); do
+        git_url=$(jq --monochrome-output --raw-output ".repository.url" "${packagejson}")
+        if [ "${git_url}" = null ]; then
+            continue
         fi
-        rm "${packagejson}"
+        git_url_match=$(echo "${git_url}" | grep -E "[:/]${login}/${repository_name}")
+        if [ "${git_url_match}" != "${git_url}" ]; then
+            valid_git_url=false
+        fi
     done
 
-    if [ "${packagejson_dir}" != "" ]; then
-        find "${archive_output_dir}" \
-            -type f \
-            -regextype posix-extended \
-            -regex '.*/(\.eslint.*|yarn\.lock|.*\.min\.js|package-lock\.json|\.gitignore)$' \
-            -delete
+    if [ "${valid_git_url}" = true ] ; then
+        packagejson_dir=
+        for packagejson in $(find "${archive_output_dir}" -type f -regextype posix-extended \
+            -regex '.*/(package|bower)\.json$'); do
+            dir=$(dirname "${packagejson}")
+            if [ "${packagejson_dir}" = "" ] || [ ${packagejson_dir} = "${dir}" ]; then
+                packagejson_dir="${dir}"
+                for key in "dependencies" "devDependencies" ; do
+                    for dep in $(jq --monochrome-output --raw-output ".${key} | keys[]" "${packagejson}"); do
+                        output dependence "${dep}"
+                    done
+                done
 
-        find "${archive_output_dir}" -type f -name "*.js" -exec node "stripComments.js" "{}" ";"
-
-        for message in $(node_modules/eslint/bin/eslint.js --format json --no-color "${archive_output_dir}" | \
-            grep --extended-regexp '^\[' | \
-            jq --monochrome-output --raw-output '.[].messages[] | "\(.ruleId)"'); do
-            output warning "${message}"
+                if (jq --monochrome-output --raw-output ".scripts | values[]" "${packagejson}" | grep -E "^node " || \
+                    grep -RE "^#!/usr/bin/(env |)node" "${archive_output_dir}") >> /dev/null; then
+                    output dependence "Node.js"
+                fi
+            else
+                # that's probably a third-party library that was copy-pasted to the repository
+                rm -r "${dir}"
+            fi
+            rm "${packagejson}"
         done
 
-        lines_of_code=$(find "${archive_output_dir}" -type f -name "*.js" -print0 | \
-            xargs -0 grep --invert-match --regexp='^\s*$' | wc -l)
-        output lines_of_code "${lines_of_code}"
+        if [ "${packagejson_dir}" != "" ]; then
+            find "${archive_output_dir}" \
+                -type f \
+                -regextype posix-extended \
+                -regex '.*/(\.eslint.*|yarn\.lock|.*\.min\.js|package-lock\.json|\.gitignore)$' \
+                -delete
+
+            find "${archive_output_dir}" -type f -name "*.js" -exec node "stripComments.js" "{}" ";"
+
+            for message in $(node_modules/eslint/bin/eslint.js --format json --no-color "${archive_output_dir}" | \
+                grep --extended-regexp '^\[' | \
+                jq --monochrome-output --raw-output '.[].messages[] | "\(.ruleId)"'); do
+                output warning "${message}"
+            done
+
+            lines_of_code=$(find "${archive_output_dir}" -type f -name "*.js" -print0 | \
+                xargs -0 grep --invert-match --regexp='^\s*$' | wc -l)
+            output lines_of_code "${lines_of_code}"
+        fi
     fi
 }
 
@@ -92,7 +103,7 @@ function analyze () {
         done
     fi
 
-    if [ "$cleanup" = true ]; then
+    if [ "${cleanup}" = true ]; then
         rm -r "${archive_output_dir}"
     fi
 }
