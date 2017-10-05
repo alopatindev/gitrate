@@ -6,13 +6,15 @@ function has_valid_git_url () {
     local login="$3"
     local valid_git_url=true
 
-    for packagejson in ${packagejson_files[@]}; do
-        local git_url=$(jq --monochrome-output --raw-output ".repository.url" "${packagejson}")
+    for packagejson in ${packagejson_files}; do
+        local git_url
+        git_url=$(jq --monochrome-output --raw-output ".repository.url" "${packagejson}")
         if [ "${git_url}" = "" ] || [ "${git_url}" = null ]; then
             continue
         fi
 
-        local git_url_match=$(echo "${git_url}" | grep -E "[:/]${login}/${repository_name}")
+        local git_url_match
+        git_url_match=$(echo "${git_url}" | grep -E "[:/]${login}/${repository_name}")
         if [ "${git_url_match}" != "${git_url}" ]; then
             valid_git_url=false
         fi
@@ -80,24 +82,28 @@ function analyze_javascript () {
         echo "${repository_id};${language};${message_type};${message}"
     }
 
-    local -a unsorted_packagejson_files=$(find "${archive_output_dir}" \
+    local -a unsorted_packagejson_files
+    unsorted_packagejson_files=$(find "${archive_output_dir}" \
         -type f \
         -regextype posix-extended -regex '.*/(package|bower)\.json$')
 
-    local -a packagejson_files=$(sort_by_length "${unsorted_packagejson_files[@]}")
+    local -a packagejson_files
+    packagejson_files=$(sort_by_length "${unsorted_packagejson_files[@]}")
 
-    if [ "${packagejson_files[@]}" = "" ] ; then
+    if [ "${packagejson_files[*]}" = "" ] ; then
         return
     fi
 
     if [ $(has_valid_git_url "${packagejson_files[@]}" "${repository_name}" "${login}") = true ] ; then
-        local packagejson_dir=
-        for packagejson in ${packagejson_files[@]}; do
-            local dir=$(dirname "${packagejson}")
+        local packagejson_dir
+        for packagejson in ${packagejson_files}; do
+            local dir
+            dir=$(dirname "${packagejson}")
             if [ "${packagejson_dir}" = "" ] || [ "${packagejson_dir}" = "${dir}" ]; then
                 packagejson_dir="${dir}"
-                local -a dependencies=$(detect_dependencies "${packagejson}" "${archive_output_dir}")
-                for dep in ${dependencies[@]}; do
+                #local -a dependencies=$(detect_dependencies "${packagejson}" "${archive_output_dir}") # FIXME
+                #for dep in ${dependencies[@]}; do
+                for dep in $(detect_dependencies "${packagejson}" "${archive_output_dir}"); do
                     output dependence "${dep}"
                 done
             else
@@ -110,7 +116,7 @@ function analyze_javascript () {
         if [ "${packagejson_dir}" != "" ]; then
             prepare_sources "${archive_output_dir}"
 
-            for message in $(node_modules/eslint/bin/eslint.js --format json --no-color "${archive_output_dir}" | \
+            for message in $(node_modules/.bin/eslint --format json --no-color "${archive_output_dir}" | \
                 grep --extended-regexp '^\[' | \
                 jq --monochrome-output --raw-output '.[].messages[] | "\(.ruleId)"'); do
                 output warning "${message}"

@@ -4,22 +4,31 @@
 # (stdout) output format: "repository_id;language;message_type;message"
 
 function analyze () {
-    local repository_id=$(echo "$1" | cut -d ";" -f1)
-    local repository_name=$(echo "$1" | cut -d ";" -f2)
-    local login=$(echo "$1" | cut -d ";" -f3)
-    local archive_url=$(echo "$1" | cut -d ";" -f4)
-    local languages=$(echo "$1" | cut -d ";" -f5)
+    local repository_id
+    local repository_name
+    local login
+    local archive_url
+    local languages
+    repository_id=$(echo "$1" | cut -d ";" -f1)
+    repository_name=$(echo "$1" | cut -d ";" -f2)
+    login=$(echo "$1" | cut -d ";" -f3)
+    archive_url=$(echo "$1" | cut -d ";" -f4)
+    languages=$(echo "$1" | cut -d ";" -f5)
 
-    local archive_output_dir="${current_dir}/data/${repository_id}"
-    local archive_path="${archive_output_dir}.tar.gz"
+    local archive_output_dir
+    local archive_path
+    archive_output_dir="${current_dir}/data/${repository_id}"
+    archive_path="${archive_output_dir}.tar.gz"
     wget --quiet "${archive_url}" -O "${archive_path}"
     rm -rf "${archive_output_dir}"
     mkdir -p "${archive_output_dir}"
     tar -xzf "${archive_path}" -C "${archive_output_dir}"
     rm "${archive_path}"
 
-    local valid_filename_pattern="^[a-zA-Z0-9/._-]*$"
-    local invalid_filenames=$(find "${archive_output_dir}" -type f | \
+    local valid_filename_pattern
+    local invalid_filenames
+    valid_filename_pattern="^[a-zA-Z0-9/._-]*$"
+    invalid_filenames=$(find "${archive_output_dir}" -type f | \
         sed "s!.*${repository_id}!!" | \
         grep --count --invert-match --extended-regexp "${valid_filename_pattern}")
 
