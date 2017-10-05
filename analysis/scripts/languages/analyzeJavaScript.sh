@@ -62,7 +62,7 @@ function compute_lines_of_code () {
 }
 
 function sort_by_length () {
-    echo "$1" | \
+    echo $1 | \
         awk '{ print length, $0 }' | \
         sort --numeric-sort --stable | \
         cut --delimiter=" " --fields="2-"
@@ -84,7 +84,7 @@ function analyze_javascript () {
         -type f \
         -regextype posix-extended -regex '.*/(package|bower)\.json$')
 
-    local -a packagejson_files=$(sort_by_length ${unsorted_packagejson_files[@]})
+    local -a packagejson_files=$(sort_by_length "${unsorted_packagejson_files[@]}")
 
     if [ "${packagejson_files[@]}" = "" ] ; then
         return
@@ -94,7 +94,7 @@ function analyze_javascript () {
         local packagejson_dir=
         for packagejson in ${packagejson_files[@]}; do
             local dir=$(dirname "${packagejson}")
-            if [ "${packagejson_dir}" = "" ] || [ ${packagejson_dir} = "${dir}" ]; then
+            if [ "${packagejson_dir}" = "" ] || [ "${packagejson_dir}" = "${dir}" ]; then
                 packagejson_dir="${dir}"
                 local -a dependencies=$(detect_dependencies "${packagejson}" "${archive_output_dir}")
                 for dep in ${dependencies[@]}; do

@@ -19,7 +19,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
     "runAnalyzerScript" should {
 
-      "ignore repositories that contain files or directories with bad names" in { fixture =>
+      "ignore repositories that contain files or directories with invalid names" in { fixture =>
         val login = "himanshuchandra"
         val repoName = "react.js-codes"
         val language = "JavaScript"
@@ -171,7 +171,15 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
       }
 
       "remove third-party libraries" in { fixture =>
-        ???
+        val login = "oblador"
+        val repoName = "react-native-vector-icons"
+        val language = "JavaScript"
+        val (results, pathExists, _, _) = fixture.runAnalyzerScript(login, repoName, language, withCleanup = false)
+        val _ = results.collect()
+        assert(pathExists("/index.js"))
+        assert(pathExists("/Examples"))
+        assert(!pathExists("/Examples/IconExplorer/IconList.js"))
+        assert(!pathExists("/Examples/IconExplorer"))
       }
 
       "remove comments" in { fixture =>
