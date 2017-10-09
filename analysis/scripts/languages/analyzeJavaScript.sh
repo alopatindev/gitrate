@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 language="JavaScript"
 
 function has_valid_git_url () {
@@ -41,7 +43,9 @@ function detect_dependencies () {
         dependencies+=("Node.js")
     fi
 
-    echo "${dependencies[@]}"
+    for dev in "${dependencies[@]}" ; do
+        echo "${dev}"
+    done | grep -v -E '^\@'
 }
 
 function prepare_sources () {
@@ -64,10 +68,27 @@ function compute_lines_of_code () {
 }
 
 function sort_by_length () {
-    echo $1 | \
+    cat | \
         awk '{ print length, $0 }' | \
         sort --numeric-sort --stable | \
         cut --delimiter=" " --fields="2-"
+}
+
+function has_invalid_files () {
+    local archive_output_dir
+    archive_output_dir="$1"
+
+    local count
+    count=$({
+        find "${archive_output_dir}" -type f -regextype -posix-extended -iregex '.*\.(so|exe|o)$'
+        find "${archive_output_dir}" -type d node_modules
+    } | wc -l)
+
+    if [ "${count}" = 0 ]; then
+        echo false
+    else
+        echo true
+    fi
 }
 
 function analyze_javascript () {
@@ -88,21 +109,20 @@ function analyze_javascript () {
         -regextype posix-extended -regex '.*/(package|bower)\.json$')
 
     local -a packagejson_files
-    packagejson_files=$(sort_by_length "${unsorted_packagejson_files[@]}")
+    packagejson_files=$(echo "${unsorted_packagejson_files[@]}" | sort_by_length)
 
     if [ "${packagejson_files[*]}" = "" ] ; then
         return
     fi
 
-    if [ $(has_valid_git_url "${packagejson_files[@]}" "${repository_name}" "${login}") = true ] ; then
+    if [ $(has_invalid_files "${archive_output_dir}") = false ] && [ $(has_valid_git_url "${packagejson_files[@]}" "${repository_name}" "${login}") = true ] ; then
         local packagejson_dir
+        packagejson_dir=""
         for packagejson in ${packagejson_files}; do
             local dir
             dir=$(dirname "${packagejson}")
             if [ "${packagejson_dir}" = "" ] || [ "${packagejson_dir}" = "${dir}" ]; then
                 packagejson_dir="${dir}"
-                #local -a dependencies=$(detect_dependencies "${packagejson}" "${archive_output_dir}") # FIXME
-                #for dep in ${dependencies[@]}; do
                 for dep in $(detect_dependencies "${packagejson}" "${archive_output_dir}"); do
                     output dependence "${dep}"
                 done

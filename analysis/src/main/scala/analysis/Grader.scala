@@ -54,7 +54,7 @@ class Grader(val appConfig: Config,
 
     val sandboxRunner = List("firejail", "--quiet", "--blacklist=/home", s"--whitelist=$scriptsDirectory")
 
-    val scriptArguments = List("--with-cleanup").filter(_ => withCleanup)
+    val scriptArguments = List(s"$maxRepoArchiveSizeBytes", s"$withCleanup")
     val script = s"$scriptsDirectory/downloadAndAnalyzeCode.sh" :: scriptArguments
 
     val command: List[String] = timeLimitedRunner ++ sandboxRunner ++ script
@@ -144,7 +144,8 @@ class Grader(val appConfig: Config,
   }
 
   private val scriptsDirectory = appConfig.getString("app.scriptsDir")
-  private val maxExternalScriptDuration = appConfig.getDuration("app.maxExternalScriptDuration")
+  private val maxExternalScriptDuration = appConfig.getDuration("grader.maxExternalScriptDuration")
+  private val maxRepoArchiveSizeBytes = appConfig.getInt("grader.maxRepoArchiveSizeKiB") * 1024
 
 }
 
@@ -153,14 +154,12 @@ case class WarningToGradeCategory(warning: String, tag: String, gradeCategory: S
 case class Grade(gradeCategory: String, value: Double)
 case class GradedRepository(idBase64: String, tags: Set[String], grades: Seq[Grade])
 
-case class PartialGraderResult(idBase64: String,
-                               dependencies: Seq[String],
-                               gradeCategory: String,
-                               value: Double) {
+case class PartialGraderResult(idBase64: String, dependencies: Seq[String], gradeCategory: String, value: Double) {
 
   def toGraderResult(weightedTechnologies: Seq[String]): GraderResult = {
     def dependenceToTag(dependence: String): String =
-      weightedTechnologies.find(technology => dependence.toLowerCase contains technology.toLowerCase)
+      weightedTechnologies
+        .find(technology => dependence.toLowerCase contains technology.toLowerCase)
         .getOrElse(dependence)
     val tags = dependencies.map(dependenceToTag).toSet
     GraderResult(idBase64, tags, gradeCategory, value)
@@ -174,7 +173,4 @@ case class GraderResult(idBase64: String, tags: Set[String], gradeCategory: Stri
 
 }
 
-case class AnalyzerScriptResult(idBase64: String,
-                                language: String,
-                                messageType: String,
-                                message: String)
+case class AnalyzerScriptResult(idBase64: String, language: String, messageType: String, message: String)

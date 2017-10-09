@@ -26,7 +26,8 @@ trait TestUtils {
     f
     val endTime = System.currentTimeMillis()
     val deltaTime: Long = endTime - beginTime
-    assert(deltaTime === (limit.toMillis +- 3000L))
+    val tolerance = 3000L
+    assert(deltaTime <= (limit.toMillis + tolerance))
   }
 
   def loadJsonResource(filename: String): JsValue = {

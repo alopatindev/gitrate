@@ -19,7 +19,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
     "runAnalyzerScript" should {
 
-      "ignore repositories that contain files or directories with invalid names" in { fixture =>
+      "ignore repository with invalid files or directories" in { fixture =>
         val login = "himanshuchandra"
         val repoName = "react.js-codes"
         val language = "JavaScript"
@@ -44,10 +44,24 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val repoName = "react"
         val language = "JavaScript"
         val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, language)
-        val limit = fixture.grader.appConfig.getDuration("app.maxExternalScriptDuration")
+        val limit = fixture.grader.appConfig.getDuration("grader.maxExternalScriptDuration")
         shouldRunAtMost(limit) {
           val _ = results.collect()
         }
+      }
+
+      "ignore too big repository" in { fixture =>
+        val login = "atom"
+        val repoName = "atom"
+        val language = "JavaScript"
+        val (results, _, _, repoId) = fixture.runAnalyzerScript(login, repoName, language)
+        val messages = results.collect().filter(_.idBase64 == repoId)
+        assert(messages.isEmpty)
+      }
+
+      "ignore repository with files or directories that are normally ignored (*.o, *.so, node_modules, etc.)" in {
+        fixture =>
+          ???
       }
 
       "process multiple languages" in { fixture =>
@@ -90,6 +104,10 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(!(dependencies contains "PhantomJS"))
       }
 
+      "ignore scoped dependencies" in { fixture =>
+        ???
+      }
+
       "detect Node.js dependence" in { fixture =>
         def hasDependence(login: String, repoName: String): Boolean = {
           val language = "JavaScript"
@@ -120,7 +138,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(dependencies.isEmpty)
       }
 
-      "ignore repositories without package.json or bower.json" in { fixture =>
+      "ignore repository without package.json or bower.json" in { fixture =>
         val login = "moisseev"
         val repoName = "BackupPC_Timeline"
         val language = "JavaScript"
@@ -129,10 +147,6 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
           .collect()
           .filter(result => result.language == language)
         assert(messages.isEmpty)
-      }
-
-      "ignore repositories that contain node_modules directory" in { fixture =>
-        ???
       }
 
       "ignore repository when url from package.json / bower.json doesn't match with git url" in { fixture =>

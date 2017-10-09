@@ -1,6 +1,5 @@
 app.name = AnalyzeGithubUsers
 app.scriptsDir = /tmp/AnalyzeGithubUsers
-app.maxExternalScriptDuration = 30 seconds
 
 stream.batchDuration = 5 seconds
 
@@ -15,6 +14,11 @@ github {
   minOwnerToAllCommitsRatio = 0.7
   minRepositoryUpdateInterval = 30 days
   supportedLanguages = ["JavaScript"]
+}
+
+grader {
+  maxRepoArchiveSizeKiB = 2048
+  maxExternalScriptDuration = 30 seconds
 }
 
 db {
