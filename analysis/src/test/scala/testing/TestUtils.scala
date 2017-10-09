@@ -1,12 +1,11 @@
-package gitrate.utils
+package testing
 
 import java.time.Duration
 import java.util.concurrent.ConcurrentLinkedQueue
 
-import org.scalatest.compatible.Assertion
 import org.scalatest.Matchers._
-
-import play.api.libs.json.{Json, JsValue}
+import org.scalatest.compatible.Assertion
+import play.api.libs.json.{JsValue, Json}
 
 import scala.io.Source
 

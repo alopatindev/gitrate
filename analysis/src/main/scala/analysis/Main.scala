@@ -1,10 +1,10 @@
-package gitrate.analysis
+package analysis
 
 import github.{GithubConf, GithubExtractor, GithubReceiver, GithubSearchQuery, GithubSearchInputDStream, GithubUser}
-import gitrate.utils.HttpClientFactory
-import gitrate.utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
-import gitrate.utils.SparkUtils.RDDUtils
-import gitrate.utils.{LogUtils, SparkUtils}
+import utils.HttpClientFactory
+import utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
+import utils.SparkUtils.RDDUtils
+import utils.{LogUtils, SparkUtils}
 
 import com.typesafe.config.{Config, ConfigFactory}
 
@@ -36,13 +36,13 @@ object Main extends LogUtils with SparkUtils {
 
     val warningsToGradeCategory: Dataset[WarningToGradeCategory] =
       Postgres
-        .executeSQL(WarningsToGradeCategoryQuery)
+        .executeSQL(warningsToGradeCategoryQuery)
         .as[WarningToGradeCategory]
         .cache()
 
     val weightedTechnologies: Seq[String] =
       Postgres
-        .executeSQL(WeightedTechnologiesQuery)
+        .executeSQL(weightedTechnologiesQuery)
         .as[String]
         .collect()
 
@@ -58,6 +58,7 @@ object Main extends LogUtils with SparkUtils {
         implicit val sparkSession: SparkSession = rawGithubResult.toSparkSession
         val grader = new Grader(appConfig, warningsToGradeCategory, weightedTechnologies)
         val gradedRepositories: Iterable[GradedRepository] = grader.gradeUsers(users)
+        logInfo(s"gradedRepositories=${gradedRepositories.toList}")
       // TODO: save(users, gradedRepositories)
       }
 
@@ -95,7 +96,7 @@ WHERE enabled = true
   // runs on executor
   def storeResult(receiver: GithubReceiver, result: String): Unit = receiver.store(result)
 
-  private val WarningsToGradeCategoryQuery =
+  private val warningsToGradeCategoryQuery =
     """
 SELECT
   warnings.warning,
@@ -106,7 +107,7 @@ INNER JOIN grade_categories ON grade_categories.id = warnings.grade_category_id
 INNER JOIN tags ON tags.id = warnings.tag_id
 """
 
-  private val WeightedTechnologiesQuery = """
+  private val weightedTechnologiesQuery = """
 SELECT tag
 FROM tags
 INNER JOIN tag_categories ON tag_categories.id = tags.category_id

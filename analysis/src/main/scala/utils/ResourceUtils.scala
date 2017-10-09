@@ -1,4 +1,4 @@
-package gitrate.utils
+package utils
 
 import java.io.InputStream
 

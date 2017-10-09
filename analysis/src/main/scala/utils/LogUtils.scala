@@ -1,4 +1,4 @@
-package gitrate.utils
+package utils
 
 import org.apache.log4j.{Level, Logger, LogManager}
 
@@ -13,7 +13,7 @@ trait LogUtils {
 
   val maxDebugLength = 200
 
-  def logError(throwable: Throwable): Unit = log.error(throwable.getMessage(), throwable)
+  def logError(throwable: Throwable): Unit = log.error(throwable.getMessage, throwable)
 
   def logError(data: Any = "", cut: Boolean = true): Unit =
     if (log.isEnabledFor(Level.ERROR)) { log.error(formatData(data, cut)) }
@@ -36,8 +36,8 @@ trait LogUtils {
   private def formatData(data: Any, cut: Boolean): String = {
     val prompt = currentMethodName()
     val dataString = if (cut) cutLongData(data) else data.toString
-    val text = if (dataString.isEmpty) "" else s": ${dataString}"
-    s"${prompt}${text}"
+    val text = if (dataString.isEmpty) "" else s": $dataString"
+    s"$prompt$text"
   }
 
   private def cutLongData(data: Any): String =

@@ -55,8 +55,8 @@ dependencyOverrides ++= Seq(
 
 // https://stackoverflow.com/questions/25144484/sbt-assembly-deduplication-found-error/39058507#39058507
 assemblyMergeStrategy in assembly := {
-  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
-  case x => MergeStrategy.first
+  case PathList("META-INF", _ @ _*) => MergeStrategy.discard
+  case _: String => MergeStrategy.first
 }
 
 coverageEnabled in(Test, compile) := true

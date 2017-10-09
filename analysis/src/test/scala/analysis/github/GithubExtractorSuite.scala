@@ -1,6 +1,6 @@
-package gitrate.analysis.github
+package analysis.github
 
-import gitrate.utils.TestUtils
+import testing.TestUtils
 
 import com.holdenkarau.spark.testing.DataFrameSuiteBase
 import org.scalatest.{fixture, Outcome}
@@ -14,10 +14,8 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
 
   import play.api.libs.json.{JsValue, Json}
 
-  import gitrate.analysis.github.GithubConf
-  import gitrate.utils.HttpClientFactory.Headers
+  import utils.HttpClientFactory.Headers
 
-  import org.apache.log4j.{Level, Logger}
   import org.apache.spark.sql.{Dataset, Row}
   import org.apache.spark.sql.types.TimestampType
 
@@ -127,15 +125,15 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
     } finally {}
   }
 
-  case class FixtureParam(val githubExtractor: GithubExtractor, val input: Seq[String]) {
+  case class FixtureParam(githubExtractor: GithubExtractor, input: Seq[String]) {
     val users: Iterable[GithubUser] = githubExtractor
       .parseAndFilterUsers(sc.parallelize(input))
 
     def repositories: Iterable[GithubRepo] = users.flatMap(u => u.repositories)
 
-    def containsUser(login: String): Boolean = !findUsers(login).isEmpty
+    def containsUser(login: String): Boolean = findUsers(login).nonEmpty
 
-    def userHasRepo(login: String, repoName: String): Boolean = !findRepositories(login, repoName).isEmpty
+    def userHasRepo(login: String, repoName: String): Boolean = findRepositories(login, repoName).nonEmpty
 
     def repositoriesOfUser(login: String): Iterable[String] =
       findUsers(login).flatMap(user => user.repositories.map(repo => repo.name))
@@ -151,23 +149,23 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
   private def currentRepositories(): Dataset[Row] = {
     import spark.implicits._
 
-    val currentDate = (Calendar.getInstance().getTimeInMillis() / 1000L).toString
+    val currentDate = (Calendar.getInstance().getTimeInMillis / 1000L).toString
     val oldDate = "0"
     spark.read
       .json(
         sc.parallelize(Seq(
           s"""{
   "raw_id": "MDEwOlJlcG9zaXRvcnk4MTQyMTAyCg==",
-  "updated_by_analyzer": ${currentDate}
+  "updated_by_analyzer": $currentDate
 }""",
           s"""
 {
   "raw_id": "MDEwOlJlcG9zaXRvcnkyMDg5Mjg2MA==",
-  "updated_by_analyzer": ${oldDate}
+  "updated_by_analyzer": $oldDate
 }
 """
         )))
-      .select($"raw_id", ($"updated_by_analyzer".cast(TimestampType)) as "updated_by_analyzer")
+      .select($"raw_id", $"updated_by_analyzer".cast(TimestampType) as "updated_by_analyzer")
   }
 
 }

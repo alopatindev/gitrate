@@ -1,4 +1,4 @@
-package gitrate.utils
+package utils
 
 import com.typesafe.config.Config
 
@@ -34,17 +34,17 @@ trait SparkUtils {
       getOrCreateSparkSession().read
         .format("jdbc")
         .options(
-          Map("url" -> s"jdbc:postgresql:${Database}",
-              "user" -> User,
+          Map("url" -> s"jdbc:postgresql:$database",
+              "user" -> user,
               "dbtable" -> table,
               "driver" -> "org.postgresql.Driver"))
         .load
 
-    def executeSQL(query: String): Dataset[Row] = getTable(s"""(${query}) AS tmp""")
+    def executeSQL(query: String): Dataset[Row] = getTable(s"""($query) AS tmp""")
 
-    private val Config = appConfig.getConfig("db.postgresql")
-    private val Database = Config.getString("database")
-    private val User = Config.getString("user")
+    private val config = appConfig.getConfig("db.postgresql")
+    private val database = config.getString("database")
+    private val user = config.getString("user")
 
   }
 

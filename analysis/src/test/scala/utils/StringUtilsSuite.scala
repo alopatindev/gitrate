@@ -1,4 +1,4 @@
-package gitrate.utils
+package utils
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec

@@ -1,4 +1,4 @@
-package gitrate.utils
+package utils
 
 import java.io.InputStream
 import java.net.URL
@@ -15,9 +15,9 @@ object HttpClientFactory {
   type HttpGetFunction[Output] = (URL, Headers) => Output
   type HttpPostFunction[Input, Output] = (URL, Input, Headers) => Output
 
-  val DefaultTimeout = 10 seconds
+  val defaultTimeout: FiniteDuration = 10 seconds
 
-  def getFunction[Output](parse: Parser[Output], timeout: Duration = DefaultTimeout): HttpGetFunction[Output] =
+  def getFunction[Output](parse: Parser[Output], timeout: Duration = defaultTimeout): HttpGetFunction[Output] =
     (url: URL, headers: Headers) =>
       blocking {
         httpClient(url, headers, timeout)
@@ -26,7 +26,7 @@ object HttpClientFactory {
     }
 
   def postFunction[Input, Output](parse: Parser[Output],
-                                  timeout: Duration = DefaultTimeout): HttpPostFunction[Input, Output] =
+                                  timeout: Duration = defaultTimeout): HttpPostFunction[Input, Output] =
     (url: URL, data: Input, headers: Headers) =>
       blocking {
         httpClient(url, headers, timeout)

@@ -1,4 +1,4 @@
-package gitrate.analysis
+package analysis
 
 import github.GithubUser
 
@@ -30,7 +30,7 @@ class Grader(val appConfig: Config,
   private def processUsers(users: Iterable[GithubUser]): Iterable[GraderResult] = {
     users.flatMap { user: GithubUser =>
       val scriptInput = user.repositories.map { repo =>
-        val languages: Set[String] = (repo.languages.toSet + repo.primaryLanguage)
+        val languages: Set[String] = repo.languages.toSet + repo.primaryLanguage
         makeScriptInput(repo.idBase64, repo.name, user.login, repo.archiveURL, languages)
       }
 
@@ -44,18 +44,18 @@ class Grader(val appConfig: Config,
                       login: String,
                       archiveURL: URL,
                       languages: Set[String]): String =
-    s"${repoIdBase64};${repoName};${login};${archiveURL};${languages.mkString(",")}"
+    s"$repoIdBase64;$repoName;$login;$archiveURL;${languages.mkString(",")}"
 
   def runAnalyzerScript(scriptInput: Seq[String], withCleanup: Boolean): Dataset[AnalyzerScriptResult] = {
     val scriptInputRDD: RDD[String] = sparkContext.parallelize(scriptInput)
 
     val maxTimeToRun = s"${maxExternalScriptDuration.getSeconds}s"
-    val timeLimitedRunner = List(s"${scriptsDirectory}/runWithTimeout.sh", maxTimeToRun)
+    val timeLimitedRunner = List(s"$scriptsDirectory/runWithTimeout.sh", maxTimeToRun)
 
-    val sandboxRunner = List("firejail", "--quiet", "--blacklist=/home", s"--whitelist=${scriptsDirectory}")
+    val sandboxRunner = List("firejail", "--quiet", "--blacklist=/home", s"--whitelist=$scriptsDirectory")
 
     val scriptArguments = List("--with-cleanup").filter(_ => withCleanup)
-    val script = s"${scriptsDirectory}/downloadAndAnalyzeCode.sh" :: scriptArguments
+    val script = s"$scriptsDirectory/downloadAndAnalyzeCode.sh" :: scriptArguments
 
     val command: List[String] = timeLimitedRunner ++ sandboxRunner ++ script
 
@@ -92,10 +92,10 @@ class Grader(val appConfig: Config,
         $"language",
         $"dependencies",
         $"gradeCategory",
-        (greatest(
+        greatest(
           zero,
           one - ($"warningsPerCategory" / $"linesOfCode")
-        )) as "value"
+        ) as "value"
       )
       .drop("language")
       .groupBy($"idBase64", $"gradeCategory", $"dependencies")
@@ -148,21 +148,19 @@ class Grader(val appConfig: Config,
 
 }
 
-case class WarningToGradeCategory(val warning: String, val tag: String, val gradeCategory: String)
+case class WarningToGradeCategory(warning: String, tag: String, gradeCategory: String)
 
-case class Grade(val gradeCategory: String, val value: Double)
-case class GradedRepository(val idBase64: String, val tags: Set[String], val grades: Seq[Grade])
+case class Grade(gradeCategory: String, value: Double)
+case class GradedRepository(idBase64: String, tags: Set[String], grades: Seq[Grade])
 
-case class PartialGraderResult(val idBase64: String,
+case class PartialGraderResult(idBase64: String,
                                dependencies: Seq[String],
-                               val gradeCategory: String,
-                               val value: Double) {
+                               gradeCategory: String,
+                               value: Double) {
 
   def toGraderResult(weightedTechnologies: Seq[String]): GraderResult = {
     def dependenceToTag(dependence: String): String =
-      weightedTechnologies
-        .filter(technology => dependence.toLowerCase contains technology.toLowerCase)
-        .headOption
+      weightedTechnologies.find(technology => dependence.toLowerCase contains technology.toLowerCase)
         .getOrElse(dependence)
     val tags = dependencies.map(dependenceToTag).toSet
     GraderResult(idBase64, tags, gradeCategory, value)
@@ -170,13 +168,13 @@ case class PartialGraderResult(val idBase64: String,
 
 }
 
-case class GraderResult(val idBase64: String, val tags: Set[String], val gradeCategory: String, val value: Double) {
+case class GraderResult(idBase64: String, tags: Set[String], gradeCategory: String, value: Double) {
 
   def toGrade: Grade = Grade(gradeCategory, value)
 
 }
 
-case class AnalyzerScriptResult(val idBase64: String,
-                                val language: String,
-                                val messageType: String,
-                                val message: String)
+case class AnalyzerScriptResult(idBase64: String,
+                                language: String,
+                                messageType: String,
+                                message: String)

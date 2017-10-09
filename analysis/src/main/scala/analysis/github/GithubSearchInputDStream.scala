@@ -1,4 +1,4 @@
-package gitrate.analysis.github
+package analysis.github
 
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.ReceiverInputDStream

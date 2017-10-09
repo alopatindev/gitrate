@@ -1,4 +1,4 @@
-package gitrate.analysis.github
+package analysis.github
 
 case class GithubSearchQuery(val language: String,
                              val filename: String,

@@ -1,11 +1,11 @@
-package gitrate.analysis
+package analysis
 
-import gitrate.utils.TestUtils
+import testing.TestUtils
 
 import com.holdenkarau.spark.testing.DataFrameSuiteBase
-
+import org.apache.spark.SparkContext
 import org.apache.spark.sql.{Dataset, SparkSession}
-import org.scalatest.{fixture, Outcome}
+import org.scalatest.{Outcome, fixture}
 
 class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
 
@@ -69,8 +69,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, language)
         val linesOfCode: Option[Int] = results
           .collect()
-          .filter(result => result.language == language && result.messageType == "lines_of_code")
-          .headOption
+          .find(result => result.language == language && result.messageType == "lines_of_code")
           .map(_.message.toInt)
         assert(linesOfCode.isDefined && linesOfCode.get > 0)
       }
@@ -236,8 +235,8 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
   }
 
   override def withFixture(test: OneArgTest): Outcome = {
-    implicit val sparkContext = sc
-    implicit val sparkSession = SparkSession.builder
+    implicit val sparkContext: SparkContext = sc
+    implicit val sparkSession: SparkSession = SparkSession.builder
       .config(sparkContext.getConf)
       .getOrCreate()
 
@@ -260,7 +259,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
     } finally {}
   }
 
-  case class FixtureParam(val grader: Grader) {
+  case class FixtureParam(grader: Grader) {
 
     val branch = "master"
 
@@ -270,7 +269,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
                           withCleanup: Boolean = true)
       : (Dataset[AnalyzerScriptResult], (String) => Boolean, (String, String) => Boolean, String) = {
       val repoId = UUID.randomUUID().toString
-      val archiveURL = new URL(s"https://github.com/${login}/${repoName}/archive/${branch}.tar.gz")
+      val archiveURL = new URL(s"https://github.com/$login/$repoName/archive/$branch.tar.gz")
       val languages = Set(language)
       val input: Seq[String] = Seq(grader.makeScriptInput(repoId, repoName, login, archiveURL, languages))
 
@@ -278,7 +277,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
       val scriptsDir = grader.appConfig.getString("app.scriptsDir")
 
-      def file(path: String): File = new File(s"${scriptsDir}/data/${repoId}/${repoName}-${branch}${path}")
+      def file(path: String): File = new File(s"$scriptsDir/data/$repoId/$repoName-$branch$path")
 
       def pathExists(path: String): Boolean = file(path).exists()
 

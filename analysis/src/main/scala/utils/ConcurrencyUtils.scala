@@ -1,4 +1,4 @@
-package gitrate.utils
+package utils
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext

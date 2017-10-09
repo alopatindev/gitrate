@@ -1,6 +1,6 @@
-package gitrate.analysis.github
+package analysis.github
 
-import gitrate.utils.{LogUtils, ResourceUtils}
+import utils.{LogUtils, ResourceUtils}
 
 import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
@@ -23,7 +23,7 @@ class GithubReceiver(conf: GithubConf,
     with LogUtils
     with ResourceUtils {
 
-  private val apiURL = new URL(s"${GithubApiURL}/graphql")
+  private val apiURL = new URL(s"$githubApiURL/graphql")
   @transient private lazy val queryTemplate: String = resourceToString("/GithubSearch.graphql")
 
   private val started = new AtomicBoolean(false) // scalastyle:ignore
@@ -40,7 +40,7 @@ class GithubReceiver(conf: GithubConf,
   }
 
   private def run(): Unit = {
-    Future(helper).logErrors()
+    Future(helper()).logErrors()
 
     @tailrec
     def helper(): Unit = {
@@ -107,7 +107,7 @@ class GithubReceiver(conf: GithubConf,
   }
 
   private def executeGQLBlocking(query: String, page: Option[String]): Option[JsValue] = {
-    import gitrate.utils.StringUtils._
+    import utils.StringUtils._
 
     val args = Map(
       "searchQuery" -> query,

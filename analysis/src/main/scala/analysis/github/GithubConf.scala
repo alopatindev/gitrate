@@ -1,6 +1,6 @@
-package gitrate.analysis.github
+package analysis.github
 
-import gitrate.utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
+import utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 
 import com.typesafe.config.Config
 import java.time.Duration
@@ -8,7 +8,7 @@ import play.api.libs.json.JsValue
 
 import scala.collection.JavaConverters._
 
-case class GithubConf(appConfig: Config,
+case class GithubConf(val appConfig: Config,
                       val httpGetBlocking: HttpGetFunction[JsValue],
                       val httpPostBlocking: HttpPostFunction[JsValue, JsValue]) {
 

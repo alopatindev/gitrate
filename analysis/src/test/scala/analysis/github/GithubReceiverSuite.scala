@@ -1,18 +1,17 @@
-package gitrate.analysis.github
+package analysis.github
 
-import gitrate.utils.TestUtils
+import testing.TestUtils
 
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{fixture, Outcome}
 
 class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtils {
 
-  import gitrate.utils.HttpClientFactory.Headers
+  import utils.HttpClientFactory.Headers
 
   import com.typesafe.config.ConfigFactory
   import java.net.URL
   import java.util.concurrent.atomic.AtomicInteger
-  import org.apache.log4j.{Level, Logger}
   import play.api.libs.json.{Json, JsValue}
 
   "GithubReceiver" can {
