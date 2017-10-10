@@ -6,28 +6,6 @@ INSERT INTO grade_categories (id, category) VALUES
   (DEFAULT, 'Automated'),
   (DEFAULT, 'Performant');
 
-INSERT INTO github_search_queries (
-  id,
-  language, -- FIXME: normalize?
-  filename,
-  min_repo_size_kib,
-  max_repo_size_kib,
-  min_stars,
-  max_stars,
-  pattern,
-  enabled
-) VALUES
-  (DEFAULT, 'JavaScript', '.eslintrc.*', 10, 2048, 0, 100, '', TRUE),
-  (DEFAULT, 'JavaScript', '.travis.yml', 10, 2048, 0, 100, '', TRUE),
-  (DEFAULT, 'JavaScript', '.codeclimate.yml', 10, 2048, 0, 100, '', TRUE),
-  (DEFAULT, 'JavaScript', 'circle.yml', 10, 2048, 0, 100, '', TRUE),
-  (DEFAULT, 'JavaScript', 'Dockerfile', 10, 2048, 0, 100, '', TRUE),
-  (DEFAULT, 'JavaScript', 'package.json', 10, 2048, 0, 100, '', TRUE),
-  (DEFAULT, 'JavaScript', 'bower.json', 10, 2048, 0, 100, '', TRUE),
-  (DEFAULT, 'JavaScript', '.jsbeautifyrc', 10, 2048, 0, 100, '', TRUE),
-  (DEFAULT, 'JavaScript', 'ansible.cfg', 10, 2048, 0, 100, '', TRUE),
-  (DEFAULT, 'JavaScript', 'ansible.yml', 10, 2048, 0, 100, '', TRUE);
-
 INSERT INTO users (
   id,
   github_user_id,
@@ -222,6 +200,29 @@ INSERT INTO tags_users_settings (
   TRUE
 );
 
+WITH javascript_tag AS (SELECT id FROM tags WHERE tag = 'JavaScript')
+INSERT INTO github_search_queries (
+  id,
+  language_id,
+  filename,
+  min_repo_size_kib,
+  max_repo_size_kib,
+  min_stars,
+  max_stars,
+  pattern,
+  enabled
+) VALUES
+  (DEFAULT, (SELECT id FROM javascript_tag), '.eslintrc.*', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM javascript_tag), '.travis.yml', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM javascript_tag), '.codeclimate.yml', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM javascript_tag), 'circle.yml', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM javascript_tag), 'Dockerfile', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM javascript_tag), 'package.json', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM javascript_tag), 'bower.json', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM javascript_tag), '.jsbeautifyrc', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM javascript_tag), 'ansible.cfg', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM javascript_tag), 'ansible.yml', 10, 2048, 0, 100, '', TRUE);
+
 INSERT INTO grades (
   id,
   category_id,
@@ -249,13 +250,13 @@ INSERT INTO grades (
 SET value = 0.5;
 
 WITH
-    maintainable_category AS (SELECT id FROM grade_categories WHERE category = 'Maintainable'),
-    testable_category AS (SELECT id FROM grade_categories WHERE category = 'Testable'),
-    robust_category AS (SELECT id FROM grade_categories WHERE category = 'Robust'),
-    secure_category AS (SELECT id FROM grade_categories WHERE category = 'Secure'),
-    performant_category AS (SELECT id FROM grade_categories WHERE category = 'Performant'),
-    javascript_tag AS (SELECT id FROM tags WHERE tag = 'JavaScript'),
-    cpp_tag AS (SELECT id FROM tags WHERE tag = 'C++')
+  maintainable_category AS (SELECT id FROM grade_categories WHERE category = 'Maintainable'),
+  testable_category AS (SELECT id FROM grade_categories WHERE category = 'Testable'),
+  robust_category AS (SELECT id FROM grade_categories WHERE category = 'Robust'),
+  secure_category AS (SELECT id FROM grade_categories WHERE category = 'Secure'),
+  performant_category AS (SELECT id FROM grade_categories WHERE category = 'Performant'),
+  javascript_tag AS (SELECT id FROM tags WHERE tag = 'JavaScript'),
+  cpp_tag AS (SELECT id FROM tags WHERE tag = 'C++')
 INSERT INTO warnings (id, warning, grade_category_id, tag_id) VALUES
   (DEFAULT, 'no-mixed-spaces-and-tabs', (SELECT id FROM maintainable_category), (SELECT id FROM javascript_tag)),
   (DEFAULT, 'eol-last', (SELECT id FROM maintainable_category), (SELECT id FROM javascript_tag)),

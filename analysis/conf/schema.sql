@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS warnings (
 -- TODO: make everything nullable (and join non-null stuff)?
 CREATE TABLE IF NOT EXISTS github_search_queries (
   id SERIAL PRIMARY KEY,
-  language TEXT NOT NULL,
+  language_id INTEGER REFERENCES tags NOT NULL,
   filename TEXT NOT NULL,
   min_repo_size_kib INT NOT NULL,
   max_repo_size_kib INT NOT NULL,

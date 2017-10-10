@@ -57,7 +57,7 @@ class Grader(val appConfig: Config,
 
     val sandboxRunner = List("firejail", "--quiet", "--blacklist=/home", s"--whitelist=$scriptsDirectory")
 
-    val scriptArguments = List(s"$maxRepoArchiveSizeBytes", s"$withCleanup")
+    val scriptArguments: List[String] = List(maxRepoArchiveSizeBytes, withCleanup).map(_.toString)
     val script = s"$scriptsDirectory/downloadAndAnalyzeCode.sh" :: scriptArguments
 
     val command: List[String] = timeLimitedRunner ++ sandboxRunner ++ script
