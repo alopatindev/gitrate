@@ -72,6 +72,7 @@ function analyze_cpp () {
     done
 
     local lines_of_code
+    lines_of_code=0
 
     if [ "${#c_files[@]}" != 0 ]; then
         lines_of_code=$(for i in ${!c_files[@]}; do
@@ -80,6 +81,7 @@ function analyze_cpp () {
     fi
     output "C" lines_of_code "${lines_of_code}"
 
+    lines_of_code=0
     if [ "${#cpp_files[@]}" != 0 ]; then
         lines_of_code=$(for i in ${!cpp_files[@]}; do
             compute_lines_of_code_cpp "$i"

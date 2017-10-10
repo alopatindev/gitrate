@@ -80,8 +80,8 @@ function has_invalid_files () {
 
     local count
     count=$({
-        find "${archive_output_dir}" -type f -regextype -posix-extended -iregex '.*\.(so|exe|o)$'
-        find "${archive_output_dir}" -type d node_modules
+        find "${archive_output_dir}" -type f -regextype posix-extended -iregex '.*\.(so|exe|o)$'
+        find "${archive_output_dir}" -type d -name node_modules
     } | wc -l)
 
     if [ "${count}" = 0 ]; then
