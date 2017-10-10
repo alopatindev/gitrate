@@ -60,7 +60,7 @@ function prepare_sources () {
     find "${archive_output_dir}" -type f -name "*.js" -exec node "stripComments.js" "{}" ";"
 }
 
-function compute_lines_of_code () {
+function compute_lines_of_code_js () {
     local archive_output_dir="$1"
     find "${archive_output_dir}" -type f -name "*.js" -print0 | \
         xargs -0 grep --invert-match --regexp='^\s*$' | \
@@ -142,7 +142,7 @@ function analyze_javascript () {
                 output warning "${message}"
             done
 
-            output lines_of_code "$(compute_lines_of_code "${archive_output_dir}")"
+            output lines_of_code "$(compute_lines_of_code_js "${archive_output_dir}")"
         fi
     fi
 }

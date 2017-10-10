@@ -40,9 +40,16 @@ function analyze () {
 
         if [ "${invalid_filenames}" = 0 ]; then
             for language in $(echo "${languages}" | tr "," "\\n"); do
-                if [[ "${language}" = "JavaScript" ]]; then
-                    analyze_javascript "${repository_id}" "${repository_name}" "${login}" "${archive_output_dir}"
-                fi
+                case "${language}" in
+                    "JavaScript" )
+                        analyze_javascript "${repository_id}" "${repository_name}" "${login}" "${archive_output_dir}"
+                        ;;
+                    "C" | "C++" )
+                        analyze_cpp "${repository_id}" "${archive_output_dir}"
+                        ;;
+                    * )
+                        ;;
+                esac
             done
         fi
     fi
@@ -64,7 +71,9 @@ function main () {
     # redirect stderr to null
     exec 2>/dev/null
 
-    source languages/*.sh
+    for i in languages/*.sh; do
+        source "$i"
+    done
 
     while read -r line; do
         analyze "${line}" "${max_archive_size_bytes}" "${cleanup}"

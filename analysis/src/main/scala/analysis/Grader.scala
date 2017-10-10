@@ -31,7 +31,10 @@ class Grader(val appConfig: Config,
     users.flatMap { user: GithubUser =>
       val scriptInput = user.repositories.map { repo =>
         val languages: Set[String] = repo.languages.toSet + repo.primaryLanguage
-        makeScriptInput(repo.idBase64, repo.name, user.login, repo.archiveURL, languages)
+        val languagesWithoutSynonyms: Set[String] =
+          if (languages contains "C") (languages - "C") + "C++"
+          else languages
+        makeScriptInput(repo.idBase64, repo.name, user.login, repo.archiveURL, languagesWithoutSynonyms)
       }
 
       val outputMessages: Dataset[AnalyzerScriptResult] = runAnalyzerScript(scriptInput, withCleanup = true)
