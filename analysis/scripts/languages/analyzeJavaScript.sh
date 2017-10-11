@@ -146,3 +146,5 @@ function analyze_javascript () {
         fi
     fi
 }
+
+analyze_javascript $@

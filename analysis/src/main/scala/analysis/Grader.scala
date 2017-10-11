@@ -31,10 +31,7 @@ class Grader(val appConfig: Config,
     users.flatMap { user: GithubUser =>
       val scriptInput = user.repositories.map { repo =>
         val languages: Set[String] = repo.languages.toSet + repo.primaryLanguage
-        val languagesWithoutSynonyms: Set[String] =
-          if (languages contains "C") (languages - "C") + "C++"
-          else languages
-        makeScriptInput(repo.idBase64, repo.name, user.login, repo.archiveURL, languagesWithoutSynonyms)
+        makeScriptInput(repo.idBase64, repo.name, user.login, repo.archiveURL, languages)
       }
 
       val outputMessages: Dataset[AnalyzerScriptResult] = runAnalyzerScript(scriptInput, withCleanup = true)
@@ -58,7 +55,7 @@ class Grader(val appConfig: Config,
     val sandboxRunner = List("firejail", "--quiet", "--blacklist=/home", s"--whitelist=$scriptsDirectory")
 
     val scriptArguments: List[String] = List(maxRepoArchiveSizeBytes, withCleanup).map(_.toString)
-    val script = s"$scriptsDirectory/downloadAndAnalyzeCode.sh" :: scriptArguments
+    val script = s"$scriptsDirectory/downloadAndAnalyzeCode.py" :: scriptArguments
 
     val command: List[String] = timeLimitedRunner ++ sandboxRunner ++ script
 

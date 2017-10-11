@@ -29,6 +29,7 @@ scalastyle-on-compile.generated.xml
 scalastyle-output.xml
 scalastyle.txt
 target/
+__pycache__/
 
 # For Hive
 TempStatsStore/
