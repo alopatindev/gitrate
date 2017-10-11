@@ -234,6 +234,21 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(warnings.nonEmpty)
       }
 
+      "detect dependencies" in { fixture =>
+        val login = "alopatindev"
+        val languages = Set("C", "C++")
+        val repoName = "qdevicemonitor"
+        val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, languages)
+        val dependencies: Set[String] = results
+          .collect()
+          .filter(result => (languages contains result.language) && result.messageType == "dependence")
+          .map(_.message)
+          .toSet
+        assert(dependencies contains "libc")
+        assert(dependencies contains "STL")
+        assert(dependencies contains "Qt")
+      }
+
     }
 
     "processAnalyzerScriptResults" should {
