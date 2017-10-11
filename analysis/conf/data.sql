@@ -200,7 +200,10 @@ INSERT INTO tags_users_settings (
   TRUE
 );
 
-WITH javascript_tag AS (SELECT id FROM tags WHERE tag = 'JavaScript')
+WITH
+  javascript_tag AS (SELECT id FROM tags WHERE tag = 'JavaScript'),
+  c_tag AS (SELECT id FROM tags WHERE tag = 'C'),
+  cpp_tag AS (SELECT id FROM tags WHERE tag = 'C++')
 INSERT INTO github_search_queries (
   id,
   language_id,
@@ -212,6 +215,10 @@ INSERT INTO github_search_queries (
   pattern,
   enabled
 ) VALUES
+  (DEFAULT, (SELECT id FROM cpp_tag), '.travis.yml', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM cpp_tag), '*.cpp', 10, 5120, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM c_tag), '*.c', 10, 5120, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM c_tag), '.travis.yml', 10, 5120, 0, 100, '', TRUE),
   (DEFAULT, (SELECT id FROM javascript_tag), '.eslintrc.*', 10, 2048, 0, 100, '', TRUE),
   (DEFAULT, (SELECT id FROM javascript_tag), '.travis.yml', 10, 2048, 0, 100, '', TRUE),
   (DEFAULT, (SELECT id FROM javascript_tag), '.codeclimate.yml', 10, 2048, 0, 100, '', TRUE),
