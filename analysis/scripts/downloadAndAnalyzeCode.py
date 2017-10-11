@@ -3,13 +3,14 @@
 import os
 import re
 import shutil
-import subprocess
 import sys
+import languages.subprocessUtils as subprocessUtils
 from languages.analyzeCPP import analyze_cpp
 
 
 def analyze_javascript(repository_id, repository_name, login, archive_output_dir):
-    subprocess_run('bash', 'languages/analyzeJavaScript.sh', repository_id, repository_name, login, archive_output_dir)
+    script = os.path.join('language', 'analyzeJavaScript.sh')
+    subprocessUtils.run('bash', script, repository_id, repository_name, login, archive_output_dir)
 
 
 analyzers = {
@@ -20,12 +21,6 @@ analyzers = {
 
 
 valid_filename_pattern = re.compile(r'^[a-zA-Z0-9/._-]*$')
-
-
-def subprocess_run(*args):
-    args_as_strings = list(map(str, args))
-    pipe = subprocess.Popen(args=args_as_strings, stderr=subprocess.DEVNULL)
-    return pipe.wait()
 
 
 def change_dir(argv):
@@ -59,7 +54,7 @@ def analyze(input_line, max_archive_size_bytes, cleanup):
     archive_output_dir = os.path.join('data', repository_id)
     archive_path = archive_output_dir + '.tar.gz'
 
-    curl_return_code = subprocess_run(
+    curl_return_code = subprocessUtils.run(
         'curl',
         '--silent',
         '--location',
@@ -71,7 +66,7 @@ def analyze(input_line, max_archive_size_bytes, cleanup):
 
     if curl_return_code == 0:
         recreate_dir(archive_output_dir)
-        subprocess_run('tar', '-xzf', archive_path, '-C', archive_output_dir)
+        subprocessUtils.run('tar', '-xzf', archive_path, '-C', archive_output_dir)
 
         filenames = (i.replace(repository_id, '') for i in list_dir_recursively(archive_output_dir))
         invalid_filenames = (i for i in filenames if not valid_filename_pattern.match(i))

@@ -57,7 +57,7 @@ function prepare_sources () {
         -regex '.*/(\.eslint.*|yarn\.lock|.*\.min\.js|package-lock\.json|\.gitignore)$' \
         -delete
 
-    find "${archive_output_dir}" -type f -name "*.js" -exec node "stripComments.js" "{}" ";"
+    find "${archive_output_dir}" -type f -name "*.js" -exec "stripComments.js" "{}" ";"
 }
 
 function compute_lines_of_code_js () {

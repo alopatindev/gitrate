@@ -1,12 +1,12 @@
 import os
 import re
 import shutil
-import subprocess
+import languages.subprocessUtils as subprocessUtils
 import sys
 
 
 whitespace_pattern = re.compile(r'^\s*$')
-include_pattern = re.compile('#include\s*<([a-zA-Z0-9-/.]*)>')
+include_pattern = re.compile('#include\s*<([a-zA-Z0-9/._-]*)>')
 
 
 max_headers_to_check = 100
@@ -78,21 +78,6 @@ def analyze_cpp(repository_id, repository_name, login, archive_output_dir):
     run(repository_id, archive_output_dir)
 
 
-def getoutput(*args):
-    args_as_strings = list(map(str, args))
-    try:
-        pipe = subprocess.Popen(
-            args=args_as_strings,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            universal_newlines=True)
-        stdout, _ = pipe.communicate()
-        return stdout
-    except subprocess.TimeoutExpired:
-        pipe.kill()
-        return ''
-
-
 def compute_lines_of_code_for_file(filename):
     lines = open(filename).readlines()
     result = 0
@@ -161,10 +146,8 @@ def run(repository_id, archive_output_dir):
         'C++': set()
     }
 
-    # TODO: strip comments?
-
     prefix = "WARN"
-    lines = getoutput(
+    lines = subprocessUtils.getoutput(
         'cppcheck',
         '--enable=all',
         '--template=%s;{file};{id}' % prefix,
@@ -186,6 +169,8 @@ def run(repository_id, archive_output_dir):
 
     for language in ['C', 'C++']:
         files_of_language = files[language]
+        for i in files_of_language:
+            subprocessUtils.run('node', 'stripComments.js', i)
 
         for dep in compute_dependencies(files_of_language, language):
             output(language, 'dependence', dep)
