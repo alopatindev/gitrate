@@ -15,7 +15,7 @@ object HttpClientFactory {
   type HttpGetFunction[Output] = (URL, Headers) => Output
   type HttpPostFunction[Input, Output] = (URL, Input, Headers) => Output
 
-  val defaultTimeout: FiniteDuration = 10 seconds
+  val defaultTimeout: FiniteDuration = 1 minute
 
   def getFunction[Output](parse: Parser[Output], timeout: Duration = defaultTimeout): HttpGetFunction[Output] =
     (url: URL, headers: Headers) =>

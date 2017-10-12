@@ -43,7 +43,8 @@ CREATE TABLE IF NOT EXISTS contacts (
   id SERIAL PRIMARY KEY,
   category_id INTEGER REFERENCES contact_categories NOT NULL,
   contact TEXT,
-  user_id INTEGER REFERENCES users NOT NULL
+  user_id INTEGER REFERENCES users NOT NULL,
+  UNIQUE (category_id, contact)
 );
 
 CREATE TABLE IF NOT EXISTS tag_categories (

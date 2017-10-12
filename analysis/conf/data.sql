@@ -185,7 +185,7 @@ INSERT INTO tags_users (
     SELECT tags.id
     FROM tags
     INNER JOIN tag_categories ON tag_categories.id = tags.category_id
-    WHERE tags.tag = 'JavaScript'
+    WHERE tags.tag = 'JavaScript' AND tag_categories.category_rest_id = 'languages'
   ),
   (SELECT id FROM users WHERE github_user_id = 1)
 );

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+# usage: ./downloadAndAnalyzeCode.sh {max-archive-size-bytes} {with-cleanup}
+# example: ./downloadAndAnalyzeCode.sh 2048 true
+# (stdin) input format: "repository_id;repository_name;login;archive_uri;language1,language2,..."
+# (stdout) output format: "repository_id;language;message_type;message"
+
 import os
 import re
 import shutil
@@ -78,9 +83,9 @@ def analyze(input_line, max_archive_size_bytes, cleanup):
             for run_analyzer in analyzers_to_apply:
                 run_analyzer(repository_id, repository_name, login, archive_output_dir)
 
-    if cleanup:
-        shutil.rmtree(archive_output_dir)
-        os.remove(archive_path)
+        if cleanup:
+            shutil.rmtree(archive_output_dir)
+            os.remove(archive_path)
 
 
 def main(argv):
