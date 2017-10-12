@@ -75,7 +75,7 @@ header_prefixes = {
 
 
 def analyze_cpp(repository_id, repository_name, login, archive_output_dir):
-    run(repository_id, archive_output_dir)
+    run(repository_id, repository_name, archive_output_dir)
 
 
 def compute_lines_of_code_for_file(filename):
@@ -136,9 +136,9 @@ def filename_to_language(filename):
     return 'C' if extension == '.c' else 'C++'
 
 
-def run(repository_id, archive_output_dir):
+def run(repository_id, repository_name, archive_output_dir):
     def output(language, message_type, message):
-        text = ';'.join((repository_id, language, message_type, str(message)))
+        text = ';'.join((repository_id, repository_name, language, message_type, str(message)))
         print(text)
 
     files = {

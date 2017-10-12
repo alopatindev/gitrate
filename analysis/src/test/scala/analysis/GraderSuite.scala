@@ -259,7 +259,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val languages = Set("JavaScript")
         val (results: Iterable[GraderResult], _, _, _) =
           fixture.processAnalyzerScriptResults(login, repoName, languages)
-        val tags = results.head.tags
+        val tags = results.head.technologies
         assert(tags contains "ESLint")
         assert(!(tags contains "eslint"))
         assert(!(tags contains "eslint-plugin-promise"))

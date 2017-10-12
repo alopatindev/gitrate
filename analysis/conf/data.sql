@@ -79,6 +79,14 @@ INSERT INTO contact_categories (
   'Email'
 );
 
+INSERT INTO contact_categories (
+  id,
+  category
+) VALUES (
+  DEFAULT,
+  'Website'
+);
+
 INSERT INTO contacts (
   id,
   category_id,

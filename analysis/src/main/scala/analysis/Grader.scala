@@ -19,12 +19,16 @@ class Grader(val appConfig: Config,
   import sparkSession.implicits._
 
   def gradeUsers(users: Iterable[GithubUser]): Iterable[GradedRepository] = {
-    val resultsByRepository: Map[String, Iterable[GraderResult]] = processUsers(users).groupBy(_.idBase64)
+    val resultsByRepository
+      : Map[String, Iterable[GraderResult]] = processUsers(users).groupBy(_.idBase64) // FIXME: remove groupBy?
     for {
       (idBase64, results) <- resultsByRepository
       grades = results.map(_.toGrade).toSeq
-      tags = results.flatMap(_.tags).toSet
-    } yield GradedRepository(idBase64, tags, grades)
+      languages = results.flatMap(_.languages).toSet
+      technologies = results.flatMap(_.technologies).toSet
+      name: String = results.head.name // FIXME
+      linesOfCode = results.head.linesOfCode
+    } yield GradedRepository(idBase64, name, languages, technologies, grades, linesOfCode)
   }
 
   private def processUsers(users: Iterable[GithubUser]): Iterable[GraderResult] = {
@@ -59,13 +63,15 @@ class Grader(val appConfig: Config,
 
     val command: List[String] = timeLimitedRunner ++ sandboxRunner ++ script
 
-    val scriptOutputFields = 4
+    val scriptOutputFields = 5
     scriptInputRDD
       .pipe(command)
       .map(_.split(";"))
       .filter(_.length == scriptOutputFields)
-      .map { case Array(idBase64, language, messageType, message) => (idBase64, language, messageType, message) }
-      .toDF("idBase64", "language", "messageType", "message")
+      .map {
+        case Array(idBase64, name, language, messageType, message) => (idBase64, name, language, messageType, message)
+      }
+      .toDF("idBase64", "name", "language", "messageType", "message")
       .as[AnalyzerScriptResult]
   }
 
@@ -75,12 +81,15 @@ class Grader(val appConfig: Config,
     val zero = lit(literal = 0.0)
     val one = lit(literal = 1.0)
     val results: Dataset[PartialGraderResult] = warningCounts(outputMessages)
-      .join(linesOfCode(outputMessages), $"idBase64" === $"idBase64_" && $"language" === $"language_")
-      .drop("idBase64_", "language_")
-      .join(dependencies(outputMessages), $"idBase64" === $"idBase64_" && $"language" === $"language_")
+      .join(linesOfCode(outputMessages),
+            $"idBase64" === $"idBase64_" && $"name" === $"name_" && $"language" === $"language_")
+      .drop("idBase64_", "name_", "language_")
+      .join(dependencies(outputMessages),
+            $"idBase64" === $"idBase64_" && $"name" === $"name_" && $"language" === $"language_")
       .distinct
       .select(
         $"idBase64",
+        $"name",
         $"language",
         $"dependencies",
         $"gradeCategory",
@@ -89,17 +98,18 @@ class Grader(val appConfig: Config,
       )
       .select(
         $"idBase64",
+        $"name",
         $"language",
         $"dependencies",
         $"gradeCategory",
+        $"linesOfCode",
         greatest(
           zero,
           one - ($"warningsPerCategory" / $"linesOfCode")
         ) as "value"
       )
-      .drop("language")
-      .groupBy($"idBase64", $"gradeCategory", $"dependencies")
-      .agg(avg($"value") as "value")
+      .groupBy($"idBase64", $"name", $"gradeCategory", $"dependencies")
+      .agg(collect_set($"language") as "languages", sum($"linesOfCode") as "linesOfCode", avg($"value") as "value")
       .as[PartialGraderResult]
 
     results.show(truncate = false)
@@ -111,21 +121,22 @@ class Grader(val appConfig: Config,
   private def linesOfCode(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] =
     outputMessages
       .filter($"messageType" === "lines_of_code")
-      .select($"idBase64" as "idBase64_", $"language" as "language_", $"message" as "linesOfCode")
+      .select($"idBase64" as "idBase64_", $"name" as "name_", $"language" as "language_", $"message" as "linesOfCode")
 
   private def dependencies(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] =
     outputMessages
-      .select($"idBase64", $"language", $"message")
+      .select($"idBase64", $"name", $"language", $"message")
       .filter($"messageType" === "dependence")
-      .groupBy($"idBase64", $"language")
+      .groupBy($"idBase64", $"name", $"language")
       .agg(collect_set($"message") as "dependencies")
-      .select($"idBase64" as "idBase64_", $"language" as "language_", $"dependencies")
+      .select($"idBase64" as "idBase64_", $"name" as "name_", $"language" as "language_", $"dependencies")
 
   private def warningCounts(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] = {
     val gradeCategories = "Maintainable,Testable,Robust,Secure,Automated,Performant" // TODO: load from database?
     val zerosPerCategory = outputMessages
       .select(
         $"idBase64",
+        $"name",
         $"language",
         explode(split(lit(gradeCategories), ",")) as "gradeCategory",
         lit(literal = 0) as "count"
@@ -136,10 +147,10 @@ class Grader(val appConfig: Config,
       .join(outputMessages.filter($"messageType" === "warning"),
             $"tag" === $"language" && $"warning" === $"message",
             joinType = "left")
-      .groupBy($"idBase64", $"language", $"gradeCategory")
+      .groupBy($"idBase64", $"name", $"language", $"gradeCategory")
       .count()
       .union(zerosPerCategory)
-      .groupBy($"idBase64", $"language", $"gradeCategory")
+      .groupBy($"idBase64", $"name", $"language", $"gradeCategory")
       .agg($"idBase64", $"language", $"gradeCategory", max("count") as "warningsPerCategory")
   }
 
@@ -152,25 +163,42 @@ class Grader(val appConfig: Config,
 case class WarningToGradeCategory(warning: String, tag: String, gradeCategory: String)
 
 case class Grade(gradeCategory: String, value: Double)
-case class GradedRepository(idBase64: String, tags: Set[String], grades: Seq[Grade])
+case class GradedRepository(idBase64: String,
+                            name: String,
+                            languages: Set[String],
+                            technologies: Set[String],
+                            grades: Seq[Grade],
+                            linesOfCode: Int)
 
-case class PartialGraderResult(idBase64: String, dependencies: Seq[String], gradeCategory: String, value: Double) {
+case class PartialGraderResult(idBase64: String,
+                               name: String,
+                               languages: Seq[String],
+                               dependencies: Seq[String],
+                               gradeCategory: String,
+                               linesOfCode: Double,
+                               value: Double) {
 
   def toGraderResult(weightedTechnologies: Seq[String]): GraderResult = {
-    def dependenceToTag(dependence: String): String =
+    def dependenceToTechnology(dependence: String): String =
       weightedTechnologies
         .find(technology => dependence.toLowerCase contains technology.toLowerCase)
         .getOrElse(dependence)
-    val tags = dependencies.map(dependenceToTag).toSet
-    GraderResult(idBase64, tags, gradeCategory, value)
+    val technologies = dependencies.map(dependenceToTechnology).toSet
+    GraderResult(idBase64, name, languages.toSet, technologies, gradeCategory, linesOfCode.toInt, value)
   }
 
 }
 
-case class GraderResult(idBase64: String, tags: Set[String], gradeCategory: String, value: Double) {
+case class GraderResult(idBase64: String,
+                        name: String,
+                        languages: Set[String],
+                        technologies: Set[String],
+                        gradeCategory: String,
+                        linesOfCode: Int,
+                        value: Double) {
 
   def toGrade: Grade = Grade(gradeCategory, value)
 
 }
 
-case class AnalyzerScriptResult(idBase64: String, language: String, messageType: String, message: String)
+case class AnalyzerScriptResult(idBase64: String, name: String, language: String, messageType: String, message: String)

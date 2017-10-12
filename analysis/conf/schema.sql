@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS developers (
   available_for_relocation BOOLEAN,
   programming_experience_months SMALLINT,
   work_experience_months SMALLINT,
-  description TEXT
+  description TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS contact_categories (

@@ -3,7 +3,7 @@
 # usage: ./downloadAndAnalyzeCode.sh {max-archive-size-bytes} {with-cleanup}
 # example: ./downloadAndAnalyzeCode.sh 2048 true
 # (stdin) input format: "repository_id;repository_name;login;archive_uri;language1,language2,..."
-# (stdout) output format: "repository_id;language;message_type;message"
+# (stdout) output format: "repository_id;repository_name;language;message_type;message"
 
 import os
 import re
@@ -14,7 +14,7 @@ from languages.analyzeCPP import analyze_cpp
 
 
 def analyze_javascript(repository_id, repository_name, login, archive_output_dir):
-    script = os.path.join('language', 'analyzeJavaScript.sh')
+    script = os.path.join('languages', 'analyzeJavaScript.sh')
     subprocessUtils.run('bash', script, repository_id, repository_name, login, archive_output_dir)
 
 

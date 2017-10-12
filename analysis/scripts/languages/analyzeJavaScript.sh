@@ -57,7 +57,7 @@ function prepare_sources () {
         -regex '.*/(\.eslint.*|yarn\.lock|.*\.min\.js|package-lock\.json|\.gitignore)$' \
         -delete
 
-    find "${archive_output_dir}" -type f -name "*.js" -exec "stripComments.js" "{}" ";"
+    find "${archive_output_dir}" -type f -name "*.js" -exec "./stripComments.js" "{}" ";"
 }
 
 function compute_lines_of_code_js () {
@@ -100,7 +100,7 @@ function analyze_javascript () {
     function output () {
         local message_type="$1"
         local message="$2"
-        echo "${repository_id};${language};${message_type};${message}"
+        echo "${repository_id};${repository_name};${language};${message_type};${message}"
     }
 
     local -a unsorted_packagejson_files
