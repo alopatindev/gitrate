@@ -56,7 +56,10 @@ class GithubReceiver(conf: GithubConf,
 
         queries
           .map(_.toString)
-          .foreach(query => makeQuery(query, None))
+          .foreach(query => {
+            logInfo(s"running new query ${query}")
+            makeQuery(query, None)
+          })
 
         helper()
       }
