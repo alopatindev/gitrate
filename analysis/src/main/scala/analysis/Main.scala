@@ -1,10 +1,9 @@
 package analysis
 
 import github.{GithubConf, GithubExtractor, GithubReceiver, GithubSearchInputDStream, GithubSearchQuery, GithubUser}
-import utils.{HttpClientFactory, LogUtils, ResourceUtils, SparkUtils}
+import utils.{HttpClientFactory, LogUtils, SparkUtils}
 import utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 import utils.SparkUtils.RDDUtils
-
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
@@ -13,7 +12,7 @@ import play.api.libs.json.{JsValue, Json}
 
 object Main extends LogUtils with SparkUtils {
 
-  def appConfig: Config = ConfigFactory.load("app.conf")
+  def appConfig: Config = ConfigFactory.load("application.conf")
 
   def main(args: Array[String]): Unit = {
     val httpGetBlocking: HttpGetFunction[JsValue] = HttpClientFactory.getFunction(Json.parse)
@@ -33,13 +32,13 @@ object Main extends LogUtils with SparkUtils {
 
     val warningsToGradeCategory: Dataset[WarningToGradeCategory] =
       Postgres
-        .executeSQL(DatabaseQueries.loadWarningsToGradeCategory)
+        .executeSQL(DatabaseQueries.loadWarningsToGradeCategorySQL)
         .as[WarningToGradeCategory]
         .cache()
 
     val weightedTechnologies: Seq[String] =
       Postgres
-        .executeSQL(DatabaseQueries.loadWeightedTechnologies)
+        .executeSQL(DatabaseQueries.loadWeightedTechnologiesSQL)
         .as[String]
         .collect()
 
@@ -56,7 +55,9 @@ object Main extends LogUtils with SparkUtils {
         val grader = new Grader(appConfig, warningsToGradeCategory, weightedTechnologies)
         val gradedRepositories: Iterable[GradedRepository] = grader.gradeUsers(users)
         logInfo(s"gradedRepositories=${gradedRepositories.toList}")
-      // saveAnalysisResult(users, gradedRepositories)
+        if (gradedRepositories.nonEmpty) {
+          val _ = DatabaseQueries.saveAnalysisResult(users, gradedRepositories)
+        }
       }
 
     ssc.start()
@@ -73,7 +74,7 @@ object Main extends LogUtils with SparkUtils {
     import sparkSession.implicits._
 
     Postgres
-      .executeSQL(DatabaseQueries.loadQueries)
+      .executeSQL(DatabaseQueries.loadQueriesSQL)
       .as[GithubSearchQuery]
       .collect()
       .toSeq
@@ -81,13 +82,5 @@ object Main extends LogUtils with SparkUtils {
 
   // runs on executor
   private def storeReceiverResult(receiver: GithubReceiver, result: String): Unit = receiver.store(result)
-
-  private def saveAnalysisResult(users: Iterable[GithubUser], gradedRepositories: Iterable[GradedRepository]): Unit = {
-    val query = DatabaseQueries.buildAnalysisResultQuery(users, gradedRepositories)
-
-    val _ = Postgres
-      .executeSQL(query)
-      .collect()
-  }
 
 }

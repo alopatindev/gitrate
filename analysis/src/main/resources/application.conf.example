@@ -24,6 +24,9 @@ grader {
 db {
   postgresql {
     user = gitrate
-    database = gitrate
+    database = ${db.postgresql.user}
+    url = "jdbc:postgresql:"${db.postgresql.database}
+    driver = org.postgresql.Driver
+    connectionPool = disabled
   }
 }

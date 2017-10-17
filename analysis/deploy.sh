@@ -5,7 +5,7 @@ set -euo pipefail
 current_dir=$(dirname "$0")
 cd "${current_dir}" || exit 1
 
-CONFIG_PATH="src/main/resources/app.conf"
+CONFIG_PATH="src/main/resources/application.conf"
 APP_NAME="$(grep 'app\.name' "${CONFIG_PATH}" | cut -d ' ' -f3)"
 SCRIPTS_DIR="$(grep 'app\.scriptsDir' "${CONFIG_PATH}" | cut -d ' ' -f3)"
 MAIN_CLASS="gitrate.analysis.Main"

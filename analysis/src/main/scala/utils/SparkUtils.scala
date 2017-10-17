@@ -30,21 +30,18 @@ trait SparkUtils {
 
   object Postgres {
 
+    private val config = appConfig.getConfig("db.postgresql")
+    private val dbOptions = Seq("url", "user", "driver")
+      .map(key => key -> config.getString(key))
+      .toMap
+
     def getTable(table: String): Dataset[Row] =
       getOrCreateSparkSession().read
         .format("jdbc")
-        .options(
-          Map("url" -> s"jdbc:postgresql:$database",
-              "user" -> user,
-              "dbtable" -> table,
-              "driver" -> "org.postgresql.Driver"))
+        .options(dbOptions + ("dbtable" -> table))
         .load
 
     def executeSQL(query: String): Dataset[Row] = getTable(s"""($query) AS tmp""")
-
-    private val config = appConfig.getConfig("db.postgresql")
-    private val database = config.getString("database")
-    private val user = config.getString("user")
 
   }
 
