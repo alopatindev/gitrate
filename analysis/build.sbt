@@ -30,6 +30,7 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-sql" % sparkVersion,
   "org.apache.spark" %% "spark-streaming" % sparkVersion,
   "org.postgresql" % "postgresql" % "42.1.4",
+  "com.typesafe.slick" %% "slick" % "3.2.1",
 
   "com.typesafe.play" %% "play-ws-standalone-json" % "1.0.4",
 

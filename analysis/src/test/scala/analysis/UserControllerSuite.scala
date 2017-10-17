@@ -2,42 +2,42 @@ package analysis
 
 import java.net.URL
 
-import analysis.github.{GithubRepo, GithubUser}
+import analysis.github.{GithubRepository, GithubUser}
 import org.scalatest.{Outcome, fixture}
 
 import scala.concurrent.Future
 
-class DatabaseQueriesSuite extends fixture.WordSpec {
+class UserControllerSuite extends fixture.WordSpec {
 
   import scala.concurrent.Await
   import scala.concurrent.duration.Duration
   import slick.jdbc.PostgresProfile.api._
 
-  "DatabaseQueries" can {
+  "UserControllerSuite" can {
 
     "saveAnalysisResult" should {
 
       "process empty input" in { _ =>
-        val saveResult = DatabaseQueries.saveAnalysisResult(Iterable(), Iterable())
+        val saveResult = UserController.saveAnalysisResult(Iterable(), Iterable())
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = String
         type Container = Vector[T]
-        val query: DatabaseQueries.SQLQuery[Container, T] = sql"""SELECT github_login FROM users""".as[T]
-        val users: Future[Container] = DatabaseQueries.run(query)
+        val query: UserController.SQLQuery[Container, T] = sql"""SELECT github_login FROM users""".as[T]
+        val users: Future[Container] = UserController.runQuery(query)
         val result: Container = Await.result(users, Duration.Inf)
 
         assert(result.isEmpty)
       }
 
       "process single user" in { _ =>
-        val saveResult = DatabaseQueries.saveAnalysisResult(fakeSingleUser, fakeGradedRepositories)
+        val saveResult = UserController.saveAnalysisResult(fakeSingleUser, fakeGradedRepositories)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = String
         type Container = Vector[T]
-        val query: DatabaseQueries.SQLQuery[Container, T] = sql"""SELECT github_login FROM users""".as[T]
-        val users: Future[Container] = DatabaseQueries.run(query)
+        val query: UserController.SQLQuery[Container, T] = sql"""SELECT github_login FROM users""".as[T]
+        val users: Future[Container] = UserController.runQuery(query)
         val result: Container = Await.result(users, Duration.Inf)
 
         assert(result.length === 1)
@@ -45,13 +45,13 @@ class DatabaseQueriesSuite extends fixture.WordSpec {
       }
 
       "process multiple users" in { _ =>
-        val saveResult = DatabaseQueries.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories)
+        val saveResult = UserController.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = String
         type Container = Vector[T]
-        val query: DatabaseQueries.SQLQuery[Container, T] = sql"""SELECT github_login FROM users""".as[T]
-        val users: Future[Container] = DatabaseQueries.run(query)
+        val query: UserController.SQLQuery[Container, T] = sql"""SELECT github_login FROM users""".as[T]
+        val users: Future[Container] = UserController.runQuery(query)
         val result: Container = Await.result(users, Duration.Inf)
 
         assert(result.length === 2)
@@ -59,17 +59,17 @@ class DatabaseQueriesSuite extends fixture.WordSpec {
       }
 
       "save contacts" in { _ =>
-        val saveResult = DatabaseQueries.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories)
+        val saveResult = UserController.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = (String, String, String)
         type Container = Vector[T]
-        val query: DatabaseQueries.SQLQuery[Vector[T], T] = sql"""
+        val query: UserController.SQLQuery[Vector[T], T] = sql"""
           SELECT users.github_login, contact_categories.category, contacts.contact
           FROM users
           INNER JOIN contacts ON contacts.user_id = users.id
           INNER JOIN contact_categories ON contact_categories.id = contacts.category_id""".as[T]
-        val data: Future[Container] = DatabaseQueries.run(query)
+        val data: Future[Container] = UserController.runQuery(query)
         val result: Container = Await.result(data, Duration.Inf)
 
         assert(result.contains((fakeUserA.login, "Email", fakeUserA.email.get)))
@@ -78,19 +78,19 @@ class DatabaseQueriesSuite extends fixture.WordSpec {
       }
 
       "save tags" in { _ =>
-        val saveResult = DatabaseQueries.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories)
+        val saveResult = UserController.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = (String, String, String, String)
         type Container = Vector[T]
-        val query: DatabaseQueries.SQLQuery[Vector[T], T] = sql"""
+        val query: UserController.SQLQuery[Vector[T], T] = sql"""
           SELECT users.github_login, tag_categories.category, tags.tag, tags_users_settings.verified
           FROM users
           INNER JOIN tags_users ON tags_users.user_id = users.id
           INNER JOIN tags ON tags.id = tags_users.tag_id
           INNER JOIN tags_users_settings ON tags_users_settings.id = tags_users.id
           INNER JOIN tag_categories ON tag_categories.id = tags.category_id""".as[T]
-        val data: Future[Container] = DatabaseQueries.run(query)
+        val data: Future[Container] = UserController.runQuery(query)
         val result: Container = Await.result(data, Duration.Inf)
 
         val trueValue = "t"
@@ -101,12 +101,12 @@ class DatabaseQueriesSuite extends fixture.WordSpec {
       }
 
       "save repositories" in { _ =>
-        val saveResult = DatabaseQueries.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories)
+        val saveResult = UserController.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = (String, String, String, String)
         type Container = Vector[T]
-        val query: DatabaseQueries.SQLQuery[Vector[T], T] = sql"""
+        val query: UserController.SQLQuery[Vector[T], T] = sql"""
           SELECT
             users.github_login,
             repositories.raw_id,
@@ -114,7 +114,7 @@ class DatabaseQueriesSuite extends fixture.WordSpec {
             repositories.lines_of_code
           FROM users
           INNER JOIN repositories ON repositories.user_id = users.id""".as[T]
-        val data: Future[Container] = DatabaseQueries.run(query)
+        val data: Future[Container] = UserController.runQuery(query)
         val result: Container = Await.result(data, Duration.Inf)
 
         val repo = fakeUserB.repositories.head
@@ -123,12 +123,12 @@ class DatabaseQueriesSuite extends fixture.WordSpec {
       }
 
       "save grades" in { _ =>
-        val saveResult = DatabaseQueries.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories)
+        val saveResult = UserController.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = (String, String, String)
         type Container = Vector[T]
-        val query: DatabaseQueries.SQLQuery[Vector[T], T] = sql"""
+        val query: UserController.SQLQuery[Vector[T], T] = sql"""
           SELECT
             users.github_login,
             grade_categories.category,
@@ -137,7 +137,7 @@ class DatabaseQueriesSuite extends fixture.WordSpec {
           INNER JOIN repositories ON repositories.user_id = users.id
           INNER JOIN grades ON grades.repository_id = repositories.id
           INNER JOIN grade_categories ON grade_categories.id = grades.category_id""".as[T]
-        val data: Future[Container] = DatabaseQueries.run(query)
+        val data: Future[Container] = UserController.runQuery(query)
         val result: Container = Await.result(data, Duration.Inf)
 
         val repo = fakeUserB.repositories.head
@@ -151,7 +151,7 @@ class DatabaseQueriesSuite extends fixture.WordSpec {
 
   }
 
-  private val fakeRepoA: GithubRepo = GithubRepo(
+  private val fakeRepoA: GithubRepository = GithubRepository(
     idBase64 = "repoA",
     name = "nameA",
     primaryLanguage = "JavaScript",
@@ -161,7 +161,7 @@ class DatabaseQueriesSuite extends fixture.WordSpec {
     1.0
   )
 
-  private val fakeRepoB: GithubRepo = GithubRepo(
+  private val fakeRepoB: GithubRepository = GithubRepository(
     idBase64 = "repoB",
     name = "nameB",
     primaryLanguage = "C",
@@ -171,7 +171,7 @@ class DatabaseQueriesSuite extends fixture.WordSpec {
     ownerToAllCommitsRatio = 0.8
   )
 
-  private val fakeRepoC: GithubRepo = GithubRepo(
+  private val fakeRepoC: GithubRepository = GithubRepository(
     idBase64 = "repoC",
     name = "nameB",
     primaryLanguage = "Bash",
@@ -243,7 +243,7 @@ class DatabaseQueriesSuite extends fixture.WordSpec {
 
   case class FixtureParam()
 
-  override def withFixture(test: OneArgTest): Outcome = {
+  override def withFixture(test: OneArgTest): Outcome = { // scalastyle:ignore
     val username = "gitrate_test"
     val database = username
     val db: Database =

@@ -35,7 +35,7 @@ class Grader(val appConfig: Config,
     users.flatMap { user: GithubUser =>
       val scriptInput = user.repositories.map { repo =>
         val languages: Set[String] = repo.languages.toSet + repo.primaryLanguage
-        makeScriptInput(repo.idBase64, repo.name, user.login, repo.archiveURL, languages)
+        ScriptInput(repo.idBase64, repo.name, user.login, repo.archiveURL, languages).toString
       }
 
       val outputMessages: Dataset[AnalyzerScriptResult] = runAnalyzerScript(scriptInput, withCleanup = true)
@@ -43,12 +43,15 @@ class Grader(val appConfig: Config,
     }
   }
 
-  def makeScriptInput(repoIdBase64: String,
-                      repoName: String,
-                      login: String,
-                      archiveURL: URL,
-                      languages: Set[String]): String =
-    s"$repoIdBase64;$repoName;$login;$archiveURL;${languages.mkString(",")}"
+  case class ScriptInput(repoIdBase64: String,
+                         repoName: String,
+                         login: String,
+                         archiveURL: URL,
+                         languages: Set[String]) {
+
+    override def toString: String = s"$repoIdBase64;$repoName;$login;$archiveURL;${languages.mkString(",")}"
+
+  }
 
   def runAnalyzerScript(scriptInput: Seq[String], withCleanup: Boolean): Dataset[AnalyzerScriptResult] = {
     val scriptInputRDD: RDD[String] = sparkContext.parallelize(scriptInput)

@@ -64,7 +64,7 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
       results.groupBy((result: GithubSearchResult) => (result.ownerId, result.ownerLogin))
     val partialUsers: Iterable[PartialGithubUser] = for {
       ((id, login), results) <- resultsByUser
-      partialRepos = results.map(_.toPartialGithubRepo)
+      partialRepos = results.map(_.toPartialGithubRepository)
     } yield PartialGithubUser(id, login, partialRepos)
 
     val futureUsers: Iterable[Future[Try[GithubUser]]] = partialUsers
@@ -139,7 +139,8 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
       .as[GithubSearchResult]
   }
 
-  def ownerToAllCommitsRatioBlocking(login: String, repoName: String): Try[Double] = // TODO: move to PartialGithubRepo?
+  // TODO: move to PartialGithubRepository?
+  def ownerToAllCommitsRatioBlocking(login: String, repoName: String): Try[Double] =
     Try {
       val future = ownerToAllCommitsRatio(login, repoName)
       Await.result(future, defaultTimeout)
@@ -184,24 +185,25 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
 
 }
 
-case class ParsedUserId(val userType: String, val id: Int)
+case class ParsedUserId(userType: String, id: Int)
 
 case class GithubSearchResult(
-    val ownerId: Int,
-    val ownerLogin: String,
-    val repoIdBase64: String,
-    val repoName: String,
-    val repoPrimaryLanguage: String,
-    val repoLanguages: Seq[String],
-    val defaultBranch: String
+    ownerId: Int,
+    ownerLogin: String,
+    repoIdBase64: String,
+    repoName: String,
+    repoPrimaryLanguage: String,
+    repoLanguages: Seq[String],
+    defaultBranch: String
 ) {
 
-  def toPartialGithubRepo: PartialGithubRepo =
-    PartialGithubRepo(repoIdBase64, repoName, repoPrimaryLanguage, repoLanguages, defaultBranch, ownerLogin)
+  def toPartialGithubRepository: PartialGithubRepository =
+    PartialGithubRepository(repoIdBase64, repoName, repoPrimaryLanguage, repoLanguages, defaultBranch, ownerLogin)
 
 }
 
-case class PartialGithubUser(id: Int, login: String, partialRepositories: Seq[PartialGithubRepo]) extends LogUtils {
+case class PartialGithubUser(id: Int, login: String, partialRepositories: Seq[PartialGithubRepository])
+    extends LogUtils {
 
   def requestDetailsAndFilterRepos(githubExtractor: GithubExtractor): Future[Try[GithubUser]] = Future {
     Try {
@@ -214,8 +216,8 @@ case class PartialGithubUser(id: Int, login: String, partialRepositories: Seq[Pa
         }
       }.logErrors()
 
-      val repositories: Seq[Future[Try[GithubRepo]]] = partialRepositories.map(_.requestDetails(githubExtractor))
-      val filteredRepositories: Seq[GithubRepo] = ConcurrencyUtils
+      val repositories: Seq[Future[Try[GithubRepository]]] = partialRepositories.map(_.requestDetails(githubExtractor))
+      val filteredRepositories: Seq[GithubRepository] = ConcurrencyUtils
         .filterSucceedFutures(repositories, timeout = defaultTimeout)
         .filter(repo => repo.ownerToAllCommitsRatio >= githubExtractor.conf.minOwnerToAllCommitsRatio)
         .toSeq
@@ -242,38 +244,44 @@ case class PartialGithubUser(id: Int, login: String, partialRepositories: Seq[Pa
 
 }
 
-case class PartialGithubRepo(idBase64: String,
-                             name: String,
-                             primaryLanguage: String,
-                             languages: Seq[String],
-                             defaultBranch: String,
-                             ownerLogin: String) {
+case class PartialGithubRepository(idBase64: String,
+                                   name: String,
+                                   primaryLanguage: String,
+                                   languages: Seq[String],
+                                   defaultBranch: String,
+                                   ownerLogin: String) {
 
-  def requestDetails(githubExtractor: GithubExtractor): Future[Try[GithubRepo]] = Future {
+  def requestDetails(githubExtractor: GithubExtractor): Future[Try[GithubRepository]] = Future {
     Try {
       val ownerToAllCommitsRatio = githubExtractor.ownerToAllCommitsRatioBlocking(login = ownerLogin, repoName = name)
       val archiveURL = new URL(s"$githubURL/$ownerLogin/$name/archive/$defaultBranch.tar.gz")
-      GithubRepo(idBase64, name, primaryLanguage, languages, defaultBranch, archiveURL, ownerToAllCommitsRatio.get)
+      GithubRepository(idBase64,
+                       name,
+                       primaryLanguage,
+                       languages,
+                       defaultBranch,
+                       archiveURL,
+                       ownerToAllCommitsRatio.get)
     }
   }
 
 }
 
-case class GithubUser(val id: Int,
-                      val login: String,
-                      val repositories: Seq[GithubRepo],
-                      val fullName: Option[String],
-                      val description: Option[String],
-                      val location: Option[String],
-                      val company: Option[String],
-                      val email: Option[String],
-                      val blog: Option[String],
-                      val jobSeeker: Option[Boolean])
+case class GithubUser(id: Int,
+                      login: String,
+                      repositories: Seq[GithubRepository],
+                      fullName: Option[String],
+                      description: Option[String],
+                      location: Option[String],
+                      company: Option[String],
+                      email: Option[String],
+                      blog: Option[String],
+                      jobSeeker: Option[Boolean])
 
-case class GithubRepo(val idBase64: String,
-                      val name: String,
-                      val primaryLanguage: String,
-                      val languages: Seq[String],
-                      val defaultBranch: String,
-                      val archiveURL: URL,
-                      val ownerToAllCommitsRatio: Double)
+case class GithubRepository(idBase64: String,
+                            name: String,
+                            primaryLanguage: String,
+                            languages: Seq[String],
+                            defaultBranch: String,
+                            archiveURL: URL,
+                            ownerToAllCommitsRatio: Double)

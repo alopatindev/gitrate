@@ -327,7 +327,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
       : (Dataset[AnalyzerScriptResult], (String) => Boolean, (String, String) => Boolean, String) = {
       val repoId = UUID.randomUUID().toString
       val archiveURL = new URL(s"https://github.com/$login/$repoName/archive/$branch.tar.gz")
-      val input: Seq[String] = Seq(grader.makeScriptInput(repoId, repoName, login, archiveURL, languages))
+      val input: Seq[String] = Seq(grader.ScriptInput(repoId, repoName, login, archiveURL, languages).toString)
 
       val results = grader.runAnalyzerScript(input, withCleanup)
 

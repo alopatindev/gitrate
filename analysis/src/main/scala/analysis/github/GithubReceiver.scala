@@ -1,14 +1,12 @@
 package analysis.github
 
 import utils.{LogUtils, ResourceUtils}
-
 import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
-
-import play.api.libs.json.{Json, JsValue, JsLookupResult, JsDefined, JsUndefined, JsBoolean, JsString}
+import play.api.libs.json.{JsBoolean, JsDefined, JsLookupResult, JsString, JsUndefined, JsValue, Json}
 
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext.Implicits.global

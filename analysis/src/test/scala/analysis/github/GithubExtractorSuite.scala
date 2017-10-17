@@ -129,7 +129,7 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
     val users: Iterable[GithubUser] = githubExtractor
       .parseAndFilterUsers(sc.parallelize(input))
 
-    def repositories: Iterable[GithubRepo] = users.flatMap(u => u.repositories)
+    def repositories: Iterable[GithubRepository] = users.flatMap(u => u.repositories)
 
     def containsUser(login: String): Boolean = findUsers(login).nonEmpty
 
@@ -142,7 +142,7 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
 
     def findUser(login: String): Option[GithubUser] = findUsers(login).headOption
 
-    def findRepositories(login: String, repoName: String): Iterable[GithubRepo] =
+    def findRepositories(login: String, repoName: String): Iterable[GithubRepository] =
       findUsers(login).flatMap(user => user.repositories.filter(repo => repo.name == repoName))
   }
 

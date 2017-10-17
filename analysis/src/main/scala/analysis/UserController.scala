@@ -1,34 +1,34 @@
 package analysis
 
 import github.GithubUser
-import utils.{LogUtils, ResourceUtils}
+import utils.LogUtils
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import slick.jdbc.PostgresProfile.api._
 
-object DatabaseQueries extends LogUtils with ResourceUtils {
+object UserController extends LogUtils {
 
   type SQLTransaction[T] = DBIOAction[T, NoStream, Effect with Effect.Transactional]
   type SQLQuery[Container, T] = slick.sql.SqlStreamingAction[Container, T, Effect]
 
   def saveAnalysisResult(users: Iterable[GithubUser], gradedRepositories: Iterable[GradedRepository]): Future[Unit] = {
     val query = buildAnalysisResultQuery(users, gradedRepositories)
-    run(query).map(_ => ())
+    runQuery(query).map(_ => ())
   }
 
-  def run[T](query: SQLTransaction[T]): Future[T] = {
-    val db: Database = Database.forConfig("db.postgresql")
+  def runQuery[T](query: SQLTransaction[T]): Future[T] = {
     val result = db.run(query).logErrors()
     result.onComplete(_ => db.close())
     result
   }
 
-  def run[Container, T](query: SQLQuery[Container, T]): Future[Container] = {
-    val db: Database = Database.forConfig("db.postgresql")
+  def runQuery[Container, T](query: SQLQuery[Container, T]): Future[Container] = {
     val result = db.run(query).logErrors()
     result.onComplete(_ => db.close())
     result
   }
+
+  private def db: Database = Database.forConfig("db.postgresql")
 
   private def buildAnalysisResultQuery(users: Iterable[GithubUser], gradedRepositories: Iterable[GradedRepository]) = {
     val repositories: Map[String, GradedRepository] = gradedRepositories.map(repo => repo.idBase64 -> repo).toMap
@@ -98,7 +98,7 @@ object DatabaseQueries extends LogUtils with ResourceUtils {
       ${user.description.getOrElse("")}
     ) ON CONFLICT (user_id) DO NOTHING"""
 
-  private def buildSaveTagsQuery(category: String, tags: Seq[String], githubUserId: Int) =
+  private def buildSaveTagsQuery(category: String, tags: Seq[String], githubUserId: Int) = // scalastyle:ignore
     DBIO.sequence(for {
       tag <- tags
       keywords = tag.toLowerCase
@@ -211,9 +211,5 @@ object DatabaseQueries extends LogUtils with ResourceUtils {
         $contact,
         (SELECT id FROM users WHERE github_user_id = ${user.id})
       ) ON CONFLICT (category_id, contact) DO NOTHING""")
-
-  val loadQueriesSQL: String = resourceToString("/db/loadQueries.sql")
-  val loadWarningsToGradeCategorySQL: String = resourceToString("/db/loadWarningsToGradeCategory.sql")
-  val loadWeightedTechnologiesSQL: String = resourceToString("/db/loadWeightedTechnologies.sql")
 
 }
