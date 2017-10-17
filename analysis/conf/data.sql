@@ -11,10 +11,9 @@ INSERT INTO users (
   github_user_id,
   github_login,
   full_name,
-  developer,
   updated_by_user,
   viewed
-) VALUES (DEFAULT, 1, 'usertest', 'full name', DEFAULT, DEFAULT, DEFAULT);
+) VALUES (DEFAULT, 1, 'usertest', 'full name', DEFAULT, DEFAULT);
 
 INSERT INTO repositories (
   id,
@@ -103,85 +102,22 @@ INSERT INTO tag_categories (
   id,
   category_rest_id,
   category
-) VALUES (
-  DEFAULT,
-  'languages',
-  'Programming Language'
-);
+)
+VALUES
+  (DEFAULT, 'languages', 'Programming Language'),
+  (DEFAULT, 'technologies', 'Technology');
 
-INSERT INTO tag_categories (
-  id,
-  category_rest_id,
-  category
-) VALUES (
-  DEFAULT,
-  'technologies',
-  'Technology'
-);
-
+WITH
+  language_category AS (SELECT id FROM tag_categories WHERE category_rest_id = 'languages')
 INSERT INTO tags (
   id,
   category_id,
   tag,
-  keywords,
-  weight,
   clicked
-) VALUES (
-  DEFAULT,
-  (SELECT id FROM tag_categories WHERE category_rest_id = 'languages'),
-  'JavaScript',
-  'js;javascript',
-  DEFAULT,
-  DEFAULT
-);
-
-INSERT INTO tags (
-  id,
-  category_id,
-  tag,
-  keywords,
-  weight,
-  clicked
-) VALUES (
-  DEFAULT,
-  (SELECT id FROM tag_categories WHERE category_rest_id = 'languages'),
-  'C++',
-  'cpp',
-  DEFAULT,
-  DEFAULT
-);
-
-INSERT INTO tags (
-  id,
-  category_id,
-  tag,
-  keywords,
-  weight,
-  clicked
-) VALUES (
-  DEFAULT,
-  (SELECT id FROM tag_categories WHERE category_rest_id = 'languages'),
-  'C',
-  'c',
-  DEFAULT,
-  DEFAULT
-);
-
-INSERT INTO tags (
-  id,
-  category_id,
-  tag,
-  keywords,
-  weight,
-  clicked
-) VALUES (
-  DEFAULT,
-  (SELECT id FROM tag_categories WHERE category_rest_id = 'technologies'),
-  'ESLint',
-  'lint;analysis',
-  1,
-  DEFAULT
-);
+) VALUES
+  (DEFAULT, (SELECT id FROM language_category), 'JavaScript', DEFAULT),
+  (DEFAULT, (SELECT id FROM language_category), 'C++', DEFAULT),
+  (DEFAULT, (SELECT id FROM language_category), 'C', DEFAULT);
 
 INSERT INTO tags_users (
   id,
@@ -209,7 +145,7 @@ INSERT INTO tags_users_settings (
 );
 
 WITH
-  javascript_tag AS (SELECT id FROM tags WHERE tag = 'JavaScript'),
+  javascript_tag AS (SELECT id FROM tags WHERE tag = 'JavaScript'), -- FIXME: this doesn't check it's a language
   c_tag AS (SELECT id FROM tags WHERE tag = 'C'),
   cpp_tag AS (SELECT id FROM tags WHERE tag = 'C++')
 INSERT INTO github_search_queries (
@@ -1062,7 +998,6 @@ SELECT
   ) AS total_lines_of_code
 FROM users
 INNER JOIN developers ON developers.user_id = users.id
-WHERE users.developer = TRUE
 ORDER BY
   avg_grade DESC,
   updated_by_analyzer DESC,
@@ -1070,15 +1005,12 @@ ORDER BY
 LIMIT 20
 OFFSET 0;
 
--- tags autocomplete
-SELECT JSON_BUILD_OBJECT('category', tag_categories.category_rest_id, 'tag', tags.tag) as tags
-FROM tags
-JOIN tag_categories ON tag_categories.id = tags.category_id
-WHERE tags.keywords ILIKE '%js%' -- FIXME: index
-ORDER BY
- tags.weight DESC,
- tags.clicked DESC
-LIMIT 5;
+-- TODO: tags autocomplete
+--SELECT JSON_BUILD_OBJECT('category', tag_categories.category_rest_id, 'tag', tags.tag) as tags
+--FROM tags
+--JOIN tag_categories ON tag_categories.id = tags.category_id
+--WHERE tags.keywords ILIKE '%js%' -- FIXME: index
+--LIMIT 5;
 
 -- user page
 SELECT

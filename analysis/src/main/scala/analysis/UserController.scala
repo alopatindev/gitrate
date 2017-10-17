@@ -101,21 +101,16 @@ object UserController extends LogUtils {
   private def buildSaveTagsQuery(category: String, tags: Seq[String], githubUserId: Int) = // scalastyle:ignore
     DBIO.sequence(for {
       tag <- tags
-      keywords = tag.toLowerCase
     } yield sqlu"""
       INSERT INTO tags (
         id,
         category_id,
         tag,
-        keywords,
-        weight,
         clicked
       ) VALUES (
         DEFAULT,
         (SELECT id FROM tag_categories WHERE category_rest_id = $category),
         $tag,
-        $keywords,
-        DEFAULT,
         DEFAULT
       ) ON CONFLICT (category_id, tag) DO NOTHING;
 

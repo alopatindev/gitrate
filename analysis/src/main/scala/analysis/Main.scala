@@ -36,12 +36,6 @@ object Main extends LogUtils with ResourceUtils with SparkUtils {
         .as[WarningToGradeCategory]
         .cache()
 
-    val weightedTechnologies: Seq[String] =
-      Postgres
-        .executeSQL(resourceToString("/db/loadWeightedTechnologies.sql"))
-        .as[String]
-        .collect()
-
     // TODO: checkpoint
     val stream = new GithubSearchInputDStream(ssc, githubConf, loadQueries, storeReceiverResult)
 
@@ -54,7 +48,7 @@ object Main extends LogUtils with ResourceUtils with SparkUtils {
 
         implicit val sparkContext: SparkContext = rawGithubResult.sparkContext
         implicit val sparkSession: SparkSession = rawGithubResult.toSparkSession
-        val grader = new Grader(appConfig, warningsToGradeCategory, weightedTechnologies)
+        val grader = new Grader(appConfig, warningsToGradeCategory)
 
         val gradedRepositories: Iterable[GradedRepository] = grader.gradeUsers(users)
         logInfo(s"gradedRepositories=${gradedRepositories.toList}")

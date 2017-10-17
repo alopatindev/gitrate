@@ -12,9 +12,9 @@ import org.apache.spark.sql.{Dataset, Row, SparkSession}
 
 import java.net.URL
 
-class Grader(val appConfig: Config,
-             warningsToGradeCategory: Dataset[WarningToGradeCategory],
-             weightedTechnologies: Seq[String])(implicit sparkContext: SparkContext, sparkSession: SparkSession) {
+class Grader(val appConfig: Config, warningsToGradeCategory: Dataset[WarningToGradeCategory])(
+    implicit sparkContext: SparkContext,
+    sparkSession: SparkSession) {
 
   import sparkSession.implicits._
 
@@ -118,7 +118,7 @@ class Grader(val appConfig: Config,
     results.show(truncate = false)
     results
       .collect()
-      .map(_.toGraderResult(weightedTechnologies))
+      .map(_.toGraderResult)
   }
 
   private def linesOfCode(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] =
@@ -181,13 +181,8 @@ case class PartialGraderResult(idBase64: String,
                                linesOfCode: Double,
                                value: Double) {
 
-  def toGraderResult(weightedTechnologies: Seq[String]): GraderResult = {
-    def dependenceToTechnology(dependence: String): String =
-      weightedTechnologies
-        .find(technology => dependence.toLowerCase contains technology.toLowerCase)
-        .getOrElse(dependence)
-    val technologies = dependencies.map(dependenceToTechnology).toSet
-    GraderResult(idBase64, name, languages.toSet, technologies, gradeCategory, linesOfCode.toInt, value)
+  def toGraderResult: GraderResult = {
+    GraderResult(idBase64, name, languages.toSet, dependencies.toSet, gradeCategory, linesOfCode.toInt, value)
   }
 
 }

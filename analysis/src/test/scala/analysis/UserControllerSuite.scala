@@ -294,8 +294,6 @@ CREATE TABLE IF NOT EXISTS tags (
   id SERIAL PRIMARY KEY,
   category_id INTEGER REFERENCES tag_categories NOT NULL,
   tag TEXT NOT NULL,
-  keywords TEXT,
-  weight SMALLINT DEFAULT 0 NOT NULL,
   clicked INTEGER DEFAULT 0 NOT NULL,
   UNIQUE (category_id, tag)
 );
@@ -368,15 +366,11 @@ INSERT INTO tags (
   id,
   category_id,
   tag,
-  keywords,
-  weight,
   clicked
 ) VALUES (
   DEFAULT,
   (SELECT id FROM tag_categories WHERE category_rest_id = 'languages'),
   'JavaScript',
-  'js;javascript',
-  DEFAULT,
   DEFAULT
 );
 
@@ -384,15 +378,11 @@ INSERT INTO tags (
   id,
   category_id,
   tag,
-  keywords,
-  weight,
   clicked
 ) VALUES (
   DEFAULT,
   (SELECT id FROM tag_categories WHERE category_rest_id = 'languages'),
   'C++',
-  'cpp',
-  DEFAULT,
   DEFAULT
 );
 
@@ -400,15 +390,11 @@ INSERT INTO tags (
   id,
   category_id,
   tag,
-  keywords,
-  weight,
   clicked
 ) VALUES (
   DEFAULT,
   (SELECT id FROM tag_categories WHERE category_rest_id = 'languages'),
   'C',
-  'c',
-  DEFAULT,
   DEFAULT
 );
 

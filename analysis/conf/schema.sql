@@ -18,7 +18,6 @@ CREATE TABLE IF NOT EXISTS users (
   github_user_id INTEGER UNIQUE NOT NULL,
   github_login TEXT NOT NULL,
   full_name TEXT NOT NULL,
-  developer BOOLEAN DEFAULT TRUE NOT NULL,
   updated_by_user TIMESTAMP,
   viewed INTEGER DEFAULT 0 NOT NULL
 );
@@ -31,7 +30,7 @@ CREATE TABLE IF NOT EXISTS developers (
   available_for_relocation BOOLEAN,
   programming_experience_months SMALLINT,
   work_experience_months SMALLINT,
-  description TEXT NOT NULL
+  description TEXT DEFAULT '' NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS contact_categories (
@@ -57,14 +56,11 @@ CREATE TABLE IF NOT EXISTS tags (
   id SERIAL PRIMARY KEY,
   category_id INTEGER REFERENCES tag_categories NOT NULL,
   tag TEXT NOT NULL,
-  keywords TEXT,
-  weight SMALLINT DEFAULT 0 NOT NULL,
   clicked INTEGER DEFAULT 0 NOT NULL,
   UNIQUE (category_id, tag)
 );
 
 CREATE INDEX IF NOT EXISTS tags_category_id_idx ON tags (category_id);
--- CREATE INDEX IF NOT EXISTS tags_keywords_idx ON tags USING gin (keywords gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS tags_users (
   id SERIAL PRIMARY KEY,
@@ -153,9 +149,7 @@ CREATE OR REPLACE VIEW users_to_tag_details AS
   JOIN tags_users ON tags_users.tag_id = tags.id
   JOIN tags_users_settings ON tags_users_settings.id = tags_users.id
   ORDER BY
-    tags_users_settings.verified DESC,
-    tags.weight DESC,
-    tags.clicked DESC;
+    tags_users_settings.verified DESC;
 
 CREATE OR REPLACE VIEW main_page AS
   SELECT
@@ -202,7 +196,6 @@ CREATE OR REPLACE VIEW main_page AS
     ) AS total_lines_of_code
   FROM users
   INNER JOIN developers ON developers.user_id = users.id
-  WHERE users.developer = TRUE
   ORDER BY
     avg_grade DESC,
     updated_by_analyzer DESC,
