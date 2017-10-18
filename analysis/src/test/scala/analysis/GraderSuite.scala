@@ -264,11 +264,31 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(tags contains "eslint-plugin-promise")
       }
 
+      "return all supported grade types" in { fixture =>
+        val login = "Masth0"
+        val repoName = "TextRandom"
+        val languages = Set("JavaScript")
+        val (results: Iterable[GraderResult], _, _, _) =
+          fixture.processAnalyzerScriptResults(login, repoName, languages)
+        val gradeCategories = results.map(_.gradeCategory).toSet
+        val expectedGradeCategories = Set("Maintainable", "Testable", "Robust", "Secure", "Automated", "Performant")
+        assert(gradeCategories === expectedGradeCategories)
+      }
+
+      "return good grades when code is good" in { fixture =>
+        val login = "Masth0"
+        val repoName = "TextRandom"
+        val languages = Set("JavaScript")
+        val (results: Iterable[GraderResult], _, _, _) =
+          fixture.processAnalyzerScriptResults(login, repoName, languages)
+        val robustGrade = results.find(_.gradeCategory == "Robust").get.value
+        assert(robustGrade >= 0.9 && robustGrade < 1.0)
+      }
+
 //      "return bad grades when code is bad" in { ??? }
-//      "return good grades when code is good" in { ??? }
 //      "return code coverage grade" in { ??? }
-//      "return all supported grade types" in { ??? }
-//      "ignore users with too low total grade" in { ??? }
+
+//      "ignore users with too low average grade" in { ??? }
 //      "detect services used" in {
 //        assert(
 //          fixture.servicesOf("alopatindev", "qdevicemonitor") === Seq("travis-ci.org", "appveyor.com")
@@ -298,6 +318,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
     import sparkSession.implicits._
 
+    // TODO: compute once?
     val appConfig = ConfigFactory.load("GraderFixture.conf")
     val warningsToGradeCategory = sparkContext
       .parallelize(
@@ -307,7 +328,20 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
       .toDF("warning", "tag", "gradeCategory")
       .as[WarningToGradeCategory]
 
-    val grader = new Grader(appConfig, warningsToGradeCategory)
+    val gradeCategories = sparkContext
+      .parallelize(
+        Seq(
+          "Maintainable",
+          "Testable",
+          "Robust",
+          "Secure",
+          "Automated",
+          "Performant"
+        ))
+      .toDF("gradeCategory")
+      .as[GradeCategory]
+
+    val grader = new Grader(appConfig, warningsToGradeCategory, gradeCategories)
     val theFixture = FixtureParam(grader)
     try {
       withFixture(test.toNoArgTest(theFixture))

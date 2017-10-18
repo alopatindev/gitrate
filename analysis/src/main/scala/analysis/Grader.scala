@@ -12,9 +12,9 @@ import org.apache.spark.sql.{Dataset, Row, SparkSession}
 
 import java.net.URL
 
-class Grader(val appConfig: Config, warningsToGradeCategory: Dataset[WarningToGradeCategory])(
-    implicit sparkContext: SparkContext,
-    sparkSession: SparkSession) {
+class Grader(val appConfig: Config,
+             warningsToGradeCategory: Dataset[WarningToGradeCategory],
+             gradeCategories: Dataset[GradeCategory])(implicit sparkContext: SparkContext, sparkSession: SparkSession) {
 
   import sparkSession.implicits._
 
@@ -135,13 +135,13 @@ class Grader(val appConfig: Config, warningsToGradeCategory: Dataset[WarningToGr
       .select($"idBase64" as "idBase64_", $"name" as "name_", $"language" as "language_", $"dependencies")
 
   private def warningCounts(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] = {
-    val gradeCategories = "Maintainable,Testable,Robust,Secure,Automated,Performant" // TODO: load from database?
     val zerosPerCategory = outputMessages
+      .crossJoin(gradeCategories)
       .select(
         $"idBase64",
         $"name",
         $"language",
-        explode(split(lit(gradeCategories), ",")) as "gradeCategory",
+        $"gradeCategory",
         lit(literal = 0) as "count"
       )
       .distinct
@@ -163,6 +163,7 @@ class Grader(val appConfig: Config, warningsToGradeCategory: Dataset[WarningToGr
 
 }
 
+case class GradeCategory(gradeCategory: String)
 case class WarningToGradeCategory(warning: String, tag: String, gradeCategory: String)
 
 case class Grade(gradeCategory: String, value: Double)
