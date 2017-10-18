@@ -13,7 +13,9 @@ object UserController extends LogUtils {
 
   def saveAnalysisResult(users: Iterable[GithubUser], gradedRepositories: Iterable[GradedRepository]): Future[Unit] = {
     val query = buildAnalysisResultQuery(users, gradedRepositories)
-    runQuery(query).map(_ => ())
+    val future = runQuery(query).map(_ => ())
+    future.foreach(_ => logInfo("finished saving analysis result"))
+    future
   }
 
   def runQuery[T](query: SQLTransaction[T]): Future[T] = {
@@ -57,7 +59,6 @@ object UserController extends LogUtils {
       github_user_id,
       github_login,
       full_name,
-      developer,
       updated_by_user,
       viewed
     ) VALUES (
@@ -65,14 +66,12 @@ object UserController extends LogUtils {
       ${user.id},
       ${user.login},
       ${user.fullName.getOrElse("")},
-      TRUE,
       DEFAULT,
       DEFAULT
     ) ON CONFLICT (github_user_id) DO UPDATE
     SET
       github_login = ${user.login},
-      full_name = ${user.fullName.getOrElse("")},
-      developer = TRUE;
+      full_name = ${user.fullName.getOrElse("")};
 
     INSERT INTO developers (
       id,

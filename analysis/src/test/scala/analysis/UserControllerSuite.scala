@@ -156,7 +156,7 @@ class UserControllerSuite extends fixture.WordSpec {
     name = "nameA",
     primaryLanguage = "JavaScript",
     languages = Seq("Perl", "C++"),
-    "developer",
+    defaultBranch = "developer",
     new URL("http://path.to/developer/archive.tar.gz"),
     1.0
   )
@@ -255,7 +255,6 @@ CREATE TABLE IF NOT EXISTS users (
   github_user_id INTEGER UNIQUE NOT NULL,
   github_login TEXT NOT NULL,
   full_name TEXT NOT NULL,
-  developer BOOLEAN DEFAULT TRUE NOT NULL,
   updated_by_user TIMESTAMP,
   viewed INTEGER DEFAULT 0 NOT NULL
 );
@@ -268,7 +267,7 @@ CREATE TABLE IF NOT EXISTS developers (
   available_for_relocation BOOLEAN,
   programming_experience_months SMALLINT,
   work_experience_months SMALLINT,
-  description TEXT NOT NULL
+  description TEXT DEFAULT '' NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS contact_categories (
