@@ -24,11 +24,12 @@ class Grader(val appConfig: Config,
     for {
       (idBase64, results) <- resultsByRepository
       grades = results.map(_.toGrade).toSeq
-      languages = results.flatMap(_.languages).toSet
-      technologies = results.flatMap(_.technologies).toSet
+      languageToTechnologies: Map[String, Set[String]] = results
+        .flatMap(_.languageToTechnologies)
+        .toMap // FIXME: possible loss of technologies
       name: String = results.head.name // FIXME
       linesOfCode = results.head.linesOfCode
-    } yield GradedRepository(idBase64, name, languages, technologies, grades, linesOfCode)
+    } yield GradedRepository(idBase64, name, languageToTechnologies, grades, linesOfCode)
   }
 
   private def processUsers(users: Iterable[GithubUser]): Iterable[GraderResult] = {
@@ -83,18 +84,13 @@ class Grader(val appConfig: Config,
 
     val zero = lit(literal = 0.0)
     val one = lit(literal = 1.0)
-    val results: Dataset[PartialGraderResult] = warningCounts(outputMessages)
+    val graded: Dataset[Row] = warningCounts(outputMessages)
       .join(linesOfCode(outputMessages),
             $"idBase64" === $"idBase64_" && $"name" === $"name_" && $"language" === $"language_")
       .drop("idBase64_", "name_", "language_")
-      .join(dependencies(outputMessages),
-            $"idBase64" === $"idBase64_" && $"name" === $"name_" && $"language" === $"language_")
-      .distinct
       .select(
         $"idBase64",
         $"name",
-        $"language",
-        $"dependencies",
         $"gradeCategory",
         $"warningsPerCategory".cast(DoubleType) as "warningsPerCategory",
         $"linesOfCode".cast(DoubleType) as "linesOfCode"
@@ -102,8 +98,6 @@ class Grader(val appConfig: Config,
       .select(
         $"idBase64",
         $"name",
-        $"language",
-        $"dependencies",
         $"gradeCategory",
         $"linesOfCode",
         greatest(
@@ -111,11 +105,25 @@ class Grader(val appConfig: Config,
           one - ($"warningsPerCategory" / $"linesOfCode")
         ) as "value"
       )
-      .groupBy($"idBase64", $"name", $"gradeCategory", $"dependencies")
-      .agg(collect_set($"language") as "languages", sum($"linesOfCode") as "linesOfCode", avg($"value") as "value")
+      .groupBy($"idBase64", $"name", $"gradeCategory")
+      .agg(sum($"linesOfCode") as "linesOfCode", avg($"value") as "value")
+
+    val languageToDependencies: Dataset[Row] = outputMessages
+      .join(dependencies(outputMessages),
+            $"idBase64" === $"idBase64_" && $"name" === $"name_" && $"language" === $"language_")
+      .drop("idBase64_", "name_")
+      .groupBy($"idBase64", $"name", $"language")
+      .agg(collect_set($"dependencies") as "dependenciesPerLanguage")
+      .select($"idBase64" as "idBase64_",
+              $"name" as "name_",
+              makeMap($"language", $"dependenciesPerLanguage") as "languageToDependencies")
+
+    val results: Dataset[PartialGraderResult] = graded
+      .join(languageToDependencies, $"idBase64" === $"idBase64_" && $"name" === $"name_")
       .as[PartialGraderResult]
 
     results.show(truncate = false)
+
     results
       .collect()
       .map(_.toGraderResult)
@@ -125,6 +133,8 @@ class Grader(val appConfig: Config,
     outputMessages
       .filter($"messageType" === "lines_of_code")
       .select($"idBase64" as "idBase64_", $"name" as "name_", $"language" as "language_", $"message" as "linesOfCode")
+
+  private val makeMap = udf((language: String, dependencies: Seq[Seq[String]]) => Map(language -> dependencies.flatten))
 
   private def dependencies(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] =
     outputMessages
@@ -147,9 +157,12 @@ class Grader(val appConfig: Config,
       .distinct
 
     warningsToGradeCategory
-      .join(outputMessages.filter($"messageType" === "warning"),
-            $"tag" === $"language" && $"warning" === $"message",
-            joinType = "left")
+      .join(
+        outputMessages.filter($"messageType" === "warning").withColumnRenamed("language", "language_"),
+        $"language" === $"language_" && $"warning" === $"message",
+        joinType = "left"
+      )
+      .drop("language_")
       .groupBy($"idBase64", $"name", $"language", $"gradeCategory")
       .count()
       .union(zerosPerCategory)
@@ -164,34 +177,30 @@ class Grader(val appConfig: Config,
 }
 
 case class GradeCategory(gradeCategory: String)
-case class WarningToGradeCategory(warning: String, tag: String, gradeCategory: String)
+case class WarningToGradeCategory(warning: String, language: String, gradeCategory: String)
 
 case class Grade(gradeCategory: String, value: Double)
 case class GradedRepository(idBase64: String,
                             name: String,
-                            languages: Set[String],
-                            technologies: Set[String],
+                            languageToTechnologies: Map[String, Set[String]],
                             grades: Seq[Grade],
                             linesOfCode: Int)
 
 case class PartialGraderResult(idBase64: String,
                                name: String,
-                               languages: Seq[String],
-                               dependencies: Seq[String],
+                               languageToDependencies: Map[String, Seq[String]],
                                gradeCategory: String,
                                linesOfCode: Double,
                                value: Double) {
 
-  def toGraderResult: GraderResult = {
-    GraderResult(idBase64, name, languages.toSet, dependencies.toSet, gradeCategory, linesOfCode.toInt, value)
-  }
+  def toGraderResult: GraderResult =
+    GraderResult(idBase64, name, languageToDependencies.mapValues(_.toSet), gradeCategory, linesOfCode.toInt, value)
 
 }
 
 case class GraderResult(idBase64: String,
                         name: String,
-                        languages: Set[String],
-                        technologies: Set[String],
+                        languageToTechnologies: Map[String, Set[String]],
                         gradeCategory: String,
                         linesOfCode: Int,
                         value: Double) {

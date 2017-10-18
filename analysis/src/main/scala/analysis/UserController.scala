@@ -32,6 +32,21 @@ object UserController extends LogUtils {
 
   private def db: Database = Database.forConfig("db.postgresql")
 
+  // TODO: move to utility module?
+  type MapOfSet[K, V] = Map[K, Set[V]]
+  private def seqOfMapsToMap[K, V](xs: Seq[MapOfSet[K, V]], out: MapOfSet[K, V] = Map[K, Set[V]]()): MapOfSet[K, V] =
+    xs match { // TODO: rewrite with foldLeft?
+      case (x: MapOfSet[K, V]) :: tail =>
+        val newOut = x.foldLeft(out) {
+          case (outA, (key, value)) =>
+            val oldValue: Set[V] = outA.getOrElse(key, Set.empty)
+            val newValue: Set[V] = oldValue ++ value
+            outA + (key -> newValue)
+        }
+        seqOfMapsToMap(tail, newOut)
+      case _ => out
+    }
+
   private def buildAnalysisResultQuery(users: Iterable[GithubUser], gradedRepositories: Iterable[GradedRepository]) = {
     val repositories: Map[String, GradedRepository] = gradedRepositories.map(repo => repo.idBase64 -> repo).toMap
     DBIO
@@ -39,14 +54,13 @@ object UserController extends LogUtils {
         for {
           user <- users.toSeq
           repositoriesOfUser: Seq[GradedRepository] = user.repositories.flatMap(repo => repositories.get(repo.idBase64))
-          languages: Seq[String] = repositoriesOfUser.flatMap(repo => repo.languages)
-          technologies: Seq[String] = repositoriesOfUser.flatMap(repo => repo.technologies)
+          languageToTechnologiesSeq: Seq[MapOfSet[String, String]] = repositoriesOfUser.map(_.languageToTechnologies)
+          languageToTechnologies: MapOfSet[String, String] = seqOfMapsToMap(languageToTechnologiesSeq)
         } yield
           DBIO.seq(
             buildSaveUserQuery(user),
             buildSaveContactsQuery(user),
-            buildSaveTagsQuery("languages", languages, user.id),
-            buildSaveTagsQuery("technologies", technologies, user.id),
+            buildSaveTechnologiesQuery(languageToTechnologies, user.id),
             buildSaveRepositoriesQuery(repositoriesOfUser, user.id),
             buildSaveGradesQuery(repositoriesOfUser)
           ))
@@ -97,56 +111,53 @@ object UserController extends LogUtils {
       ${user.description.getOrElse("")}
     ) ON CONFLICT (user_id) DO NOTHING"""
 
-  private def buildSaveTagsQuery(category: String, tags: Seq[String], githubUserId: Int) = // scalastyle:ignore
+  private def buildSaveTechnologiesQuery(languageToTechnologies: Map[String, Set[String]], githubUserId: Int) =
     DBIO.sequence(for {
-      tag <- tags
+      (language: String, technologies: Set[String]) <- languageToTechnologies
+      technology: String <- technologies
     } yield sqlu"""
-      INSERT INTO tags (
+      INSERT INTO technologies (
         id,
-        category_id,
-        tag,
-        clicked
+        language_id,
+        technology,
+        technology_human_readable
       ) VALUES (
         DEFAULT,
-        (SELECT id FROM tag_categories WHERE category_rest_id = $category),
-        $tag,
+        (SELECT id FROM languages WHERE language = $language),
+        $technology,
         DEFAULT
-      ) ON CONFLICT (category_id, tag) DO NOTHING;
+      ) ON CONFLICT (language_id, technology) DO NOTHING;
 
-      INSERT INTO tags_users (
+      INSERT INTO technologies_users (
         id,
-        tag_id,
+        technology_id,
         user_id
       ) VALUES (
         DEFAULT,
         (
-          SELECT tags.id
-          FROM tags
-          INNER JOIN tag_categories ON tag_categories.id = tags.category_id
-          WHERE tag = $tag AND tag_categories.category_rest_id = $category
+          SELECT technologies.id
+          FROM technologies
+          INNER JOIN languages ON languages.id = technologies.language_id
+          WHERE technologies.technology = $technology AND languages.language = $language
         ),
         (SELECT id FROM users WHERE github_user_id = $githubUserId)
-      ) ON CONFLICT (tag_id, user_id) DO NOTHING;
+      ) ON CONFLICT (technology_id, user_id) DO NOTHING;
 
-      INSERT INTO tags_users_settings (
+      INSERT INTO technologies_users_settings (
         id,
-        tags_users_id,
+        technologies_users_id,
         verified
       ) VALUES (
         DEFAULT,
         (
-          SELECT tags_users.id
-          FROM tags_users
-          INNER JOIN tags ON tags.id = tags_users.tag_id
-          INNER JOIN tag_categories ON tag_categories.id = tags.category_id
-          INNER JOIN users ON users.id = tags_users.user_id
-          WHERE
-            tags.tag = $tag
-            AND tag_categories.category_rest_id = $category
-            AND users.github_user_id = $githubUserId
+          SELECT technologies_users.id
+          FROM technologies_users
+          INNER JOIN technologies ON technologies.id = technologies_users.technology_id
+          INNER JOIN users ON users.id = technologies_users.user_id
+          WHERE technologies.technology = $technology AND users.github_user_id = $githubUserId
         ),
         TRUE
-      ) ON CONFLICT (tags_users_id) DO UPDATE
+      ) ON CONFLICT (technologies_users_id) DO UPDATE
       SET verified = TRUE""")
 
   private def buildSaveGradesQuery(repositoriesOfUser: Seq[GradedRepository]) =

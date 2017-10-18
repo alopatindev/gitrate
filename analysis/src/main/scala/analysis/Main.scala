@@ -32,13 +32,13 @@ object Main extends LogUtils with ResourceUtils with SparkUtils {
 
     val warningsToGradeCategory: Dataset[WarningToGradeCategory] =
       Postgres
-        .executeSQL(resourceToString("/db/loadWarningsToGradeCategory.sql"))
+        .executeSQL(resourceToString("/db/loadWarningsToGradeCategory.sql")) // TODO: test
         .as[WarningToGradeCategory]
         .cache()
 
     val gradeCategories: Dataset[GradeCategory] =
       Postgres
-        .executeSQL("SELECT category AS gradeCategory FROM grade_categories")
+        .executeSQL("SELECT category AS gradeCategory FROM grade_categories") // TODO: test
         .as[GradeCategory]
         .cache()
 
@@ -77,7 +77,7 @@ object Main extends LogUtils with ResourceUtils with SparkUtils {
     val sparkSession = getOrCreateSparkSession()
     import sparkSession.implicits._
 
-    val query: String = resourceToString("/db/loadQueries.sql")
+    val query: String = resourceToString("/db/loadQueries.sql") // TODO: test
     Postgres
       .executeSQL(query)
       .as[GithubSearchQuery]

@@ -77,27 +77,37 @@ class UserControllerSuite extends fixture.WordSpec {
         assert(result.contains((fakeUserB.login, "Website", fakeUserB.blog.get)))
       }
 
-      "save tags" in { _ =>
+      "save languages and technologies" in { _ =>
         val saveResult = UserController.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = (String, String, String, String)
         type Container = Vector[T]
         val query: UserController.SQLQuery[Vector[T], T] = sql"""
-          SELECT users.github_login, tag_categories.category, tags.tag, tags_users_settings.verified
+          SELECT users.github_login, languages.language, technologies.technology, technologies_users_settings.verified
           FROM users
-          INNER JOIN tags_users ON tags_users.user_id = users.id
-          INNER JOIN tags ON tags.id = tags_users.tag_id
-          INNER JOIN tags_users_settings ON tags_users_settings.id = tags_users.id
-          INNER JOIN tag_categories ON tag_categories.id = tags.category_id""".as[T]
+          INNER JOIN technologies_users ON technologies_users.user_id = users.id
+          INNER JOIN technologies ON technologies.id = technologies_users.technology_id
+          INNER JOIN technologies_users_settings ON technologies_users_settings.id = technologies_users.id
+          INNER JOIN languages ON languages.id = technologies.language_id""".as[T]
         val data: Future[Container] = UserController.runQuery(query)
         val result: Container = Await.result(data, Duration.Inf)
 
         val trueValue = "t"
-        val repo = fakeUserA.repositories.head
-        val technologies = fakeGradedRepositories.filter(_.idBase64 == repo.idBase64).head.technologies
-        assert(result.contains((fakeUserA.login, "Programming Language", repo.primaryLanguage, trueValue)))
-        assert(result.contains((fakeUserA.login, "Technology", technologies.head, trueValue)))
+        val user = fakeUserA
+        val repo = user.repositories.head
+
+        val languagesToTechnologies: Map[String, Set[String]] =
+          fakeGradedRepositories.filter(_.idBase64 == repo.idBase64).head.languageToTechnologies
+        assert(languagesToTechnologies.nonEmpty)
+
+        languagesToTechnologies.foreach {
+          case (language, technologies) =>
+            technologies.foreach { technology =>
+              val row = (user.login, language, technology, trueValue)
+              assert(result contains row)
+            }
+        }
       }
 
       "save repositories" in { _ =>
@@ -185,8 +195,7 @@ class UserControllerSuite extends fixture.WordSpec {
     GradedRepository(
       idBase64 = "repoA",
       name = "nameA",
-      languages = Set("JavaScript", "Perl", "C++"),
-      technologies = Set("Boost", "MongoDB"),
+      languageToTechnologies = Map("JavaScript" -> Set("MongoDB"), "Perl" -> Set(), "C++" -> Set("Boost")),
       grades = Seq(Grade("Maintainable", 0.8)),
       linesOfCode = 100
     )
@@ -195,8 +204,7 @@ class UserControllerSuite extends fixture.WordSpec {
     GradedRepository(
       idBase64 = "repoB",
       name = "nameB",
-      languages = Set("C", "Python", "C++"),
-      technologies = Set("PostgreSQL", "Django"),
+      languageToTechnologies = Map("C" -> Set("PostgreSQL"), "Python" -> Set("Django"), "C++" -> Set()),
       grades = Seq(Grade("Maintainable", 0.9), Grade("Performant", 0.8)),
       linesOfCode = 200
     )
@@ -205,8 +213,7 @@ class UserControllerSuite extends fixture.WordSpec {
     GradedRepository(
       idBase64 = "repoC",
       name = "nameC",
-      languages = Set("Bash", "Java"),
-      technologies = Set("Spring"),
+      languageToTechnologies = Map("Bash" -> Set(), "Java" -> Set("Spring")),
       grades = Seq(Grade("Maintainable", 0.95), Grade("Performant", 0.77)),
       linesOfCode = 300
     )
@@ -283,30 +290,36 @@ CREATE TABLE IF NOT EXISTS contacts (
   UNIQUE (category_id, contact)
 );
 
-CREATE TABLE IF NOT EXISTS tag_categories (
+CREATE TABLE IF NOT EXISTS languages (
   id SERIAL PRIMARY KEY,
-  category_rest_id TEXT UNIQUE NOT NULL,
-  category TEXT UNIQUE NOT NULL
+  language TEXT UNIQUE NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS tags (
+CREATE TABLE IF NOT EXISTS technologies (
   id SERIAL PRIMARY KEY,
-  category_id INTEGER REFERENCES tag_categories NOT NULL,
-  tag TEXT NOT NULL,
-  clicked INTEGER DEFAULT 0 NOT NULL,
-  UNIQUE (category_id, tag)
+  language_id INTEGER REFERENCES languages NOT NULL,
+  technology TEXT NOT NULL,
+  technology_human_readable TEXT,
+  UNIQUE (language_id, technology)
 );
 
-CREATE TABLE IF NOT EXISTS tags_users (
+CREATE TABLE IF NOT EXISTS technology_synonyms (
   id SERIAL PRIMARY KEY,
-  tag_id INTEGER REFERENCES tags NOT NULL,
+  technology_id INTEGER REFERENCES technologies NOT NULL,
+  synonym TEXT NOT NULL,
+  UNIQUE (technology_id, synonym)
+);
+
+CREATE TABLE IF NOT EXISTS technologies_users (
+  id SERIAL PRIMARY KEY,
+  technology_id INTEGER REFERENCES technologies NOT NULL,
   user_id INTEGER REFERENCES users NOT NULL,
-  UNIQUE (tag_id, user_id)
+  UNIQUE (technology_id, user_id)
 );
 
-CREATE TABLE IF NOT EXISTS tags_users_settings (
+CREATE TABLE IF NOT EXISTS technologies_users_settings (
   id SERIAL PRIMARY KEY,
-  tags_users_id INTEGER UNIQUE REFERENCES tags_users NOT NULL,
+  technologies_users_id INTEGER UNIQUE REFERENCES technologies_users NOT NULL,
   verified BOOLEAN NOT NULL
 );
 
@@ -341,77 +354,17 @@ INSERT INTO grade_categories (id, category) VALUES
   (DEFAULT, 'Automated'),
   (DEFAULT, 'Performant');
 
-INSERT INTO tag_categories (
-  id,
-  category_rest_id,
-  category
-) VALUES (
-  DEFAULT,
-  'languages',
-  'Programming Language'
-);
+INSERT INTO contact_categories (id, category) VALUES
+  (DEFAULT, 'Email'),
+  (DEFAULT, 'Website');
 
-INSERT INTO tag_categories (
-  id,
-  category_rest_id,
-  category
-) VALUES (
-  DEFAULT,
-  'technologies',
-  'Technology'
-);
-
-INSERT INTO tags (
-  id,
-  category_id,
-  tag,
-  clicked
-) VALUES (
-  DEFAULT,
-  (SELECT id FROM tag_categories WHERE category_rest_id = 'languages'),
-  'JavaScript',
-  DEFAULT
-);
-
-INSERT INTO tags (
-  id,
-  category_id,
-  tag,
-  clicked
-) VALUES (
-  DEFAULT,
-  (SELECT id FROM tag_categories WHERE category_rest_id = 'languages'),
-  'C++',
-  DEFAULT
-);
-
-INSERT INTO tags (
-  id,
-  category_id,
-  tag,
-  clicked
-) VALUES (
-  DEFAULT,
-  (SELECT id FROM tag_categories WHERE category_rest_id = 'languages'),
-  'C',
-  DEFAULT
-);
-
-INSERT INTO contact_categories (
-  id,
-  category
-) VALUES (
-  DEFAULT,
-  'Email'
-);
-
-INSERT INTO contact_categories (
-  id,
-  category
-) VALUES (
-  DEFAULT,
-  'Website'
-);
+INSERT INTO languages (id, language) VALUES
+  (DEFAULT, 'JavaScript'),
+  (DEFAULT, 'Python'),
+  (DEFAULT, 'Java'),
+  (DEFAULT, 'Bash'),
+  (DEFAULT, 'C++'),
+  (DEFAULT, 'C');
 """
 
     val dropData = sqlu"DROP OWNED BY gitrate_test" // FIXME: is there a correct way to unhardcode username here?

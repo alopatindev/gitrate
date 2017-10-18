@@ -46,32 +46,38 @@ CREATE TABLE IF NOT EXISTS contacts (
   UNIQUE (category_id, contact)
 );
 
-CREATE TABLE IF NOT EXISTS tag_categories (
+-- TODO: Developer Level, Location, Company, Position/Occupation
+
+CREATE TABLE IF NOT EXISTS languages (
   id SERIAL PRIMARY KEY,
-  category_rest_id TEXT UNIQUE NOT NULL, -- languages, ...
-  category TEXT UNIQUE NOT NULL -- Programming Language, Technology, Developer Level, Location, Company, Position/Occupation
+  language TEXT UNIQUE NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS tags (
+CREATE TABLE IF NOT EXISTS technologies (
   id SERIAL PRIMARY KEY,
-  category_id INTEGER REFERENCES tag_categories NOT NULL,
-  tag TEXT NOT NULL,
-  clicked INTEGER DEFAULT 0 NOT NULL,
-  UNIQUE (category_id, tag)
+  language_id INTEGER REFERENCES languages NOT NULL,
+  technology TEXT NOT NULL,
+  technology_human_readable TEXT,
+  UNIQUE (language_id, technology)
 );
 
-CREATE INDEX IF NOT EXISTS tags_category_id_idx ON tags (category_id);
-
-CREATE TABLE IF NOT EXISTS tags_users (
+CREATE TABLE IF NOT EXISTS technology_synonyms (
   id SERIAL PRIMARY KEY,
-  tag_id INTEGER REFERENCES tags NOT NULL,
+  technology_id INTEGER REFERENCES technologies NOT NULL,
+  synonym TEXT NOT NULL,
+  UNIQUE (technology_id, synonym)
+);
+
+CREATE TABLE IF NOT EXISTS technologies_users (
+  id SERIAL PRIMARY KEY,
+  technology_id INTEGER REFERENCES technologies NOT NULL,
   user_id INTEGER REFERENCES users NOT NULL,
-  UNIQUE (tag_id, user_id)
+  UNIQUE (technology_id, user_id)
 );
 
-CREATE TABLE IF NOT EXISTS tags_users_settings (
+CREATE TABLE IF NOT EXISTS technologies_users_settings (
   id SERIAL PRIMARY KEY,
-  tags_users_id INTEGER UNIQUE REFERENCES tags_users NOT NULL,
+  technologies_users_id INTEGER UNIQUE REFERENCES technologies_users NOT NULL,
   verified BOOLEAN NOT NULL
 );
 
@@ -106,14 +112,14 @@ CREATE TABLE IF NOT EXISTS warnings (
   id SERIAL PRIMARY KEY,
   warning TEXT NOT NULL, -- TODO: index?
   grade_category_id INTEGER REFERENCES grade_categories NOT NULL,
-  tag_id INTEGER REFERENCES tags NOT NULL,
-  UNIQUE (warning, grade_category_id, tag_id)
+  language_id INTEGER REFERENCES languages NOT NULL,
+  UNIQUE (warning, grade_category_id, language_id)
 );
 
 -- TODO: make everything nullable (and join non-null stuff)?
 CREATE TABLE IF NOT EXISTS github_search_queries (
   id SERIAL PRIMARY KEY,
-  language_id INTEGER REFERENCES tags NOT NULL,
+  language_id INTEGER REFERENCES languages NOT NULL,
   filename TEXT NOT NULL,
   min_repo_size_kib INT NOT NULL,
   max_repo_size_kib INT NOT NULL,
@@ -138,18 +144,44 @@ CREATE OR REPLACE VIEW users_to_grade_details AS
   INNER JOIN grade_categories ON grade_categories.id = grades.category_id
   INNER JOIN repositories ON repositories.id = grades.repository_id;
 
-CREATE OR REPLACE VIEW users_to_tag_details AS
+-- TODO: split into two views? make one based on other?
+CREATE OR REPLACE VIEW users_to_technology_details AS
   SELECT
-    tags_users.user_id,
-    tag_categories.category_rest_id AS tag_category,
-    tags.tag,
-    JSON_BUILD_OBJECT('tag', tags.tag, 'verified', tags_users_settings.verified) as tag_details
-  FROM tags
-  JOIN tag_categories ON tag_categories.id = tags.category_id
-  JOIN tags_users ON tags_users.tag_id = tags.id
-  JOIN tags_users_settings ON tags_users_settings.id = tags_users.id
-  ORDER BY
-    tags_users_settings.verified DESC;
+    technologies_users.user_id,
+    technologies.technology,
+    JSON_BUILD_OBJECT(
+      'technology',
+       COALESCE(technology_human_readable, technology),
+      'verified',
+      technologies_users_settings.verified
+  ) AS technology_details
+  FROM technologies
+  INNER JOIN technologies_users ON technologies_users.technology_id = technologies.id
+  INNER JOIN technologies_users_settings ON technologies_users_settings.id = technologies_users.id
+  ORDER BY technologies_users_settings.verified DESC;
+
+CREATE OR REPLACE VIEW users_to_language_details AS
+  SELECT
+    user_id,
+    language,
+    verified,
+    JSON_BUILD_OBJECT(
+      'language',
+      language,
+      'verified',
+      verified
+    ) AS language_details
+  FROM ( -- TODO: move to separate view?
+    SELECT DISTINCT
+      technologies_users.user_id,
+      languages.language,
+      technologies_users_settings.verified
+    FROM technologies_users
+    INNER JOIN technologies_users_settings ON technologies_users_settings.technologies_users_id = technologies_users.id
+    INNER JOIN technologies ON technologies.id = technologies_users.technology_id
+    INNER JOIN languages ON languages.id = technologies.language_id
+    ORDER BY technologies_users_settings.verified DESC
+  ) AS users_to_language;
 
 CREATE OR REPLACE VIEW main_page AS
   SELECT
@@ -159,19 +191,15 @@ CREATE OR REPLACE VIEW main_page AS
     developers.available_for_relocation,
     developers.job_seeker,
     ARRAY(
-      SELECT tag_details
-      FROM users_to_tag_details
-      WHERE
-        users_to_tag_details.tag_category = 'technologies'
-        AND users_to_tag_details.user_id = users.id
+      SELECT technology_details
+      FROM users_to_technology_details
+      WHERE users_to_technology_details.user_id = users.id
       LIMIT 5
     ) AS technologies,
     ARRAY(
-      SELECT tag_details
-      FROM users_to_tag_details
-      WHERE
-        users_to_tag_details.tag_category = 'languages'
-        AND users_to_tag_details.user_id = users.id
+      SELECT language_details
+      FROM users_to_language_details
+      WHERE users_to_language_details.user_id = users.id
       LIMIT 5
     ) AS languages,
     ARRAY(

@@ -59,18 +59,17 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(messages.isEmpty)
       }
 
-      "ignore repository with files or directories that are normally ignored (*.o, *.so, node_modules, etc.)" in {
-        fixture =>
-          ???
-      }
-
-      "process multiple languages" in { fixture =>
-        ???
-      }
-
-      "ignore repository if script fails" in { fixture =>
-        ???
-      }
+//      "ignore repository with files or directories that are normally ignored (*.o, *.so, node_modules, etc.)" in { fixture =>
+//          ???
+//      }
+//
+//      "process multiple languages" in { fixture =>
+//        ???
+//      }
+//
+//      "ignore repository if script fails" in { fixture =>
+//        ???
+//      }
 
     }
 
@@ -104,9 +103,9 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(!(dependencies contains "PhantomJS"))
       }
 
-      "ignore scoped dependencies" in { fixture =>
-        ???
-      }
+//      "ignore scoped dependencies" in { fixture =>
+//        ???
+//      }
 
       "detect Node.js dependence" in { fixture =>
         def hasDependence(login: String, repoName: String): Boolean = {
@@ -256,12 +255,12 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
       "detect parent dependencies" in { fixture =>
         val login = "alopatindev"
         val repoName = "find-telegram-bot"
-        val languages = Set("JavaScript")
+        val language = "JavaScript"
         val (results: Iterable[GraderResult], _, _, _) =
-          fixture.processAnalyzerScriptResults(login, repoName, languages)
-        val tags = results.head.technologies
-        assert(tags contains "eslint")
-        assert(tags contains "eslint-plugin-promise")
+          fixture.processAnalyzerScriptResults(login, repoName, Set(language))
+        val technologies: Set[String] = results.head.languageToTechnologies(language)
+        assert(technologies contains "eslint")
+        assert(technologies contains "eslint-plugin-promise")
       }
 
       "return all supported grade types" in { fixture =>
@@ -318,14 +317,13 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
     import sparkSession.implicits._
 
-    // TODO: compute once?
     val appConfig = ConfigFactory.load("GraderFixture.conf")
     val warningsToGradeCategory = sparkContext
       .parallelize(
         Seq(
           ("eqeqeq", "JavaScript", "Robust")
         ))
-      .toDF("warning", "tag", "gradeCategory")
+      .toDF("warning", "language", "gradeCategory")
       .as[WarningToGradeCategory]
 
     val gradeCategories = sparkContext
