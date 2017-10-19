@@ -32,11 +32,15 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val login = "alopatindev"
         val repoName = "find-telegram-bot"
         val languages = Set("JavaScript")
+
         val (results, pathExists, _, _) = fixture.runAnalyzerScript(login, repoName, languages)
-        val _ = results.collect()
+        val idBase64 = results.collect().head.idBase64
+        val archiveName = s"$idBase64.tar.gz"
+
         val directoryExists = pathExists("/")
-        // TODO: archive
-        assert(!directoryExists)
+        val archiveExists = pathExists(s"/../../$archiveName")
+
+        assert(!directoryExists && !archiveExists)
       }
 
       "run with time limit" in { fixture =>
