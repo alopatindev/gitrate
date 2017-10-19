@@ -72,8 +72,7 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
       .map((user: PartialGithubUser) => user.requestDetailsAndFilterRepos(this))
 
     val users: Iterable[GithubUser] = ConcurrencyUtils.filterSucceedFutures(futureUsers, timeout = defaultTimeout)
-
-    users.filter((user: GithubUser) => user.repositories.length >= conf.minTargetRepositories) // TODO: use details
+    users.filter((user: GithubUser) => user.repositories.length >= conf.minTargetRepositories)
   }
 
   private def filterRepos(rawNodes: Dataset[Row], prefix: String)(implicit sparkSession: SparkSession): Dataset[Row] = {
@@ -139,7 +138,6 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
       .as[GithubSearchResult]
   }
 
-  // TODO: move to PartialGithubRepository?
   def ownerToAllCommitsRatioBlocking(login: String, repoName: String): Try[Double] =
     Try {
       val future = ownerToAllCommitsRatio(login, repoName)
