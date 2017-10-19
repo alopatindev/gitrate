@@ -1,8 +1,9 @@
-package analysis
+package controllers
 
 import java.net.URL
 
 import analysis.github.{GithubRepository, GithubUser}
+import analysis.{Grade, GradedRepository}
 import org.scalatest.{Outcome, fixture}
 
 import scala.concurrent.Future

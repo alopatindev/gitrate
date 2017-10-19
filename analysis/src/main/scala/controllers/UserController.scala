@@ -1,6 +1,7 @@
-package analysis
+package controllers
 
-import github.GithubUser
+import analysis.github.GithubUser
+import analysis.GradedRepository
 import utils.CollectionUtils._
 import utils.LogUtils
 
@@ -21,18 +22,20 @@ object UserController extends LogUtils {
   }
 
   def runQuery[T](query: SQLTransaction[T]): Future[T] = {
+    val db = createDatabase()
     val result = db.run(query).logErrors()
     result.onComplete(_ => db.close())
     result
   }
 
   def runQuery[Container, T](query: SQLQuery[Container, T]): Future[Container] = {
+    val db = createDatabase()
     val result = db.run(query).logErrors()
     result.onComplete(_ => db.close())
     result
   }
 
-  private def db: Database = Database.forConfig("db.postgresql")
+  private def createDatabase(): Database = Database.forConfig("db.postgresql")
 
   private def buildAnalysisResultQuery(users: Iterable[GithubUser], gradedRepositories: Iterable[GradedRepository]) = {
     val repositories: Map[String, GradedRepository] = gradedRepositories.map(repo => repo.idBase64 -> repo).toMap

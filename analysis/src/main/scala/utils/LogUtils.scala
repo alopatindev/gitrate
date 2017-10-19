@@ -11,7 +11,7 @@ trait LogUtils {
   @transient lazy val log: Logger =
     LogManager.getLogger(getClass.getSimpleName)
 
-  val maxDebugLength = 200
+  val maxDebugLength = 2000
 
   def logError(throwable: Throwable): Unit = log.error(throwable.getMessage, throwable)
 

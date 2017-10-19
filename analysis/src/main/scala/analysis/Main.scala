@@ -1,5 +1,6 @@
 package analysis
 
+import controllers.UserController
 import github.{GithubConf, GithubExtractor, GithubReceiver, GithubSearchInputDStream, GithubSearchQuery, GithubUser}
 import utils.{HttpClientFactory, LogUtils, ResourceUtils, SparkUtils}
 import utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
@@ -47,7 +48,7 @@ object Main extends LogUtils with ResourceUtils with SparkUtils {
 
     stream
       .foreachRDD { rawGithubResult: RDD[String] =>
-        val currentRepositories: Dataset[Row] = Postgres.getTable("repositories")
+        val currentRepositories: Dataset[Row] = Postgres.getTable("repositories") // FIXME
         val githubExtractor = new GithubExtractor(githubConf, currentRepositories)
 
         val users: Iterable[GithubUser] = githubExtractor.parseAndFilterUsers(rawGithubResult)
@@ -57,7 +58,7 @@ object Main extends LogUtils with ResourceUtils with SparkUtils {
         val grader = new Grader(appConfig, warningsToGradeCategory, gradeCategories)
 
         val gradedRepositories: Iterable[GradedRepository] = grader.processUsers(users)
-        logInfo(s"gradedRepositories=${gradedRepositories.toList}")
+        logInfo(s"graded ${gradedRepositories.size} repositories!")
 
         if (gradedRepositories.nonEmpty) {
           val _ = UserController.saveAnalysisResult(users, gradedRepositories)
