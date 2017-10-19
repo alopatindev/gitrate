@@ -1,15 +1,12 @@
 package analysis
 
 import github.GithubUser
-
 import com.typesafe.config.Config
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.types.{DoubleType, IntegerType}
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
-
 import java.net.URL
 
 class Grader(val appConfig: Config,
@@ -18,21 +15,7 @@ class Grader(val appConfig: Config,
 
   import sparkSession.implicits._
 
-  def gradeUsers(users: Iterable[GithubUser]): Iterable[GradedRepository] = {
-    val resultsByRepository
-      : Map[String, Iterable[GraderResult]] = processUsers(users).groupBy(_.idBase64) // FIXME: remove groupBy?
-    for {
-      (idBase64, results) <- resultsByRepository
-      grades = results.map(_.toGrade).toSeq
-      languageToTechnologies: Map[String, Set[String]] = results
-        .flatMap(_.languageToTechnologies)
-        .toMap // FIXME: possible loss of technologies
-      name: String = results.head.name // FIXME
-      linesOfCode = results.head.linesOfCode
-    } yield GradedRepository(idBase64, name, languageToTechnologies, grades, linesOfCode)
-  }
-
-  private def processUsers(users: Iterable[GithubUser]): Iterable[GraderResult] = {
+  def processUsers(users: Iterable[GithubUser]): Iterable[GradedRepository] = {
     users.flatMap { user: GithubUser =>
       val scriptInput = user.repositories.map { repo =>
         val languages: Set[String] = repo.languages.toSet + repo.primaryLanguage
@@ -79,7 +62,7 @@ class Grader(val appConfig: Config,
       .as[AnalyzerScriptResult]
   }
 
-  def processAnalyzerScriptResults(outputMessages: Dataset[AnalyzerScriptResult]): Iterable[GraderResult] = {
+  def processAnalyzerScriptResults(outputMessages: Dataset[AnalyzerScriptResult]): Iterable[GradedRepository] = {
     outputMessages.cache()
 
     val zero = lit(literal = 0.0)
@@ -106,9 +89,11 @@ class Grader(val appConfig: Config,
         ) as "value"
       )
       .groupBy($"idBase64", $"name", $"gradeCategory")
-      .agg(sum($"linesOfCode") as "linesOfCode", avg($"value") as "value")
+      .agg(sum($"linesOfCode").cast(IntegerType) as "linesOfCode", avg($"value") as "value")
+      .groupBy($"idBase64", $"name", $"linesOfCode")
+      .agg(collect_list(struct($"gradeCategory", $"value")) as "grades")
 
-    val languageToDependencies: Dataset[Row] = outputMessages
+    val languageToTechnologies: Dataset[Row] = outputMessages
       .join(dependencies(outputMessages),
             $"idBase64" === $"idBase64_" && $"name" === $"name_" && $"language" === $"language_")
       .drop("idBase64_", "name_")
@@ -116,25 +101,23 @@ class Grader(val appConfig: Config,
       .agg(collect_set($"dependencies") as "dependenciesPerLanguage")
       .select($"idBase64" as "idBase64_",
               $"name" as "name_",
-              makeMap($"language", $"dependenciesPerLanguage") as "languageToDependencies")
+              toMapOfSeq($"language", $"dependenciesPerLanguage") as "languageToTechnologies")
 
-    val results: Dataset[PartialGraderResult] = graded
-      .join(languageToDependencies, $"idBase64" === $"idBase64_" && $"name" === $"name_")
-      .as[PartialGraderResult]
+    val results: Dataset[GradedRepository] = graded
+      .join(languageToTechnologies, $"idBase64" === $"idBase64_" && $"name" === $"name_")
+      .as[GradedRepository]
 
     results.show(truncate = false)
-
-    results
-      .collect()
-      .map(_.toGraderResult)
+    results.collect()
   }
+
+  private[this] val toMapOfSeq = udf(
+    (language: String, dependencies: Seq[Seq[String]]) => Map(language -> dependencies.flatten))
 
   private def linesOfCode(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] =
     outputMessages
       .filter($"messageType" === "lines_of_code")
       .select($"idBase64" as "idBase64_", $"name" as "name_", $"language" as "language_", $"message" as "linesOfCode")
-
-  private val makeMap = udf((language: String, dependencies: Seq[Seq[String]]) => Map(language -> dependencies.flatten))
 
   private def dependencies(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] =
     outputMessages
@@ -182,31 +165,8 @@ case class WarningToGradeCategory(warning: String, language: String, gradeCatego
 case class Grade(gradeCategory: String, value: Double)
 case class GradedRepository(idBase64: String,
                             name: String,
-                            languageToTechnologies: Map[String, Set[String]],
+                            languageToTechnologies: Map[String, Seq[String]],
                             grades: Seq[Grade],
                             linesOfCode: Int)
-
-case class PartialGraderResult(idBase64: String,
-                               name: String,
-                               languageToDependencies: Map[String, Seq[String]],
-                               gradeCategory: String,
-                               linesOfCode: Double,
-                               value: Double) {
-
-  def toGraderResult: GraderResult =
-    GraderResult(idBase64, name, languageToDependencies.mapValues(_.toSet), gradeCategory, linesOfCode.toInt, value)
-
-}
-
-case class GraderResult(idBase64: String,
-                        name: String,
-                        languageToTechnologies: Map[String, Set[String]],
-                        gradeCategory: String,
-                        linesOfCode: Int,
-                        value: Double) {
-
-  def toGrade: Grade = Grade(gradeCategory, value)
-
-}
 
 case class AnalyzerScriptResult(idBase64: String, name: String, language: String, messageType: String, message: String)

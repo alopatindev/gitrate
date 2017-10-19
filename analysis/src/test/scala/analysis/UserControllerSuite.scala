@@ -97,7 +97,7 @@ class UserControllerSuite extends fixture.WordSpec {
         val user = fakeUserA
         val repo = user.repositories.head
 
-        val languagesToTechnologies: Map[String, Set[String]] =
+        val languagesToTechnologies: Map[String, Seq[String]] =
           fakeGradedRepositories.filter(_.idBase64 == repo.idBase64).head.languageToTechnologies
         assert(languagesToTechnologies.nonEmpty)
 
@@ -195,7 +195,7 @@ class UserControllerSuite extends fixture.WordSpec {
     GradedRepository(
       idBase64 = "repoA",
       name = "nameA",
-      languageToTechnologies = Map("JavaScript" -> Set("MongoDB"), "Perl" -> Set(), "C++" -> Set("Boost")),
+      languageToTechnologies = Map("JavaScript" -> Seq("MongoDB"), "Perl" -> Seq(), "C++" -> Seq("Boost")),
       grades = Seq(Grade("Maintainable", 0.8)),
       linesOfCode = 100
     )
@@ -204,7 +204,7 @@ class UserControllerSuite extends fixture.WordSpec {
     GradedRepository(
       idBase64 = "repoB",
       name = "nameB",
-      languageToTechnologies = Map("C" -> Set("PostgreSQL"), "Python" -> Set("Django"), "C++" -> Set()),
+      languageToTechnologies = Map("C" -> Seq("PostgreSQL"), "Python" -> Seq("Django"), "C++" -> Seq()),
       grades = Seq(Grade("Maintainable", 0.9), Grade("Performant", 0.8)),
       linesOfCode = 200
     )
@@ -213,7 +213,7 @@ class UserControllerSuite extends fixture.WordSpec {
     GradedRepository(
       idBase64 = "repoC",
       name = "nameC",
-      languageToTechnologies = Map("Bash" -> Set(), "Java" -> Set("Spring")),
+      languageToTechnologies = Map("Bash" -> Seq(), "Java" -> Seq("Spring")),
       grades = Seq(Grade("Maintainable", 0.95), Grade("Performant", 0.77)),
       linesOfCode = 300
     )

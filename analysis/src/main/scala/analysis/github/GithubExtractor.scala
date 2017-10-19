@@ -164,7 +164,7 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
     conf.httpGetBlocking(url, headers)
   }
 
-  private val isLanguageSupported = udf((language: String) => conf.supportedLanguages contains language)
+  private[this] val isLanguageSupported = udf((language: String) => conf.supportedLanguages contains language)
 
   private val parseUserId = udf((idBase64: String) =>
     new String(decodeBase64(idBase64)) match {

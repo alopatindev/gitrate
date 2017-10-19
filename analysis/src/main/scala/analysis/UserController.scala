@@ -1,7 +1,9 @@
 package analysis
 
 import github.GithubUser
+import utils.CollectionUtils._
 import utils.LogUtils
+
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import slick.jdbc.PostgresProfile.api._
@@ -32,21 +34,6 @@ object UserController extends LogUtils {
 
   private def db: Database = Database.forConfig("db.postgresql")
 
-  // TODO: move to utility module?
-  type MapOfSet[K, V] = Map[K, Set[V]]
-  private def seqOfMapsToMap[K, V](xs: Seq[MapOfSet[K, V]], out: MapOfSet[K, V] = Map[K, Set[V]]()): MapOfSet[K, V] =
-    xs match { // TODO: rewrite with foldLeft?
-      case (x: MapOfSet[K, V]) :: tail =>
-        val newOut = x.foldLeft(out) {
-          case (outA, (key, value)) =>
-            val oldValue: Set[V] = outA.getOrElse(key, Set.empty)
-            val newValue: Set[V] = oldValue ++ value
-            outA + (key -> newValue)
-        }
-        seqOfMapsToMap(tail, newOut)
-      case _ => out
-    }
-
   private def buildAnalysisResultQuery(users: Iterable[GithubUser], gradedRepositories: Iterable[GradedRepository]) = {
     val repositories: Map[String, GradedRepository] = gradedRepositories.map(repo => repo.idBase64 -> repo).toMap
     DBIO
@@ -54,8 +41,8 @@ object UserController extends LogUtils {
         for {
           user <- users.toSeq
           repositoriesOfUser: Seq[GradedRepository] = user.repositories.flatMap(repo => repositories.get(repo.idBase64))
-          languageToTechnologiesSeq: Seq[MapOfSet[String, String]] = repositoriesOfUser.map(_.languageToTechnologies)
-          languageToTechnologies: MapOfSet[String, String] = seqOfMapsToMap(languageToTechnologiesSeq)
+          languageToTechnologiesSeq: Seq[MapOfSeq[String, String]] = repositoriesOfUser.map(_.languageToTechnologies)
+          languageToTechnologies: MapOfSeq[String, String] = seqOfMapsToMap(languageToTechnologiesSeq)
         } yield
           DBIO.seq(
             buildSaveUserQuery(user),
@@ -111,9 +98,9 @@ object UserController extends LogUtils {
       ${user.description.getOrElse("")}
     ) ON CONFLICT (user_id) DO NOTHING"""
 
-  private def buildSaveTechnologiesQuery(languageToTechnologies: Map[String, Set[String]], githubUserId: Int) =
+  private def buildSaveTechnologiesQuery(languageToTechnologies: Map[String, Seq[String]], githubUserId: Int) =
     DBIO.sequence(for {
-      (language: String, technologies: Set[String]) <- languageToTechnologies
+      (language: String, technologies: Seq[String]) <- languageToTechnologies
       technology: String <- technologies
     } yield sqlu"""
       INSERT INTO technologies (

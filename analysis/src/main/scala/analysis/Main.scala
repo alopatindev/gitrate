@@ -56,7 +56,7 @@ object Main extends LogUtils with ResourceUtils with SparkUtils {
         implicit val sparkSession: SparkSession = rawGithubResult.toSparkSession
         val grader = new Grader(appConfig, warningsToGradeCategory, gradeCategories)
 
-        val gradedRepositories: Iterable[GradedRepository] = grader.gradeUsers(users)
+        val gradedRepositories: Iterable[GradedRepository] = grader.processUsers(users)
         logInfo(s"gradedRepositories=${gradedRepositories.toList}")
 
         if (gradedRepositories.nonEmpty) {

@@ -59,7 +59,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(messages.isEmpty)
       }
 
-//      "ignore repository with files or directories that are normally ignored (*.o, *.so, node_modules, etc.)" in { fixture =>
+//      "ignore repositories with generated/downloaded files (*.o, *.so, node_modules, etc.)" in { fixture =>
 //          ???
 //      }
 //
@@ -92,15 +92,15 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val repoName = "find-telegram-bot"
         val languages = Set("JavaScript")
         val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, languages)
-        val dependencies: Set[String] = results
+        val dependencies: Seq[String] = results
           .collect()
           .filter(result => (languages contains result.language) && result.messageType == "dependence")
           .map(_.message)
-          .toSet
         assert(dependencies contains "phantom")
         assert(dependencies contains "eslint")
         assert(dependencies contains "eslint-plugin-promise")
         assert(!(dependencies contains "PhantomJS"))
+        assert(dependencies.toSet.size === dependencies.length)
       }
 
 //      "ignore scoped dependencies" in { fixture =>
@@ -219,7 +219,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
           .filter(result => (languages contains result.language) && result.messageType == "lines_of_code")
           .map(_.message.toInt)
           .take(2)
-        assert(linesOfCode.length == 2 && linesOfCode.forall(_ > 0))
+        assert(linesOfCode.length === 2 && linesOfCode.forall(_ > 0))
       }
 
       "detect warnings" in { fixture =>
@@ -256,9 +256,9 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val login = "alopatindev"
         val repoName = "find-telegram-bot"
         val language = "JavaScript"
-        val (results: Iterable[GraderResult], _, _, _) =
+        val (results: Iterable[GradedRepository], _, _, _) =
           fixture.processAnalyzerScriptResults(login, repoName, Set(language))
-        val technologies: Set[String] = results.head.languageToTechnologies(language)
+        val technologies: Seq[String] = results.head.languageToTechnologies(language)
         assert(technologies contains "eslint")
         assert(technologies contains "eslint-plugin-promise")
       }
@@ -267,9 +267,13 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val login = "Masth0"
         val repoName = "TextRandom"
         val languages = Set("JavaScript")
-        val (results: Iterable[GraderResult], _, _, _) =
+        val (results: Iterable[GradedRepository], _, _, _) =
           fixture.processAnalyzerScriptResults(login, repoName, languages)
-        val gradeCategories = results.map(_.gradeCategory).toSet
+
+        val gradeCategoriesSeq = results.head.grades.map(_.gradeCategory)
+        val gradeCategories = gradeCategoriesSeq.toSet
+        assert(gradeCategoriesSeq.length === gradeCategories.size)
+
         val expectedGradeCategories = Set("Maintainable", "Testable", "Robust", "Secure", "Automated", "Performant")
         assert(gradeCategories === expectedGradeCategories)
       }
@@ -278,9 +282,9 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val login = "Masth0"
         val repoName = "TextRandom"
         val languages = Set("JavaScript")
-        val (results: Iterable[GraderResult], _, _, _) =
+        val (results: Iterable[GradedRepository], _, _, _) =
           fixture.processAnalyzerScriptResults(login, repoName, languages)
-        val robustGrade = results.find(_.gradeCategory == "Robust").get.value
+        val robustGrade = results.head.grades.find(_.gradeCategory == "Robust").get.value
         assert(robustGrade >= 0.9 && robustGrade < 1.0)
       }
 
@@ -373,10 +377,8 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
       (results, pathExists, fileContainsText, repoId)
     }
 
-    def processAnalyzerScriptResults(
-        login: String,
-        repoName: String,
-        languages: Set[String]): (Iterable[GraderResult], (String) => Boolean, (String, String) => Boolean, String) = {
+    def processAnalyzerScriptResults(login: String, repoName: String, languages: Set[String])
+      : (Iterable[GradedRepository], (String) => Boolean, (String, String) => Boolean, String) = {
       val (outputMessages, pathExists, fileContainsText, repoId) = runAnalyzerScript(login, repoName, languages)
       val results = grader.processAnalyzerScriptResults(outputMessages)
       (results, pathExists, fileContainsText, repoId)
