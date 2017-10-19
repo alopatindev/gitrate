@@ -3,16 +3,12 @@ package controllers
 import analysis.github.GithubUser
 import analysis.GradedRepository
 import utils.CollectionUtils._
-import utils.LogUtils
-
-import scala.concurrent.Future
+import utils.{LogUtils, SlickUtils}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import slick.jdbc.PostgresProfile.api._
 
-object UserController extends LogUtils {
-
-  type SQLTransaction[T] = DBIOAction[T, NoStream, Effect with Effect.Transactional]
-  type SQLQuery[Container, T] = slick.sql.SqlStreamingAction[Container, T, Effect]
+object UserController extends SlickUtils with LogUtils {
 
   def saveAnalysisResult(users: Iterable[GithubUser], gradedRepositories: Iterable[GradedRepository]): Future[Unit] = {
     val query = buildAnalysisResultQuery(users, gradedRepositories)
@@ -20,22 +16,6 @@ object UserController extends LogUtils {
     future.foreach(_ => logInfo("finished saving analysis result"))
     future
   }
-
-  def runQuery[T](query: SQLTransaction[T]): Future[T] = {
-    val db = createDatabase()
-    val result = db.run(query).logErrors()
-    result.onComplete(_ => db.close())
-    result
-  }
-
-  def runQuery[Container, T](query: SQLQuery[Container, T]): Future[Container] = {
-    val db = createDatabase()
-    val result = db.run(query).logErrors()
-    result.onComplete(_ => db.close())
-    result
-  }
-
-  private def createDatabase(): Database = Database.forConfig("db.postgresql")
 
   private def buildAnalysisResultQuery(users: Iterable[GithubUser], gradedRepositories: Iterable[GradedRepository]) = {
     val repositories: Map[String, GradedRepository] = gradedRepositories.map(repo => repo.idBase64 -> repo).toMap

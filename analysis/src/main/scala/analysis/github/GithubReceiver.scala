@@ -1,13 +1,12 @@
 package analysis.github
 
+import controllers.GithubController.GithubSearchQuery
 import utils.{LogUtils, ResourceUtils}
 import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
-
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
 import play.api.libs.json.{JsBoolean, JsDefined, JsLookupResult, JsString, JsUndefined, JsValue, Json}
-
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -55,7 +54,7 @@ class GithubReceiver(conf: GithubConf,
         queries
           .map(_.toString)
           .foreach(query => {
-            logInfo(s"running new query ${query}")
+            logInfo(s"running new query $query")
             makeQuery(query, None)
           })
 

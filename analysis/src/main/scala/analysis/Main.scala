@@ -1,7 +1,7 @@
 package analysis
 
-import controllers.UserController
-import github.{GithubConf, GithubExtractor, GithubReceiver, GithubSearchInputDStream, GithubSearchQuery, GithubUser}
+import controllers.{GithubController, UserController}
+import github.{GithubConf, GithubExtractor, GithubReceiver, GithubSearchInputDStream, GithubUser}
 import utils.{HttpClientFactory, LogUtils, ResourceUtils, SparkUtils}
 import utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 import utils.SparkUtils.RDDUtils
@@ -44,7 +44,7 @@ object Main extends LogUtils with ResourceUtils with SparkUtils {
         .cache()
 
     // TODO: checkpoint
-    val stream = new GithubSearchInputDStream(ssc, githubConf, loadQueries, storeReceiverResult)
+    val stream = new GithubSearchInputDStream(ssc, githubConf, GithubController.loadQueries, storeReceiverResult)
 
     stream
       .foreachRDD { rawGithubResult: RDD[String] =>
@@ -69,21 +69,6 @@ object Main extends LogUtils with ResourceUtils with SparkUtils {
     ssc.awaitTermination()
 
     ssc.stop(stopSparkContext = true, stopGracefully = true)
-  }
-
-  // runs on executor
-  private def loadQueries(): Seq[GithubSearchQuery] = {
-    logInfo()
-
-    val sparkSession = getOrCreateSparkSession()
-    import sparkSession.implicits._
-
-    val query: String = resourceToString("/db/loadQueries.sql") // TODO: test
-    Postgres
-      .executeSQL(query)
-      .as[GithubSearchQuery]
-      .collect()
-      .toSeq
   }
 
   // runs on executor

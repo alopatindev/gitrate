@@ -1,9 +1,9 @@
 package analysis.github
 
+import controllers.GithubController.GithubSearchQuery
 import testing.TestUtils
-
 import org.scalatest.concurrent.Eventually
-import org.scalatest.{fixture, Outcome}
+import org.scalatest.{Outcome, fixture}
 
 class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtils {
 
