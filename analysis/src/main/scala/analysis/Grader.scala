@@ -157,7 +157,7 @@ class Grader(val appConfig: Config,
 
   private val scriptsDirectory = appConfig.getString("app.scriptsDir")
   private val maxExternalScriptDuration = appConfig.getDuration("grader.maxExternalScriptDuration")
-  private val maxRepoArchiveSizeBytes = appConfig.getInt("grader.maxRepoArchiveSizeKiB") * 1024
+  private val maxRepoArchiveSizeBytes = appConfig.getLong("grader.maxRepoArchiveSizeKiB") * 1024L
 
 }
 

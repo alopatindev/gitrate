@@ -3,6 +3,7 @@ package analysis
 import testing.TestUtils
 import com.holdenkarau.spark.testing.DataFrameSuiteBase
 import controllers.GraderController.{GradeCategory, WarningToGradeCategory}
+import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.{Dataset, SparkSession}
 import org.scalatest.{Outcome, fixture}
@@ -43,22 +44,29 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(!directoryExists && !archiveExists)
       }
 
-      "run with time limit" in { fixture =>
-        val login = "facebook"
-        val repoName = "react"
-        val languages = Set("JavaScript")
-        val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, languages)
+      "run with time limit and remove temporary files when done" in { fixture =>
+        val login = "qt"
+        val repoName = "qtbase"
+        val languages = Set("C++")
+        val (results, pathExists, _, repoId) = fixture.runAnalyzerScript(login, repoName, languages, branch = "5.9")
         val limit = fixture.grader.appConfig.getDuration("grader.maxExternalScriptDuration")
+
         shouldRunAtMost(limit) {
           val _ = results.collect()
         }
+
+        val archiveName = s"$repoId.tar.gz"
+        val directoryExists = pathExists("/")
+        val archiveExists = pathExists(s"/../../$archiveName")
+
+        val _ = assert(!directoryExists && !archiveExists)
       }
 
       "ignore too big repository" in { fixture =>
-        val login = "atom"
-        val repoName = "atom"
-        val languages = Set("JavaScript")
-        val (results, _, _, repoId) = fixture.runAnalyzerScript(login, repoName, languages)
+        val login = "qt"
+        val repoName = "qtbase"
+        val languages = Set("C++")
+        val (results, _, _, repoId) = fixture.runAnalyzerScript(login, repoName, languages, branch = "5.3")
         val messages = results.collect().filter(_.idBase64 == repoId)
         assert(messages.isEmpty)
       }
@@ -348,19 +356,23 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
       .as[GradeCategory]
 
     val grader = new Grader(appConfig, warningsToGradeCategory, gradeCategories)
-    val theFixture = FixtureParam(grader)
+    val dataDir: String = s"${appConfig.getString("app.scriptsDir")}/data"
+    val theFixture = FixtureParam(grader, dataDir)
     try {
       withFixture(test.toNoArgTest(theFixture))
-    } finally {}
+    } finally {
+      val dir = new File(dataDir)
+      FileUtils.deleteDirectory(dir)
+      val _ = dir.mkdir()
+    }
   }
 
-  case class FixtureParam(grader: Grader) {
-
-    val branch = "master"
+  case class FixtureParam(grader: Grader, dataDir: String) {
 
     def runAnalyzerScript(login: String, // scalastyle:ignore
                           repoName: String,
                           languages: Set[String],
+                          branch: String = "master",
                           withCleanup: Boolean = true)
       : (Dataset[AnalyzerScriptResult], (String) => Boolean, (String, String) => Boolean, String) = {
       val repoId = UUID.randomUUID().toString
@@ -369,9 +381,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
       val results = grader.runAnalyzerScript(input, withCleanup)
 
-      val scriptsDir = grader.appConfig.getString("app.scriptsDir")
-
-      def file(path: String): File = new File(s"$scriptsDir/data/$repoId/$repoName-$branch$path")
+      def file(path: String): File = new File(s"$dataDir/$repoId/$repoName-$branch$path").getCanonicalFile
 
       def pathExists(path: String): Boolean = file(path).exists()
 
