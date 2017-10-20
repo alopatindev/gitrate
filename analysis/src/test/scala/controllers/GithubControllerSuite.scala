@@ -1,15 +1,24 @@
 package controllers
 
-import controllers.GithubController.GithubSearchQuery
-import org.scalatest.{Outcome, fixture}
+import controllers.GithubController.{AnalyzedRepository, GithubSearchQuery}
+import testing.PostgresTestUtils
+import slick.jdbc.PostgresProfile.api._
+import slick.sql.SqlAction
 
-class GithubControllerSuite extends fixture.WordSpec {
-
-  import scala.concurrent.Await
-  import scala.concurrent.duration.Duration
-  import slick.jdbc.PostgresProfile.api._
+class GithubControllerSuite extends PostgresTestUtils {
 
   "GithubControllerSuite" can {
+
+    "loadAnalyzedRepositories" should {
+
+      "load analyzed repositories" in { _ =>
+        val repoIdsBase64: Seq[String] = Seq("repo1")
+        val results: Seq[AnalyzedRepository] = GithubController.loadAnalyzedRepositories(repoIdsBase64).collect()
+        assert(results.length === 1)
+        assert(results.head.idBase64 === repoIdsBase64.head)
+      }
+
+    }
 
     "loadQueries" should {
 
@@ -30,64 +39,64 @@ class GithubControllerSuite extends fixture.WordSpec {
 
   }
 
-  case class FixtureParam()
+  def schema: SqlAction[Int, NoStream, Effect] = sqlu"""
+    CREATE TABLE IF NOT EXISTS languages (
+      id SERIAL PRIMARY KEY,
+      language TEXT UNIQUE NOT NULL
+    );
 
-  override def withFixture(test: OneArgTest): Outcome = { // scalastyle:ignore
-    val username = "gitrate_test" // TODO: move to a common place?
-    val database = username
-    val db: Database =
-      Database.forURL(url = s"jdbc:postgresql:$database", user = username, driver = "org.postgresql.Driver")
+    INSERT INTO languages (id, language) VALUES
+      (DEFAULT, 'JavaScript'),
+      (DEFAULT, 'C++');
 
-    val schema = sqlu"""
-      CREATE TABLE IF NOT EXISTS languages (
-        id SERIAL PRIMARY KEY,
-        language TEXT UNIQUE NOT NULL
-      );
+    CREATE TABLE IF NOT EXISTS repositories (
+      id SERIAL PRIMARY KEY,
+      raw_id TEXT UNIQUE NOT NULL,
+      fake_user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      lines_of_code INTEGER NOT NULL,
+      updated_by_analyzer TIMESTAMP DEFAULT NOW() NOT NULL
+    );
 
-      INSERT INTO languages (id, language) VALUES
-        (DEFAULT, 'JavaScript'),
-        (DEFAULT, 'C++'),
-        (DEFAULT, 'C');
+    CREATE TABLE IF NOT EXISTS github_search_queries (
+      id SERIAL PRIMARY KEY,
+      language_id INTEGER REFERENCES languages NOT NULL,
+      filename TEXT NOT NULL,
+      min_repo_size_kib INT NOT NULL,
+      max_repo_size_kib INT NOT NULL,
+      min_stars INT NOT NULL,
+      max_stars INT NOT NULL,
+      pattern TEXT NOT NULL,
+      enabled BOOLEAN NOT NULL
+    )"""
 
-      CREATE TABLE IF NOT EXISTS github_search_queries (
-        id SERIAL PRIMARY KEY,
-        language_id INTEGER REFERENCES languages NOT NULL,
-        filename TEXT NOT NULL,
-        min_repo_size_kib INT NOT NULL,
-        max_repo_size_kib INT NOT NULL,
-        min_stars INT NOT NULL,
-        max_stars INT NOT NULL,
-        pattern TEXT NOT NULL,
-        enabled BOOLEAN NOT NULL
-      )"""
+  def initialData: SqlAction[Int, NoStream, Effect] = sqlu"""
+    INSERT INTO repositories (
+      id,
+      raw_id,
+      fake_user_id,
+      name,
+      lines_of_code,
+      updated_by_analyzer
+    ) VALUES
+      (DEFAULT, 'repo1', 0, 'test_repo1', 1000, DEFAULT),
+      (DEFAULT, 'repo2', 0, 'test_repo2', 2000, DEFAULT);
 
-    val initialData = sqlu"""
-WITH
-  javascript_language AS (SELECT id FROM languages WHERE language = 'JavaScript'),
-  cpp_language AS (SELECT id FROM languages WHERE language = 'C++')
-INSERT INTO github_search_queries (
-  id,
-  language_id,
-  filename,
-  min_repo_size_kib,
-  max_repo_size_kib,
-  min_stars,
-  max_stars,
-  pattern,
-  enabled
-) VALUES
-  (DEFAULT, (SELECT id FROM cpp_language), '.travis.yml', 10, 2048, 0, 100, 'hello', TRUE),
-  (DEFAULT, (SELECT id FROM javascript_language), '.eslintrc.*', 10, 2048, 0, 100, '', TRUE);"""
+    WITH
+      javascript_language AS (SELECT id FROM languages WHERE language = 'JavaScript'),
+      cpp_language AS (SELECT id FROM languages WHERE language = 'C++')
+    INSERT INTO github_search_queries (
+      id,
+      language_id,
+      filename,
+      min_repo_size_kib,
+      max_repo_size_kib,
+      min_stars,
+      max_stars,
+      pattern,
+      enabled
+    ) VALUES
+      (DEFAULT, (SELECT id FROM cpp_language), '.travis.yml', 10, 2048, 0, 100, 'hello', TRUE),
+      (DEFAULT, (SELECT id FROM javascript_language), '.eslintrc.*', 10, 2048, 0, 100, '', TRUE)"""
 
-    val dropData = sqlu"DROP OWNED BY gitrate_test" // FIXME: is there a correct way to unhardcode username here?
-    val result = db.run(DBIO.seq(dropData, schema, initialData).transactionally)
-    Await.result(result, Duration.Inf)
-
-    val theFixture = FixtureParam()
-    try {
-      withFixture(test.toNoArgTest(theFixture))
-    } finally {
-      db.close()
-    }
-  }
 }

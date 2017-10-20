@@ -30,7 +30,7 @@ object UserController extends SlickUtils with LogUtils {
           DBIO.seq(
             buildSaveUserQuery(user),
             buildSaveContactsQuery(user),
-            buildSaveTechnologiesQuery(languageToTechnologies, user.id),
+            buildSaveLanguagesAndTechnologiesQuery(languageToTechnologies, user.id),
             buildSaveRepositoriesQuery(repositoriesOfUser, user.id),
             buildSaveGradesQuery(repositoriesOfUser)
           ))
@@ -81,11 +81,15 @@ object UserController extends SlickUtils with LogUtils {
       ${user.description.getOrElse("")}
     ) ON CONFLICT (user_id) DO NOTHING"""
 
-  private def buildSaveTechnologiesQuery(languageToTechnologies: Map[String, Seq[String]], githubUserId: Int) =
+  private def buildSaveLanguagesAndTechnologiesQuery(languageToTechnologies: Map[String, Seq[String]],
+                                                     githubUserId: Int) =
     DBIO.sequence(for {
       (language: String, technologies: Seq[String]) <- languageToTechnologies
       technology: String <- technologies
     } yield sqlu"""
+      INSERT INTO languages (id, language) VALUES (DEFAULT, $language)
+      ON CONFLICT (language) DO NOTHING;
+
       INSERT INTO technologies (
         id,
         language_id,

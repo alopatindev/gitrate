@@ -1,9 +1,9 @@
 package analysis.github
 
 import testing.TestUtils
-
 import com.holdenkarau.spark.testing.DataFrameSuiteBase
-import org.scalatest.{fixture, Outcome}
+import controllers.GithubController.AnalyzedRepository
+import org.scalatest.{Outcome, fixture}
 
 class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
 
@@ -16,7 +16,7 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
 
   import utils.HttpClientFactory.Headers
 
-  import org.apache.spark.sql.{Dataset, Row}
+  import org.apache.spark.sql.Dataset
   import org.apache.spark.sql.types.TimestampType
 
   "GithubExtractor" can {
@@ -114,7 +114,7 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
       httpPostBlocking = stubHttpPostBlocking
     )
 
-    val githubExtractor = new GithubExtractor(conf, currentRepositories())
+    val githubExtractor = new GithubExtractor(conf, loadAnalyzedRepositories)
 
     val inputJsValue: JsValue = (loadJsonResource("/github/GithubExtractorFixture.json") \ "data" \ "search").get
     val input: Seq[String] = Seq(inputJsValue.toString)
@@ -146,7 +146,7 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
       findUsers(login).flatMap(user => user.repositories.filter(repo => repo.name == repoName))
   }
 
-  private def currentRepositories(): Dataset[Row] = {
+  private def loadAnalyzedRepositories(repoIdsBase64: Seq[String]): Dataset[AnalyzedRepository] = {
     import spark.implicits._
 
     val currentDate = (Calendar.getInstance().getTimeInMillis / 1000L).toString
@@ -165,7 +165,8 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
 }
 """
         )))
-      .select($"raw_id", $"updated_by_analyzer".cast(TimestampType) as "updated_by_analyzer")
+      .select($"raw_id" as "idBase64", $"updated_by_analyzer".cast(TimestampType) as "updatedByAnalyzer")
+      .as[AnalyzedRepository]
   }
 
 }

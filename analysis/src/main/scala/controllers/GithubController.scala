@@ -1,17 +1,36 @@
 package controllers
 
-import utils.{LogUtils, SlickUtils}
+import org.apache.spark.sql.Dataset
+import utils.{AppConfig, SlickUtils, SparkUtils}
 
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.concurrent.duration.FiniteDuration
+import scala.util.Try
 import slick.jdbc.PostgresProfile.api._
 import slick.sql.SqlStreamingAction
 
-import scala.concurrent.duration.FiniteDuration
-import scala.util.Try
+object GithubController extends AppConfig with SlickUtils with SparkUtils {
 
-object GithubController extends SlickUtils with LogUtils {
+  def loadAnalyzedRepositories(repoIdsBase64: Seq[String]): Dataset[AnalyzedRepository] = {
+    val sparkSession = getOrCreateSparkSession()
+    import sparkSession.implicits._
+
+    Postgres
+      .getTable("repositories")
+      .select($"raw_id" as "idBase64", $"updated_by_analyzer" as "updatedByAnalyzer")
+      .filter($"idBase64".isin(repoIdsBase64: _*))
+      .as[AnalyzedRepository]
+  }
+
+  def loadQueries(): Seq[GithubSearchQuery] = {
+    val future: Future[Vector[GithubSearchQuery]] = runQuery(query)
+      .map(results => results.map(args => GithubSearchQuery.tupled(args)))
+    Try(Await.result(future, timeout)).getOrElse(Seq.empty)
+  }
+
+  case class AnalyzedRepository(idBase64: String, updatedByAnalyzer: java.sql.Timestamp)
 
   case class GithubSearchQuery(language: String,
                                filename: String,
@@ -44,12 +63,6 @@ SELECT
 FROM github_search_queries
 INNER JOIN languages ON languages.id = github_search_queries.language_id
 WHERE enabled = true""".as[T]
-
-  def loadQueries(): Seq[GithubSearchQuery] = {
-    val future: Future[Vector[GithubSearchQuery]] = runQuery(query)
-      .map(results => results.map(args => GithubSearchQuery.tupled(args)))
-    Try(Await.result(future, timeout)).getOrElse(Seq.empty)
-  }
 
   private val timeout: FiniteDuration = 10 seconds
 

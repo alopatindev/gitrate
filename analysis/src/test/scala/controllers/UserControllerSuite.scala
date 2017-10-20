@@ -4,11 +4,12 @@ import java.net.URL
 
 import analysis.github.{GithubRepository, GithubUser}
 import analysis.{Grade, GradedRepository}
-import org.scalatest.{Outcome, fixture}
+import slick.sql.SqlAction
+import testing.PostgresTestUtils
 
 import scala.concurrent.Future
 
-class UserControllerSuite extends fixture.WordSpec {
+class UserControllerSuite extends PostgresTestUtils {
 
   import scala.concurrent.Await
   import scala.concurrent.duration.Duration
@@ -249,135 +250,106 @@ class UserControllerSuite extends fixture.WordSpec {
   private val fakeTwoUsers: Seq[GithubUser] = Seq(fakeUserA, fakeUserB)
   private val fakeGradedRepositories: Seq[GradedRepository] = Seq(fakeGradedRepoA, fakeGradedRepoB, fakeGradedRepoC)
 
-  case class FixtureParam()
+  override def schema: SqlAction[Int, NoStream, Effect] = sqlu"""
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      github_user_id INTEGER UNIQUE NOT NULL,
+      github_login TEXT NOT NULL,
+      full_name TEXT NOT NULL,
+      updated_by_user TIMESTAMP,
+      viewed INTEGER DEFAULT 0 NOT NULL
+    );
 
-  override def withFixture(test: OneArgTest): Outcome = { // scalastyle:ignore
-    val username = "gitrate_test"
-    val database = username
-    val db: Database =
-      Database.forURL(url = s"jdbc:postgresql:$database", user = username, driver = "org.postgresql.Driver")
+    CREATE TABLE IF NOT EXISTS developers (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER UNIQUE REFERENCES users NOT NULL,
+      show_email BOOLEAN,
+      job_seeker BOOLEAN NOT NULL,
+      available_for_relocation BOOLEAN,
+      programming_experience_months SMALLINT,
+      work_experience_months SMALLINT,
+      description TEXT DEFAULT '' NOT NULL
+    );
 
-    val schema = sqlu"""
-CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
-  github_user_id INTEGER UNIQUE NOT NULL,
-  github_login TEXT NOT NULL,
-  full_name TEXT NOT NULL,
-  updated_by_user TIMESTAMP,
-  viewed INTEGER DEFAULT 0 NOT NULL
-);
+    CREATE TABLE IF NOT EXISTS contact_categories (
+      id SERIAL PRIMARY KEY,
+      category TEXT UNIQUE NOT NULL
+    );
 
-CREATE TABLE IF NOT EXISTS developers (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER UNIQUE REFERENCES users NOT NULL,
-  show_email BOOLEAN,
-  job_seeker BOOLEAN NOT NULL,
-  available_for_relocation BOOLEAN,
-  programming_experience_months SMALLINT,
-  work_experience_months SMALLINT,
-  description TEXT DEFAULT '' NOT NULL
-);
+    CREATE TABLE IF NOT EXISTS contacts (
+      id SERIAL PRIMARY KEY,
+      category_id INTEGER REFERENCES contact_categories NOT NULL,
+      contact TEXT,
+      user_id INTEGER REFERENCES users NOT NULL,
+      UNIQUE (category_id, contact)
+    );
 
-CREATE TABLE IF NOT EXISTS contact_categories (
-  id SERIAL PRIMARY KEY,
-  category TEXT UNIQUE NOT NULL
-);
+    CREATE TABLE IF NOT EXISTS languages (
+      id SERIAL PRIMARY KEY,
+      language TEXT UNIQUE NOT NULL
+    );
 
-CREATE TABLE IF NOT EXISTS contacts (
-  id SERIAL PRIMARY KEY,
-  category_id INTEGER REFERENCES contact_categories NOT NULL,
-  contact TEXT,
-  user_id INTEGER REFERENCES users NOT NULL,
-  UNIQUE (category_id, contact)
-);
+    CREATE TABLE IF NOT EXISTS technologies (
+      id SERIAL PRIMARY KEY,
+      language_id INTEGER REFERENCES languages NOT NULL,
+      technology TEXT NOT NULL,
+      technology_human_readable TEXT,
+      UNIQUE (language_id, technology)
+    );
 
-CREATE TABLE IF NOT EXISTS languages (
-  id SERIAL PRIMARY KEY,
-  language TEXT UNIQUE NOT NULL
-);
+    CREATE TABLE IF NOT EXISTS technology_synonyms (
+      id SERIAL PRIMARY KEY,
+      technology_id INTEGER REFERENCES technologies NOT NULL,
+      synonym TEXT NOT NULL,
+      UNIQUE (technology_id, synonym)
+    );
 
-CREATE TABLE IF NOT EXISTS technologies (
-  id SERIAL PRIMARY KEY,
-  language_id INTEGER REFERENCES languages NOT NULL,
-  technology TEXT NOT NULL,
-  technology_human_readable TEXT,
-  UNIQUE (language_id, technology)
-);
+    CREATE TABLE IF NOT EXISTS technologies_users (
+      id SERIAL PRIMARY KEY,
+      technology_id INTEGER REFERENCES technologies NOT NULL,
+      user_id INTEGER REFERENCES users NOT NULL,
+      UNIQUE (technology_id, user_id)
+    );
 
-CREATE TABLE IF NOT EXISTS technology_synonyms (
-  id SERIAL PRIMARY KEY,
-  technology_id INTEGER REFERENCES technologies NOT NULL,
-  synonym TEXT NOT NULL,
-  UNIQUE (technology_id, synonym)
-);
+    CREATE TABLE IF NOT EXISTS technologies_users_settings (
+      id SERIAL PRIMARY KEY,
+      technologies_users_id INTEGER UNIQUE REFERENCES technologies_users NOT NULL,
+      verified BOOLEAN NOT NULL
+    );
 
-CREATE TABLE IF NOT EXISTS technologies_users (
-  id SERIAL PRIMARY KEY,
-  technology_id INTEGER REFERENCES technologies NOT NULL,
-  user_id INTEGER REFERENCES users NOT NULL,
-  UNIQUE (technology_id, user_id)
-);
+    CREATE TABLE IF NOT EXISTS repositories (
+      id SERIAL PRIMARY KEY,
+      raw_id TEXT UNIQUE NOT NULL,
+      user_id INTEGER REFERENCES users NOT NULL,
+      name TEXT NOT NULL,
+      lines_of_code INTEGER NOT NULL,
+      updated_by_analyzer TIMESTAMP DEFAULT NOW() NOT NULL
+    );
 
-CREATE TABLE IF NOT EXISTS technologies_users_settings (
-  id SERIAL PRIMARY KEY,
-  technologies_users_id INTEGER UNIQUE REFERENCES technologies_users NOT NULL,
-  verified BOOLEAN NOT NULL
-);
+    CREATE TABLE IF NOT EXISTS grade_categories (
+      id SERIAL PRIMARY KEY,
+      category TEXT UNIQUE NOT NULL
+    );
 
-CREATE TABLE IF NOT EXISTS repositories (
-  id SERIAL PRIMARY KEY,
-  raw_id TEXT UNIQUE NOT NULL,
-  user_id INTEGER REFERENCES users NOT NULL,
-  name TEXT NOT NULL,
-  lines_of_code INTEGER NOT NULL,
-  updated_by_analyzer TIMESTAMP DEFAULT NOW() NOT NULL
-);
+    CREATE TABLE IF NOT EXISTS grades (
+      id SERIAL PRIMARY KEY,
+      category_id INTEGER REFERENCES grade_categories NOT NULL,
+      value FLOAT NOT NULL,
+      repository_id INTEGER REFERENCES repositories NOT NULL,
+      UNIQUE (category_id, repository_id)
+    )"""
 
-CREATE TABLE IF NOT EXISTS grade_categories (
-  id SERIAL PRIMARY KEY,
-  category TEXT UNIQUE NOT NULL
-);
+  def initialData: SqlAction[Int, NoStream, Effect] = sqlu"""
+    INSERT INTO grade_categories (id, category) VALUES
+      (DEFAULT, 'Maintainable'),
+      (DEFAULT, 'Testable'),
+      (DEFAULT, 'Robust'),
+      (DEFAULT, 'Secure'),
+      (DEFAULT, 'Automated'),
+      (DEFAULT, 'Performant');
 
-CREATE TABLE IF NOT EXISTS grades (
-  id SERIAL PRIMARY KEY,
-  category_id INTEGER REFERENCES grade_categories NOT NULL,
-  value FLOAT NOT NULL,
-  repository_id INTEGER REFERENCES repositories NOT NULL,
-  UNIQUE (category_id, repository_id)
-)"""
-
-    val initialData = sqlu"""
-INSERT INTO grade_categories (id, category) VALUES
-  (DEFAULT, 'Maintainable'),
-  (DEFAULT, 'Testable'),
-  (DEFAULT, 'Robust'),
-  (DEFAULT, 'Secure'),
-  (DEFAULT, 'Automated'),
-  (DEFAULT, 'Performant');
-
-INSERT INTO contact_categories (id, category) VALUES
-  (DEFAULT, 'Email'),
-  (DEFAULT, 'Website');
-
-INSERT INTO languages (id, language) VALUES
-  (DEFAULT, 'JavaScript'),
-  (DEFAULT, 'Python'),
-  (DEFAULT, 'Java'),
-  (DEFAULT, 'Bash'),
-  (DEFAULT, 'C++'),
-  (DEFAULT, 'C');
-"""
-
-    val dropData = sqlu"DROP OWNED BY gitrate_test" // FIXME: is there a correct way to unhardcode username here?
-    val result = db.run(DBIO.seq(dropData, schema, initialData).transactionally)
-    Await.result(result, Duration.Inf)
-
-    val theFixture = FixtureParam()
-    try {
-      withFixture(test.toNoArgTest(theFixture))
-    } finally {
-      db.close()
-    }
-  }
+    INSERT INTO contact_categories (id, category) VALUES
+      (DEFAULT, 'Email'),
+      (DEFAULT, 'Website')"""
 
 }

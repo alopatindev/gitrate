@@ -1,7 +1,6 @@
 package utils
 
 import com.typesafe.config.Config
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
@@ -10,6 +9,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 trait SparkUtils {
 
   def appConfig: Config
+  def postgresqlConfig: Config
 
   private val sparkConf = new SparkConf()
     .setAppName(appConfig.getString("app.name"))
@@ -28,11 +28,14 @@ trait SparkUtils {
       .config(sparkConf)
       .getOrCreate()
 
+  def initializeSpark(): Unit = {
+    val _ = (getOrCreateSparkContext(), getOrCreateSparkSession())
+  }
+
   object Postgres {
 
-    private val config = appConfig.getConfig("db.postgresql")
     private val dbOptions = Seq("url", "user", "driver")
-      .map(key => key -> config.getString(key))
+      .map(key => key -> postgresqlConfig.getString(key))
       .toMap
 
     def getTable(table: String): Dataset[Row] =

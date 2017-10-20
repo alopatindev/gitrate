@@ -1,8 +1,8 @@
 package analysis
 
 import testing.TestUtils
-
 import com.holdenkarau.spark.testing.DataFrameSuiteBase
+import controllers.GraderController.{GradeCategory, WarningToGradeCategory}
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.{Dataset, SparkSession}
 import org.scalatest.{Outcome, fixture}

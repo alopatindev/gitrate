@@ -1,19 +1,16 @@
 package analysis
 
-import controllers.{GithubController, UserController}
+import controllers.{GithubController, GraderController, UserController}
 import github.{GithubConf, GithubExtractor, GithubReceiver, GithubSearchInputDStream, GithubUser}
-import utils.{HttpClientFactory, LogUtils, ResourceUtils, SparkUtils}
+import utils.{AppConfig, HttpClientFactory, LogUtils, ResourceUtils, SparkUtils}
 import utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 import utils.SparkUtils.RDDUtils
-import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.{Dataset, Row, SparkSession}
+import org.apache.spark.sql.SparkSession
 import play.api.libs.json.{JsValue, Json}
 
-object Main extends LogUtils with ResourceUtils with SparkUtils {
-
-  def appConfig: Config = ConfigFactory.load("application.conf")
+object Main extends AppConfig with LogUtils with ResourceUtils with SparkUtils {
 
   def main(args: Array[String]): Unit = {
     val httpGetBlocking: HttpGetFunction[JsValue] = HttpClientFactory.getFunction(Json.parse)
@@ -24,38 +21,21 @@ object Main extends LogUtils with ResourceUtils with SparkUtils {
   }
 
   private def run(githubConf: GithubConf): Unit = {
-    val _ = getOrCreateSparkContext()
-
-    val sparkSession = getOrCreateSparkSession()
-    import sparkSession.implicits._
-
+    initializeSpark()
     val ssc = createStreamingContext()
-
-    val warningsToGradeCategory: Dataset[WarningToGradeCategory] =
-      Postgres
-        .executeSQL(resourceToString("/db/loadWarningsToGradeCategory.sql")) // TODO: test
-        .as[WarningToGradeCategory]
-        .cache()
-
-    val gradeCategories: Dataset[GradeCategory] =
-      Postgres
-        .executeSQL("SELECT category AS gradeCategory FROM grade_categories") // TODO: test
-        .as[GradeCategory]
-        .cache()
 
     // TODO: checkpoint
     val stream = new GithubSearchInputDStream(ssc, githubConf, GithubController.loadQueries, storeReceiverResult)
 
     stream
       .foreachRDD { rawGithubResult: RDD[String] =>
-        val currentRepositories: Dataset[Row] = Postgres.getTable("repositories") // FIXME
-        val githubExtractor = new GithubExtractor(githubConf, currentRepositories)
+        val githubExtractor = new GithubExtractor(githubConf, GithubController.loadAnalyzedRepositories)
 
         val users: Iterable[GithubUser] = githubExtractor.parseAndFilterUsers(rawGithubResult)
 
         implicit val sparkContext: SparkContext = rawGithubResult.sparkContext
         implicit val sparkSession: SparkSession = rawGithubResult.toSparkSession
-        val grader = new Grader(appConfig, warningsToGradeCategory, gradeCategories)
+        val grader = new Grader(appConfig, GraderController.warningsToGradeCategory, GraderController.gradeCategories)
 
         val gradedRepositories: Iterable[GradedRepository] = grader.processUsers(users)
         logInfo(s"graded ${gradedRepositories.size} repositories!")

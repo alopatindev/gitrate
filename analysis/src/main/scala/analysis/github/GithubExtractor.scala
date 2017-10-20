@@ -1,23 +1,22 @@
 package analysis.github
 
+import controllers.GithubController.AnalyzedRepository
 import utils.HttpClientFactory.defaultTimeout
 import utils.SparkUtils.RDDUtils
 import utils.{ConcurrencyUtils, LogUtils}
-
 import java.net.URL
-
 import org.apache.commons.codec.binary.Base64.decodeBase64
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
-
-import play.api.libs.json.{JsArray, JsDefined, JsValue, JsNumber}
-
+import play.api.libs.json.{JsArray, JsDefined, JsNumber, JsValue}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
 import scala.util.Try
 
-class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) extends Serializable with LogUtils {
+class GithubExtractor(val conf: GithubConf, loadAnalyzedRepositories: (Seq[String]) => Dataset[AnalyzedRepository])
+    extends Serializable
+    with LogUtils {
 
   def parseAndFilterUsers(rawJSONs: RDD[String]): Iterable[GithubUser] = {
     val emptySeq = Iterable()
@@ -43,12 +42,22 @@ class GithubExtractor(val conf: GithubConf, currentRepositories: Dataset[Row]) e
     val pinnedRepositories: Dataset[GithubSearchResult] = processOwnerRepositories(rawNodes, "pinnedRepositories")
     val repositories: Dataset[GithubSearchResult] = processOwnerRepositories(rawNodes, "repositories")
 
-    val results: Seq[GithubSearchResult] = foundRepositories
+    val extractedRepositories = foundRepositories
       .union(pinnedRepositories)
       .union(repositories)
-      .join(currentRepositories, $"repoIdBase64" === $"raw_id", joinType = "left_outer")
-      .filter($"updated_by_analyzer".isNull ||
-        datediff(current_date(), $"updated_by_analyzer") >= conf.minRepositoryUpdateInterval.toDays)
+      .cache()
+
+    val repoIdsBase64: Seq[String] = extractedRepositories
+      .select($"repoIdBase64")
+      .as[String]
+      .collect()
+
+    val analyzedRepositories: Dataset[AnalyzedRepository] = loadAnalyzedRepositories(repoIdsBase64)
+
+    val results: Seq[GithubSearchResult] = extractedRepositories
+      .join(analyzedRepositories, $"repoIdBase64" === $"idBase64", joinType = "left_outer")
+      .filter($"updatedByAnalyzer".isNull ||
+        datediff(current_date(), $"updatedByAnalyzer") >= conf.minRepositoryUpdateInterval.toDays)
       .select($"ownerId",
               $"ownerLogin",
               $"repoIdBase64",

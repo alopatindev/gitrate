@@ -9,6 +9,8 @@ import org.apache.spark.sql.types.{DoubleType, IntegerType}
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
 import java.net.URL
 
+import controllers.GraderController.{GradeCategory, WarningToGradeCategory}
+
 class Grader(val appConfig: Config,
              warningsToGradeCategory: Dataset[WarningToGradeCategory],
              gradeCategories: Dataset[GradeCategory])(implicit sparkContext: SparkContext, sparkSession: SparkSession) {
@@ -158,9 +160,6 @@ class Grader(val appConfig: Config,
   private val maxRepoArchiveSizeBytes = appConfig.getInt("grader.maxRepoArchiveSizeKiB") * 1024
 
 }
-
-case class GradeCategory(gradeCategory: String)
-case class WarningToGradeCategory(warning: String, language: String, gradeCategory: String)
 
 case class Grade(gradeCategory: String, value: Double)
 case class GradedRepository(idBase64: String,
