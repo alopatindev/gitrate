@@ -71,6 +71,30 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(messages.isEmpty)
       }
 
+      "detect automation tools" in { fixture =>
+        val login = "alopatindev"
+        val repoName = "find-telegram-bot"
+        val languages = Set("JavaScript")
+
+        val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, languages)
+        val messages: Seq[String] = results
+          .collect()
+          .filter(message => message.language == languages.head && message.messageType == "automation_tool")
+          .map(_.message)
+        assert(messages contains "travis")
+        assert(messages contains "circleci")
+        assert(messages contains "docker")
+        assert(messages contains "codeclimate")
+        assert(messages contains "codeship")
+        assert(messages contains "semaphoreci")
+        assert(messages contains "david-dm")
+        assert(messages contains "dependencyci")
+        assert(messages contains "bithound")
+        assert(messages contains "snyk")
+        assert(messages contains "versioneye")
+        assert(messages contains "codecov")
+      }
+
 //      "ignore repositories with generated/downloaded files (*.o, *.so, node_modules, etc.)" in { fixture =>
 //          ???
 //      }
@@ -300,26 +324,33 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(robustGrade >= 0.9 && robustGrade < 1.0)
       }
 
-//      "return bad grades when code is bad" in { ??? }
-//      "return code coverage grade" in { ??? }
+      // "return bad grades when code is bad" in { ??? }
 
-//      "ignore users with too low average grade" in { ??? }
-//      "detect services used" in {
-//        assert(
-//          fixture.servicesOf("alopatindev", "qdevicemonitor") === Seq("travis-ci.org", "appveyor.com")
-//          fixture.servicesOf("alopatindev", "find-telegram-bot") === Seq(
-//            "travis-ci.org",
-//            "codecov.io",
-//            "codeclimate.com",
-//            "semaphoreci.com",
-//            "bithound.io",
-//            "versioneye.com",
-//            "david-dm.org",
-//            "dependencyci.com",
-//            "snyk.io",
-//            "npmjs.com"
-//          ))
-//      }
+      // "return automated grade based on detected CI/CD services" in { ??? }
+
+      // "return testable grade based on test directories detection" in { ??? }
+      // "return testable based on coveralls" in { ??? }
+      // "return testable based on scrutinizer-ci" in { ??? }
+      // "return testable based on codecov" in { ??? }
+      // "return testable based on codeclimate" in { ??? }
+      // "return testable based on codacy" in { ??? }
+
+      // "detect services used" in {
+      //   assert(
+      //     fixture.servicesOf("alopatindev", "qdevicemonitor") === Seq("travis-ci.org", "appveyor.com")
+      //     fixture.servicesOf("alopatindev", "find-telegram-bot") === Seq(
+      //       "travis-ci.org",
+      //       "codecov.io",
+      //       "codeclimate.com",
+      //       "semaphoreci.com",
+      //       "bithound.io",
+      //       "versioneye.com",
+      //       "david-dm.org",
+      //       "dependencyci.com",
+      //       "snyk.io",
+      //       "npmjs.com"
+      //     ))
+      // }
 
     }
 

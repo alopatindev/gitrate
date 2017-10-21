@@ -14,7 +14,31 @@ import languages.subprocessUtils as subprocessUtils
 from languages.analyzeCPP import analyze_cpp
 
 
-valid_filename_pattern = re.compile(r'^[a-zA-Z0-9/._-]*$')
+valid_file_path_pattern = re.compile(r'^[a-zA-Z0-9/._-]*$')
+
+automation_tools = {
+    'ansible.cfg': 'ansible',
+    'appveyor.yml': 'appveyor',
+    'circle.yml': 'circleci',
+    '.codeclimate.yml': 'codeclimate',
+    'Dockerfile': 'docker',
+    '.travis.yml': 'travis'
+}
+
+badges = {
+    'https://semaphoreci.com/api/': 'semaphoreci',
+    'https://app.codeship.com/': 'codeship',
+    'http://codecov.io/': 'codecov',
+    'https://codecov.io/': 'codecov',
+    'https://www.bithound.io/': 'bithound',
+    'https://www.versioneye.com/': 'versioneye',
+    'https://david-dm.org/': 'david-dm',
+    'https://dependencyci.com/': 'dependencyci',
+    'https://snyk.io/': 'snyk'
+}
+
+max_file_size_bytes = 20 * 1024
+min_file_size_bytes = 10
 
 
 def analyze_javascript(repository_id, repository_name, login, archive_output_dir):
@@ -60,13 +84,46 @@ def list_dir_recursively(path):
             yield os.path.join(root, f)
 
 
+def is_non_empty_file(filename):
+    return os.stat(filename).st_size > min_file_size_bytes
+
+
+def read_file(file_path):
+    with open(file_path) as f:
+        return f.read(max_file_size_bytes)
+
+
+def detect_automation_tools(file_paths, repository_id, repository_name, languages):
+    def output(message):
+        message_type = 'automation_tool'
+        for language in languages:
+            text = ';'.join((repository_id, repository_name, language, message_type, message))
+            print(text)
+
+    detected_tools = set()
+    for i in file_paths:
+        filename = os.path.basename(i)
+        extension = os.path.splitext(filename)[-1:][0]
+        if filename in automation_tools:
+            if is_non_empty_file(i):
+                detected_tools.add(automation_tools[filename])
+        elif extension == '.md':
+            text = read_file(i)
+            for badge_pattern in badges:
+                if text.find(badge_pattern) != -1:
+                    detected_tools.add(badges[badge_pattern])
+
+    for i in detected_tools:
+        output(i)
+
+
 def analyze(input_line, max_archive_size_bytes, cleanup, temp_files, temp_dirs):
     tokens = input_line.split(';')
     repository_id = tokens[0]
     repository_name = tokens[1]
     login = tokens[2]
     archive_url = tokens[3]
-    languages = tokens[4]
+    languages = tokens[4].split(',')
 
     archive_output_dir = os.path.join('data', repository_id)
     archive_path = archive_output_dir + '.tar.gz'
@@ -88,11 +145,12 @@ def analyze(input_line, max_archive_size_bytes, cleanup, temp_files, temp_dirs):
 
         subprocessUtils.run('tar', '-xzf', archive_path, '-C', archive_output_dir)
 
-        filenames = (i.replace(repository_id, '') for i in list_dir_recursively(archive_output_dir))
-        invalid_filenames = (i for i in filenames if not valid_filename_pattern.match(i))
-        if not any(invalid_filenames):
+        file_paths = list(list_dir_recursively(archive_output_dir))
+        invalid_file_paths = (i for i in file_paths if not valid_file_path_pattern.match(i.replace(repository_id, '')))
+        if not any(invalid_file_paths):
+            detect_automation_tools(file_paths, repository_id, repository_name, languages)
             analyzers_to_apply = set()
-            for language in languages.split(','):
+            for language in languages:
                 if language in analyzers:
                     analyzers_to_apply.add(analyzers[language])
             for run_analyzer in analyzers_to_apply:
