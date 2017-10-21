@@ -165,7 +165,6 @@ def analyze(input_line, max_archive_size_bytes, cleanup, temp_files, temp_dirs):
 
 
 def main(argv):
-    # TODO: getopts
     max_archive_size_bytes = int(argv[1])
     cleanup = argv[2] == 'true'
 

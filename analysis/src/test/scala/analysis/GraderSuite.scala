@@ -335,23 +335,6 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
       // "return testable based on codeclimate" in { ??? }
       // "return testable based on codacy" in { ??? }
 
-      // "detect services used" in {
-      //   assert(
-      //     fixture.servicesOf("alopatindev", "qdevicemonitor") === Seq("travis-ci.org", "appveyor.com")
-      //     fixture.servicesOf("alopatindev", "find-telegram-bot") === Seq(
-      //       "travis-ci.org",
-      //       "codecov.io",
-      //       "codeclimate.com",
-      //       "semaphoreci.com",
-      //       "bithound.io",
-      //       "versioneye.com",
-      //       "david-dm.org",
-      //       "dependencyci.com",
-      //       "snyk.io",
-      //       "npmjs.com"
-      //     ))
-      // }
-
     }
 
   }

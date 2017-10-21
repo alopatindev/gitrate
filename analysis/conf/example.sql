@@ -107,7 +107,7 @@ INSERT INTO technologies_users_settings (
   verified
 ) VALUES (
   DEFAULT,
-  1, -- TODO: RETURNING
+  1,
   TRUE
 );
 
