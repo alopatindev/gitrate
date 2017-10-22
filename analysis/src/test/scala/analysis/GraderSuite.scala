@@ -361,7 +361,26 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(grade.value === 0.0 +- 0.1)
       }
 
-      // "return testable grade based on test directories detection" in { ??? }
+      "return testable grade based on test directories detection" in { fixture =>
+        val login = "alopatindev"
+        val repoName = "find-telegram-bot"
+        val language = "JavaScript"
+        val (results: Iterable[GradedRepository], _, _, _) =
+          fixture.processAnalyzerScriptResults(login, repoName, Set(language))
+        val grade = results.head.grades.find(_.gradeCategory == "Testable").head
+        assert(grade.value === 1.0 +- 0.1)
+      }
+
+      "return bad testable grade if no test directory detected" in { fixture =>
+        val login = "Masth0"
+        val repoName = "TextRandom"
+        val language = "JavaScript"
+        val (results: Iterable[GradedRepository], _, _, _) =
+          fixture.processAnalyzerScriptResults(login, repoName, Set(language))
+        val grade = results.head.grades.find(_.gradeCategory == "Testable").head
+        assert(grade.value === 0.0 +- 0.1)
+      }
+
       // "return testable based on coveralls" in { ??? }
       // "return testable based on scrutinizer-ci" in { ??? }
       // "return testable based on codecov" in { ??? }

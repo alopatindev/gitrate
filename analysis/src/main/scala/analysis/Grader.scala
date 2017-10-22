@@ -5,7 +5,7 @@ import com.typesafe.config.Config
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.{DoubleType, LongType}
+import org.apache.spark.sql.types.{BooleanType, DoubleType, LongType}
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
 import java.net.URL
 
@@ -82,7 +82,8 @@ class Grader(val appConfig: Config,
       )
       .groupBy($"idBase64", $"name", $"gradeCategory")
       .agg(sum($"linesOfCode") as "linesOfCode", avg($"value") as "value")
-      .union(penaltiesOfAutomationGrade(outputMessages))
+      .union(penaltiesPerAutomationGrade(outputMessages))
+      .union(penaltiesPerTestableGrade(outputMessages))
       .groupBy($"idBase64", $"name", $"gradeCategory")
       .agg(greatest(zero, least(one, sum($"value"))) as "value", sum($"linesOfCode") as "linesOfCode")
       .groupBy($"idBase64", $"name", $"linesOfCode")
@@ -117,7 +118,7 @@ class Grader(val appConfig: Config,
               $"language" as "language_",
               $"message".cast(LongType) as "linesOfCode")
 
-  private def penaltiesOfAutomationGrade(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] = {
+  private def penaltiesPerAutomationGrade(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] = {
     val maxAutomationTools = lit(literal = 3.0)
 
     val initialCounts = outputMessages
@@ -142,6 +143,17 @@ class Grader(val appConfig: Config,
         -greatest(zero, maxAutomationTools - $"count".cast(DoubleType)) / maxAutomationTools as "value"
       )
   }
+
+  private def penaltiesPerTestableGrade(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] =
+    outputMessages
+      .filter($"messageType" === "tests_dir_exists")
+      .select(
+        $"idBase64",
+        $"name",
+        lit(literal = "Testable") as "gradeCategory",
+        lit(literal = 0L) as "linesOfCode",
+        ($"message".cast(BooleanType).cast(DoubleType) - one) as "value"
+      )
 
   private def dependencies(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] =
     outputMessages
