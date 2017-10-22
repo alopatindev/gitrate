@@ -15,6 +15,7 @@ from languages.analyzeCPP import analyze_cpp
 
 
 valid_file_path_pattern = re.compile(r'^[a-zA-Z0-9/._-]*$')
+tests_dir_pattern = re.compile(r'.*/[Tt]ests{,1}/.*')
 
 automation_tools = {
     'ansible.cfg': 'ansible',
@@ -39,6 +40,8 @@ badges = {
 
 max_file_size_bytes = 20 * 1024
 min_file_size_bytes = 10
+
+all_languages = 'all_languages'
 
 
 def analyze_javascript(repository_id, repository_name, login, archive_output_dir):
@@ -95,7 +98,7 @@ def read_file(file_path):
 
 def detect_automation_tools(file_paths, repository_id, repository_name):
     def output(message):
-        language = 'all_languages'
+        language = all_languages
         message_type = 'automation_tool'
         text = ';'.join((repository_id, repository_name, language, message_type, message))
         print(text)
@@ -115,6 +118,17 @@ def detect_automation_tools(file_paths, repository_id, repository_name):
 
     for i in detected_tools:
         output(i)
+
+
+def detect_tests_dir(file_paths, repository_id, repository_name):
+    def output(message):
+        language = all_languages
+        message_type = 'tests_dir_exists'
+        text = ';'.join((repository_id, repository_name, language, message_type, str(message)))
+        print(text)
+    dirs = (i for i in file_paths if tests_dir_pattern.match(i))
+    dir_exists = any(dirs)
+    output(dir_exists)
 
 
 def analyze(input_line, max_archive_size_bytes, cleanup, temp_files, temp_dirs):
@@ -149,6 +163,7 @@ def analyze(input_line, max_archive_size_bytes, cleanup, temp_files, temp_dirs):
         invalid_file_paths = (i for i in file_paths if not valid_file_path_pattern.match(i.replace(repository_id, '')))
         if not any(invalid_file_paths):
             detect_automation_tools(file_paths, repository_id, repository_name)
+            detect_tests_dir(file_paths, repository_id, repository_name)
             analyzers_to_apply = set()
             for language in languages:
                 if language in analyzers:
