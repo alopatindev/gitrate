@@ -93,12 +93,12 @@ def read_file(file_path):
         return f.read(max_file_size_bytes)
 
 
-def detect_automation_tools(file_paths, repository_id, repository_name, languages):
+def detect_automation_tools(file_paths, repository_id, repository_name):
     def output(message):
+        language = 'all_languages'
         message_type = 'automation_tool'
-        for language in languages:
-            text = ';'.join((repository_id, repository_name, language, message_type, message))
-            print(text)
+        text = ';'.join((repository_id, repository_name, language, message_type, message))
+        print(text)
 
     detected_tools = set()
     for i in file_paths:
@@ -148,7 +148,7 @@ def analyze(input_line, max_archive_size_bytes, cleanup, temp_files, temp_dirs):
         file_paths = list(list_dir_recursively(archive_output_dir))
         invalid_file_paths = (i for i in file_paths if not valid_file_path_pattern.match(i.replace(repository_id, '')))
         if not any(invalid_file_paths):
-            detect_automation_tools(file_paths, repository_id, repository_name, languages)
+            detect_automation_tools(file_paths, repository_id, repository_name)
             analyzers_to_apply = set()
             for language in languages:
                 if language in analyzers:

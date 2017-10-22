@@ -7,6 +7,7 @@ import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.{Dataset, SparkSession}
 import org.scalatest.{Outcome, fixture}
+import org.scalatest.Matchers._
 
 class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
 
@@ -27,6 +28,22 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val (results, _, _, repoId) = fixture.runAnalyzerScript(login, repoName, languages)
         val invalidResults = results.collect().filter(_.idBase64 == repoId)
         assert(invalidResults.isEmpty)
+      }
+
+      "compute lines of code" in { fixture =>
+        val login = "pkrumins"
+        val repoName = "node-png"
+        val languages = Set("C", "C++", "JavaScript")
+        val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, languages, branch = "3.0.0")
+
+        val linesOfCode: Map[String, Int] = results
+          .collect()
+          .filter(result => (languages contains result.language) && result.messageType == "lines_of_code")
+          .map(result => result.language -> result.message.toInt)
+          .toMap
+
+        val expectedLinesOfCode = Map("C" -> 91, "C++" -> 961, "JavaScript" -> 140)
+        assert(linesOfCode === expectedLinesOfCode)
       }
 
       "remove temporary files when done" in { fixture =>
@@ -79,7 +96,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, languages)
         val messages: Seq[String] = results
           .collect()
-          .filter(message => message.language == languages.head && message.messageType == "automation_tool")
+          .filter(message => message.language == "all_languages" && message.messageType == "automation_tool")
           .map(_.message)
         assert(messages contains "travis")
         assert(messages contains "circleci")
@@ -109,19 +126,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
     }
 
-    "JavaScript analysis" should {
-
-      "compute lines of code" in { fixture =>
-        val login = "alopatindev"
-        val repoName = "find-telegram-bot"
-        val languages = Set("JavaScript")
-        val (results, _, _, _) = fixture.runAnalyzerScript(login, repoName, languages)
-        val linesOfCode: Option[Int] = results
-          .collect()
-          .find(result => (languages contains result.language) && result.messageType == "lines_of_code")
-          .map(_.message.toInt)
-        assert(linesOfCode.isDefined && linesOfCode.get > 0)
-      }
+    "perform JavaScript analysis" should {
 
       "detect dependencies" in { fixture =>
         val login = "alopatindev"
@@ -243,7 +248,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
     }
 
-    "C and C++ analysis" should {
+    "perform C and C++ analysis" should {
 
       "compute lines of code" in { fixture =>
         val login = "alopatindev"
@@ -288,6 +293,16 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
     "processAnalyzerScriptResults" should {
 
+      "compute total lines of code" in { fixture =>
+        val login = "pkrumins"
+        val repoName = "node-png"
+        val languages = Set("C", "C++", "JavaScript")
+        val (results: Iterable[GradedRepository], _, _, _) =
+          fixture.processAnalyzerScriptResults(login, repoName, languages, branch = "3.0.0")
+        val expected = 1192L
+        assert(results.head.linesOfCode === expected)
+      }
+
       "detect parent dependencies" in { fixture =>
         val login = "alopatindev"
         val repoName = "find-telegram-bot"
@@ -326,7 +341,25 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
       // "return bad grades when code is bad" in { ??? }
 
-      // "return automated grade based on detected CI/CD services" in { ??? }
+      "return automated grade based on detected automation tools" in { fixture =>
+        val login = "alopatindev"
+        val repoName = "find-telegram-bot"
+        val language = "JavaScript"
+        val (results: Iterable[GradedRepository], _, _, _) =
+          fixture.processAnalyzerScriptResults(login, repoName, Set(language))
+        val grade = results.head.grades.find(_.gradeCategory == "Automated").head
+        assert(grade.value === 1.0 +- 0.1)
+      }
+
+      "return bad automated grade if no automation tools detected" in { fixture =>
+        val login = "Masth0"
+        val repoName = "TextRandom"
+        val language = "JavaScript"
+        val (results: Iterable[GradedRepository], _, _, _) =
+          fixture.processAnalyzerScriptResults(login, repoName, Set(language))
+        val grade = results.head.grades.find(_.gradeCategory == "Automated").head
+        assert(grade.value === 0.0 +- 0.1)
+      }
 
       // "return testable grade based on test directories detection" in { ??? }
       // "return testable based on coveralls" in { ??? }
@@ -386,7 +419,7 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
     def runAnalyzerScript(login: String, // scalastyle:ignore
                           repoName: String,
                           languages: Set[String],
-                          branch: String = "master",
+                          branch: String = defaultBranch,
                           withCleanup: Boolean = true)
       : (Dataset[AnalyzerScriptResult], (String) => Boolean, (String, String) => Boolean, String) = {
       val repoId = UUID.randomUUID().toString
@@ -405,12 +438,18 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
       (results, pathExists, fileContainsText, repoId)
     }
 
-    def processAnalyzerScriptResults(login: String, repoName: String, languages: Set[String])
+    def processAnalyzerScriptResults(login: String, // scalastyle:ignore
+                                     repoName: String,
+                                     languages: Set[String],
+                                     branch: String = defaultBranch)
       : (Iterable[GradedRepository], (String) => Boolean, (String, String) => Boolean, String) = {
-      val (outputMessages, pathExists, fileContainsText, repoId) = runAnalyzerScript(login, repoName, languages)
+      val (outputMessages, pathExists, fileContainsText, repoId) =
+        runAnalyzerScript(login, repoName, languages, branch = branch)
       val results = grader.processAnalyzerScriptResults(outputMessages)
       (results, pathExists, fileContainsText, repoId)
     }
+
+    private val defaultBranch: String = "master"
 
   }
 

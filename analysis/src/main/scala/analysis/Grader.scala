@@ -5,7 +5,7 @@ import com.typesafe.config.Config
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.{DoubleType, IntegerType}
+import org.apache.spark.sql.types.{DoubleType, LongType}
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
 import java.net.URL
 
@@ -67,19 +67,9 @@ class Grader(val appConfig: Config,
   def processAnalyzerScriptResults(outputMessages: Dataset[AnalyzerScriptResult]): Iterable[GradedRepository] = {
     outputMessages.cache()
 
-    val zero = lit(literal = 0.0)
-    val one = lit(literal = 1.0)
     val graded: Dataset[Row] = warningCounts(outputMessages)
       .join(linesOfCode(outputMessages),
             $"idBase64" === $"idBase64_" && $"name" === $"name_" && $"language" === $"language_")
-      .drop("idBase64_", "name_", "language_")
-      .select(
-        $"idBase64",
-        $"name",
-        $"gradeCategory",
-        $"warningsPerCategory".cast(DoubleType) as "warningsPerCategory",
-        $"linesOfCode".cast(DoubleType) as "linesOfCode"
-      )
       .select(
         $"idBase64",
         $"name",
@@ -87,11 +77,14 @@ class Grader(val appConfig: Config,
         $"linesOfCode",
         greatest(
           zero,
-          one - ($"warningsPerCategory" / $"linesOfCode")
+          one - ($"warningsPerCategory".cast(DoubleType) / $"linesOfCode".cast(DoubleType))
         ) as "value"
       )
       .groupBy($"idBase64", $"name", $"gradeCategory")
-      .agg(sum($"linesOfCode").cast(IntegerType) as "linesOfCode", avg($"value") as "value")
+      .agg(sum($"linesOfCode") as "linesOfCode", avg($"value") as "value")
+      .union(penaltiesOfAutomationGrade(outputMessages))
+      .groupBy($"idBase64", $"name", $"gradeCategory")
+      .agg(greatest(zero, least(one, sum($"value"))) as "value", sum($"linesOfCode") as "linesOfCode")
       .groupBy($"idBase64", $"name", $"linesOfCode")
       .agg(collect_list(struct($"gradeCategory", $"value")) as "grades")
 
@@ -119,7 +112,36 @@ class Grader(val appConfig: Config,
   private def linesOfCode(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] =
     outputMessages
       .filter($"messageType" === "lines_of_code")
-      .select($"idBase64" as "idBase64_", $"name" as "name_", $"language" as "language_", $"message" as "linesOfCode")
+      .select($"idBase64" as "idBase64_",
+              $"name" as "name_",
+              $"language" as "language_",
+              $"message".cast(LongType) as "linesOfCode")
+
+  private def penaltiesOfAutomationGrade(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] = {
+    val maxAutomationTools = lit(literal = 3.0)
+
+    val initialCounts = outputMessages
+      .select($"idBase64", $"name", lit(literal = 0L) as "count")
+      .distinct
+
+    val toolsPerRepo: Dataset[Row] = outputMessages
+      .filter($"messageType" === "automation_tool")
+      .groupBy($"idBase64", $"name")
+      .count()
+      .select($"idBase64", $"name", $"count")
+      .union(initialCounts)
+      .groupBy($"idBase64", $"name")
+      .agg(max($"count") as "count")
+
+    toolsPerRepo
+      .select(
+        $"idBase64",
+        $"name",
+        lit(literal = "Automated") as "gradeCategory",
+        lit(literal = 0L) as "linesOfCode",
+        -greatest(zero, maxAutomationTools - $"count".cast(DoubleType)) / maxAutomationTools as "value"
+      )
+  }
 
   private def dependencies(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] =
     outputMessages
@@ -159,6 +181,9 @@ class Grader(val appConfig: Config,
   private val maxExternalScriptDuration = appConfig.getDuration("grader.maxExternalScriptDuration")
   private val maxRepoArchiveSizeBytes = appConfig.getLong("grader.maxRepoArchiveSizeKiB") * 1024L
 
+  private val zero = lit(literal = 0.0)
+  private val one = lit(literal = 1.0)
+
 }
 
 case class Grade(gradeCategory: String, value: Double)
@@ -166,6 +191,6 @@ case class GradedRepository(idBase64: String,
                             name: String,
                             languageToTechnologies: Map[String, Seq[String]],
                             grades: Seq[Grade],
-                            linesOfCode: Int)
+                            linesOfCode: Long)
 
 case class AnalyzerScriptResult(idBase64: String, name: String, language: String, messageType: String, message: String)
