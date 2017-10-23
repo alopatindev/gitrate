@@ -83,7 +83,7 @@ class UserControllerSuite extends PostgresTestUtils {
         val saveResult = UserController.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories)
         val _ = Await.result(saveResult, Duration.Inf)
 
-        type T = (String, String, String, String)
+        type T = (String, String, String, Boolean)
         type Container = Vector[T]
         val query: UserController.SQLQuery[Vector[T], T] = sql"""
           SELECT users.github_login, languages.language, technologies.technology, technologies_users_settings.verified
@@ -95,7 +95,6 @@ class UserControllerSuite extends PostgresTestUtils {
         val data: Future[Container] = UserController.runQuery(query)
         val result: Container = Await.result(data, Duration.Inf)
 
-        val trueValue = "t"
         val user = fakeUserA
         val repo = user.repositories.head
 
@@ -106,7 +105,7 @@ class UserControllerSuite extends PostgresTestUtils {
         languagesToTechnologies.foreach {
           case (language, technologies) =>
             technologies.foreach { technology =>
-              val row = (user.login, language, technology, trueValue)
+              val row = (user.login, language, technology, true)
               assert(result contains row)
             }
         }
@@ -293,7 +292,6 @@ class UserControllerSuite extends PostgresTestUtils {
       id SERIAL PRIMARY KEY,
       language_id INTEGER REFERENCES languages NOT NULL,
       technology TEXT NOT NULL,
-      technology_human_readable TEXT,
       UNIQUE (language_id, technology)
     );
 

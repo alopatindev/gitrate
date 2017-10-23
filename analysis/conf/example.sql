@@ -77,13 +77,11 @@ INSERT INTO contacts (
 INSERT INTO technologies (
   id,
   language_id,
-  technology,
-  technology_human_readable
+  technology
 ) VALUES (
   DEFAULT,
   (SELECT id FROM languages WHERE language = 'JavaScript'),
-  'eslint',
-  'ESLint'
+  'eslint'
 );
 
 INSERT INTO technologies_users (
@@ -260,7 +258,7 @@ SELECT
     WHERE users_to_language_details.user_id = users.id
   ) AS languages
 FROM users
-JOIN developers ON developers.user_id = users.id
+INNER JOIN developers ON developers.user_id = users.id
 WHERE users.id = 1
 LIMIT 1;
 

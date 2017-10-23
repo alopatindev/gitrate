@@ -93,13 +93,11 @@ object UserController extends SlickUtils with LogUtils {
       INSERT INTO technologies (
         id,
         language_id,
-        technology,
-        technology_human_readable
+        technology
       ) VALUES (
         DEFAULT,
         (SELECT id FROM languages WHERE language = $language),
-        $technology,
-        DEFAULT
+        $technology
       ) ON CONFLICT (language_id, technology) DO NOTHING;
 
       INSERT INTO technologies_users (

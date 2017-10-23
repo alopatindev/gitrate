@@ -57,7 +57,6 @@ CREATE TABLE IF NOT EXISTS technologies (
   id SERIAL PRIMARY KEY,
   language_id INTEGER REFERENCES languages NOT NULL,
   technology TEXT NOT NULL,
-  technology_human_readable TEXT,
   UNIQUE (language_id, technology)
 );
 
@@ -151,7 +150,7 @@ CREATE OR REPLACE VIEW users_to_technology_details AS
     technologies.technology,
     JSON_BUILD_OBJECT(
       'technology',
-       COALESCE(technology_human_readable, technology),
+       technology,
       'verified',
       technologies_users_settings.verified
   ) AS technology_details

@@ -38,13 +38,9 @@ class GithubExtractor(val conf: GithubConf, loadAnalyzedRepositories: (Seq[Strin
       .select(explode($"nodes") as "nodes")
       .cache()
 
-    val foundRepositories: Dataset[GithubSearchResult] = processFoundRepositories(rawNodes)
-    val pinnedRepositories: Dataset[GithubSearchResult] = processOwnerRepositories(rawNodes, "pinnedRepositories")
-    val repositories: Dataset[GithubSearchResult] = processOwnerRepositories(rawNodes, "repositories")
-
-    val extractedRepositories = foundRepositories
-      .union(pinnedRepositories)
-      .union(repositories)
+    val extractedRepositories = processFoundRepositories(rawNodes)
+      .union(processOwnerRepositories(rawNodes, "pinnedRepositories"))
+      .union(processOwnerRepositories(rawNodes, "repositories"))
       .cache()
 
     val repoIdsBase64: Seq[String] = extractedRepositories
@@ -55,7 +51,7 @@ class GithubExtractor(val conf: GithubConf, loadAnalyzedRepositories: (Seq[Strin
     val analyzedRepositories: Dataset[AnalyzedRepository] = loadAnalyzedRepositories(repoIdsBase64)
 
     val results: Seq[GithubSearchResult] = extractedRepositories
-      .join(analyzedRepositories, $"repoIdBase64" === $"idBase64", joinType = "left_outer")
+      .join(analyzedRepositories, $"repoIdBase64" === $"idBase64", joinType = "left")
       .filter($"updatedByAnalyzer".isNull ||
         datediff(current_date(), $"updatedByAnalyzer") >= conf.minRepositoryUpdateInterval.toDays)
       .select($"ownerId",
