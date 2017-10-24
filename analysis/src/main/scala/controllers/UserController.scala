@@ -4,20 +4,26 @@ import analysis.github.GithubUser
 import analysis.GradedRepository
 import utils.CollectionUtils._
 import utils.{LogUtils, SlickUtils}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import slick.jdbc.PostgresProfile.api._
+import utils.StringUtils.StemToSynonyms
 
 object UserController extends SlickUtils with LogUtils {
 
-  def saveAnalysisResult(users: Iterable[GithubUser], gradedRepositories: Iterable[GradedRepository]): Future[Unit] = {
-    val query = buildAnalysisResultQuery(users, gradedRepositories)
+  def saveAnalysisResult(users: Iterable[GithubUser],
+                         gradedRepositories: Iterable[GradedRepository],
+                         languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)]): Future[Unit] = {
+    val query = buildAnalysisResultQuery(users, gradedRepositories, languageToTechnologyToSynonyms)
     val future = runQuery(query).map(_ => ())
     future.foreach(_ => logInfo("finished saving analysis result"))
     future
   }
 
-  private def buildAnalysisResultQuery(users: Iterable[GithubUser], gradedRepositories: Iterable[GradedRepository]) = {
+  private def buildAnalysisResultQuery(users: Iterable[GithubUser],
+                                       gradedRepositories: Iterable[GradedRepository],
+                                       languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)]) = {
     val repositories: Map[String, GradedRepository] = gradedRepositories.map(repo => repo.idBase64 -> repo).toMap
     DBIO
       .sequence(
@@ -31,6 +37,7 @@ object UserController extends SlickUtils with LogUtils {
             buildSaveUserQuery(user),
             buildSaveContactsQuery(user),
             buildSaveLanguagesAndTechnologiesQuery(languageToTechnologies, user.id),
+            buildSaveTechnologySynonyms(languageToTechnologyToSynonyms),
             buildSaveRepositoriesQuery(repositoriesOfUser, user.id),
             buildSaveGradesQuery(repositoriesOfUser)
           ))
@@ -131,6 +138,19 @@ object UserController extends SlickUtils with LogUtils {
         TRUE
       ) ON CONFLICT (technologies_users_id) DO UPDATE
       SET verified = TRUE""")
+
+  private def buildSaveTechnologySynonyms(languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)]) =
+    DBIO.sequence(for {
+      (language, technologiesToSynonyms) <- languageToTechnologyToSynonyms
+      (technology, synonyms) <- technologiesToSynonyms
+      synonym <- synonyms
+    } yield sqlu"""
+      INSERT INTO technology_synonyms (id, technology_id, synonym)
+      VALUES (
+        DEFAULT,
+        (SELECT id FROM technologies WHERE technology = $technology),
+        $synonym
+      ) ON CONFLICT (technology_id, synonym) DO NOTHING""")
 
   private def buildSaveGradesQuery(repositoriesOfUser: Seq[GradedRepository]) =
     DBIO.sequence(for {

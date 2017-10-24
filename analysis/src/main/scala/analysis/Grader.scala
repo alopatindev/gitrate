@@ -10,6 +10,8 @@ import org.apache.spark.sql.{Dataset, Row, SparkSession}
 import java.net.URL
 
 import controllers.GraderController.{GradeCategory, WarningToGradeCategory}
+import utils.StringUtils
+import utils.StringUtils.StemToSynonyms
 
 class Grader(val appConfig: Config,
              warningsToGradeCategory: Dataset[WarningToGradeCategory],
@@ -17,8 +19,21 @@ class Grader(val appConfig: Config,
 
   import sparkSession.implicits._
 
-  def processUsers(users: Iterable[GithubUser]): Iterable[GradedRepository] = {
-    users.flatMap { user: GithubUser =>
+  def processUsers(users: Iterable[GithubUser]): (Iterable[GradedRepository], Iterable[(String, StemToSynonyms)]) = {
+    val gradedRepositories: Iterable[GradedRepository] = gradeRepositories(users)
+
+    val languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)] = for {
+      repo <- gradedRepositories
+      (language, technologies) <- repo.languageToTechnologies
+      if languageSupportsPackageManager contains language
+      technologyToSynonyms = StringUtils.stem(technologies, minLength = minStemLength, limit = maxTechnologiesToStem)
+    } yield (language, technologyToSynonyms)
+
+    (gradedRepositories, languageToTechnologyToSynonyms)
+  }
+
+  private def gradeRepositories(users: Iterable[GithubUser]): Iterable[GradedRepository] = users.flatMap {
+    user: GithubUser =>
       val scriptInput = user.repositories.map { repo =>
         val languages: Set[String] = repo.languages.toSet + repo.primaryLanguage
         ScriptInput(repo.idBase64, repo.name, user.login, repo.archiveURL, languages).toString
@@ -26,7 +41,6 @@ class Grader(val appConfig: Config,
 
       val outputMessages: Dataset[AnalyzerScriptResult] = runAnalyzerScript(scriptInput, withCleanup = true)
       processAnalyzerScriptResults(outputMessages)
-    }
   }
 
   case class ScriptInput(repoIdBase64: String,
@@ -195,6 +209,10 @@ class Grader(val appConfig: Config,
 
   private val zero = lit(literal = 0.0)
   private val one = lit(literal = 1.0)
+
+  private val languageSupportsPackageManager = Set("JavaScript")
+  private val minStemLength = 4
+  private val maxTechnologiesToStem = 1000
 
 }
 
