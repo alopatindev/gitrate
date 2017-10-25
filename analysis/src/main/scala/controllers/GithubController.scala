@@ -18,8 +18,8 @@ object GithubController extends AppConfig with SlickUtils with SparkUtils {
 
     Postgres
       .getTable("repositories")
-      .select($"raw_id" as "idBase64", $"updated_by_analyzer" as "updatedByAnalyzer")
-      .filter($"idBase64".isin(repoIdsBase64: _*))
+      .select('raw_id as "idBase64", 'updated_by_analyzer as "updatedByAnalyzer")
+      .filter('idBase64.isin(repoIdsBase64: _*))
       .as[AnalyzedRepository]
   }
 

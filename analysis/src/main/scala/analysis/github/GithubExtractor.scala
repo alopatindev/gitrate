@@ -36,7 +36,7 @@ class GithubExtractor(val conf: GithubConf, loadAnalyzedRepositories: (Seq[Strin
 
     val rawNodes = sparkSession.read
       .json(rawJSONs)
-      .select(explode($"nodes") as "nodes")
+      .select(explode('nodes) as "nodes")
       .cache()
 
     val extractedRepositories = processFoundRepositories(rawNodes)
@@ -45,23 +45,17 @@ class GithubExtractor(val conf: GithubConf, loadAnalyzedRepositories: (Seq[Strin
       .cache()
 
     val repoIdsBase64: Seq[String] = extractedRepositories
-      .select($"repoIdBase64")
+      .select('repoIdBase64)
       .as[String]
       .collect()
 
     val analyzedRepositories: Dataset[AnalyzedRepository] = loadAnalyzedRepositories(repoIdsBase64)
 
     val results: Seq[GithubSearchResult] = extractedRepositories
-      .join(analyzedRepositories, $"repoIdBase64" === $"idBase64", joinType = "left")
-      .filter($"updatedByAnalyzer".isNull ||
-        datediff(current_date(), $"updatedByAnalyzer") >= conf.minRepositoryUpdateInterval.toDays)
-      .select($"ownerId",
-              $"ownerLogin",
-              $"repoIdBase64",
-              $"repoName",
-              $"repoPrimaryLanguage",
-              $"repoLanguages",
-              $"defaultBranch")
+      .join(analyzedRepositories, 'repoIdBase64 === 'idBase64, joinType = "left")
+      .filter('updatedByAnalyzer.isNull ||
+        datediff(current_date(), 'updatedByAnalyzer) >= conf.minRepositoryUpdateInterval.toDays)
+      .select('ownerId, 'ownerLogin, 'repoIdBase64, 'repoName, 'repoPrimaryLanguage, 'repoLanguages, 'defaultBranch)
       .distinct
       .as[GithubSearchResult]
       .collect()
@@ -107,12 +101,12 @@ class GithubExtractor(val conf: GithubConf, loadAnalyzedRepositories: (Seq[Strin
 
     filterRepos(rawFoundRepos, "nodes")
       .select($"parsedUserId.id" as "ownerId",
-              $"ownerLogin",
-              $"repoIdBase64",
-              $"repoName",
-              $"repoPrimaryLanguage",
-              $"repoLanguages",
-              $"defaultBranch")
+              'ownerLogin,
+              'repoIdBase64,
+              'repoName,
+              'repoPrimaryLanguage,
+              'repoLanguages,
+              'defaultBranch)
       .as[GithubSearchResult]
   }
 
@@ -131,10 +125,10 @@ class GithubExtractor(val conf: GithubConf, loadAnalyzedRepositories: (Seq[Strin
     repositories
       .filter(
         $"repositories.isFork" === false && $"repositories.isMirror" === false &&
-          $"repositories.owner.id" === $"ownerIdBase64")
+          $"repositories.owner.id" === 'ownerIdBase64)
       .select(
         $"parsedUserId.id" as "ownerId",
-        $"ownerLogin",
+        'ownerLogin,
         $"repositories.id" as "repoIdBase64",
         $"repositories.name" as "repoName",
         $"repositories.primaryLanguage.name" as "repoPrimaryLanguage",
