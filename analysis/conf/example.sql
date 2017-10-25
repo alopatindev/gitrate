@@ -3,9 +3,8 @@ INSERT INTO users (
   github_user_id,
   github_login,
   full_name,
-  updated_by_user,
-  viewed
-) VALUES (DEFAULT, 1, 'usertest', 'full name', DEFAULT, DEFAULT);
+  updated_by_user
+) VALUES (DEFAULT, 1, 'usertest', 'full name', DEFAULT);
 
 INSERT INTO repositories (
   id,
@@ -53,12 +52,14 @@ INSERT INTO developers (
   description,
   raw_location,
   country_id,
-  city_id
+  city_id,
+  viewed
 ) VALUES (
   DEFAULT,
   (SELECT id FROM users WHERE github_user_id = 1),
   DEFAULT,
   TRUE,
+  DEFAULT,
   DEFAULT,
   DEFAULT,
   DEFAULT,

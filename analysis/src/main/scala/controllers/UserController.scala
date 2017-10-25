@@ -73,14 +73,12 @@ object UserController extends SlickUtils with LogUtils {
       github_user_id,
       github_login,
       full_name,
-      updated_by_user,
-      viewed
+      updated_by_user
     ) VALUES (
       DEFAULT,
       ${user.id},
       ${user.login},
       ${user.fullName.getOrElse("")},
-      DEFAULT,
       DEFAULT
     ) ON CONFLICT (github_user_id) DO UPDATE
     SET
@@ -99,7 +97,8 @@ object UserController extends SlickUtils with LogUtils {
       description,
       raw_location,
       country_id,
-      city_id
+      city_id,
+      viewed
     ) VALUES (
       DEFAULT,
       (
@@ -123,7 +122,8 @@ object UserController extends SlickUtils with LogUtils {
         SELECT id
         FROM cities
         WHERE city = ${location.city}
-      )
+      ),
+      DEFAULT
     ) ON CONFLICT (user_id) DO NOTHING"""
 
   private def buildSaveLanguagesAndTechnologiesQuery(languageToTechnologies: Map[String, Seq[String]],

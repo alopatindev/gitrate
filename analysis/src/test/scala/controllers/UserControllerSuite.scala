@@ -325,8 +325,7 @@ class UserControllerSuite extends PostgresTestUtils {
       github_user_id INTEGER UNIQUE NOT NULL,
       github_login TEXT NOT NULL,
       full_name TEXT NOT NULL,
-      updated_by_user TIMESTAMP,
-      viewed INTEGER DEFAULT 0 NOT NULL
+      updated_by_user TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS developers (
@@ -340,7 +339,8 @@ class UserControllerSuite extends PostgresTestUtils {
       description TEXT DEFAULT '' NOT NULL,
       raw_location TEXT,
       country_id INTEGER REFERENCES countries,
-      city_id INTEGER REFERENCES cities
+      city_id INTEGER REFERENCES cities,
+      viewed INTEGER DEFAULT 0 NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS contact_categories (
