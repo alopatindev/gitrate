@@ -4,9 +4,9 @@ import java.net.URL
 
 import analysis.github.{GithubRepository, GithubUser}
 import analysis.{Grade, GradedRepository}
+import analysis.TextAnalyzer.StemToSynonyms
 import slick.sql.SqlAction
 import testing.PostgresTestUtils
-import utils.StringUtils.StemToSynonyms
 
 import scala.concurrent.Future
 

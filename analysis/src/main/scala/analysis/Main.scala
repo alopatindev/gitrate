@@ -1,5 +1,6 @@
 package analysis
 
+import analysis.TextAnalyzer.StemToSynonyms
 import controllers.{GithubController, GraderController, UserController}
 import github.{GithubConf, GithubExtractor, GithubReceiver, GithubSearchInputDStream, GithubUser}
 import utils.{AppConfig, HttpClientFactory, LogUtils, ResourceUtils, SparkUtils}
@@ -37,8 +38,11 @@ object Main extends AppConfig with LogUtils with ResourceUtils with SparkUtils {
         implicit val sparkSession: SparkSession = rawGithubResult.toSparkSession
         val grader = new Grader(appConfig, GraderController.warningsToGradeCategory, GraderController.gradeCategories)
 
-        val (gradedRepositories, languageToTechnologyToSynonyms) = grader.processUsers(users)
+        val gradedRepositories: Iterable[GradedRepository] = grader.processUsers(users)
         logInfo(s"graded ${gradedRepositories.size} repositories!")
+
+        val languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)] =
+          gradedRepositories.flatMap(repo => TextAnalyzer.technologySynonyms(repo.languageToTechnologies))
 
         if (gradedRepositories.nonEmpty) {
           val _ = UserController.saveAnalysisResult(users, gradedRepositories, languageToTechnologyToSynonyms)

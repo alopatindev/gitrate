@@ -2,13 +2,12 @@ package controllers
 
 import analysis.github.GithubUser
 import analysis.GradedRepository
+import analysis.TextAnalyzer.StemToSynonyms
 import utils.CollectionUtils._
 import utils.{LogUtils, SlickUtils}
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import slick.jdbc.PostgresProfile.api._
-import utils.StringUtils.StemToSynonyms
 
 object UserController extends SlickUtils with LogUtils {
 
