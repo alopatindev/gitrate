@@ -119,9 +119,7 @@ class Grader(val appConfig: Config,
   private def penaltiesPerAutomationGrade(outputMessages: Dataset[AnalyzerScriptResult]): Dataset[Row] = {
     val maxAutomationTools = lit(literal = 3.0)
 
-    val initialCounts = outputMessages
-      .select($"idBase64", $"name", lit(literal = 0L) as "count")
-      .distinct
+    val initialCounts = outputMessages.select($"idBase64", $"name", zeroLong as "count")
 
     val toolsPerRepo: Dataset[Row] = outputMessages
       .filter($"messageType" === "automation_tool")
@@ -137,7 +135,7 @@ class Grader(val appConfig: Config,
         $"idBase64",
         $"name",
         lit(literal = "Automated") as "gradeCategory",
-        lit(literal = 0L) as "linesOfCode",
+        zeroLong as "linesOfCode",
         -greatest(zero, maxAutomationTools - $"count".cast(DoubleType)) / maxAutomationTools as "value"
       )
   }
@@ -149,7 +147,7 @@ class Grader(val appConfig: Config,
         $"idBase64",
         $"name",
         lit(literal = "Testable") as "gradeCategory",
-        lit(literal = 0L) as "linesOfCode",
+        zeroLong as "linesOfCode",
         ($"message".cast(BooleanType).cast(DoubleType) - one) as "value"
       )
 
@@ -171,7 +169,6 @@ class Grader(val appConfig: Config,
         $"gradeCategory",
         lit(literal = 0) as "count"
       )
-      .distinct
 
     warningsToGradeCategory
       .join(
@@ -191,6 +188,7 @@ class Grader(val appConfig: Config,
   private val maxExternalScriptDuration = appConfig.getDuration("grader.maxExternalScriptDuration")
   private val maxRepoArchiveSizeBytes = appConfig.getLong("grader.maxRepoArchiveSizeKiB") * 1024L
 
+  private val zeroLong = lit(literal = 0L)
   private val zero = lit(literal = 0.0)
   private val one = lit(literal = 1.0)
 

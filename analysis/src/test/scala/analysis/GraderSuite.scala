@@ -116,10 +116,6 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 //          ???
 //      }
 //
-//      "process multiple languages" in { fixture =>
-//        ???
-//      }
-//
 //      "ignore repository if script fails" in { fixture =>
 //        ???
 //      }
@@ -335,8 +331,15 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         val languages = Set("JavaScript")
         val (results: Iterable[GradedRepository], _, _, _) =
           fixture.processAnalyzerScriptResults(login, repoName, languages)
-        val robustGrade = results.head.grades.find(_.gradeCategory == "Robust").get.value
-        assert(robustGrade >= 0.9 && robustGrade < 1.0)
+
+        def grade(category: String): Double = results.head.grades.find(_.gradeCategory == category).get.value
+        val tolerance = 0.00001
+        assert(grade("Robust") === 0.96891 +- tolerance)
+        assert(grade("Automated") === 0.0 +- tolerance)
+        assert(grade("Performant") === 1.0 +- tolerance)
+        assert(grade("Secure") === 1.0 +- tolerance)
+        assert(grade("Maintainable") === 1.0 +- tolerance)
+        assert(grade("Testable") === 0.0 +- tolerance)
       }
 
       // "return bad grades when code is bad" in { ??? }
