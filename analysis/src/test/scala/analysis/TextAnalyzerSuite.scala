@@ -1,12 +1,28 @@
 package analysis
 
-import analysis.TextAnalyzer.StemToSynonyms
+import analysis.TextAnalyzer.{Location, StemToSynonyms}
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 
 class TextAnalyzerSuite extends WordSpec {
 
   "TextAnalyzerSuite" can {
+
+    "parseLocation" should {
+
+      "process empty input" in {
+        assert(TextAnalyzer.parseLocation("") === Location(country = None, city = None))
+      }
+
+      "parse geo locations" in {
+        assert(
+          TextAnalyzer.parseLocation("Saint Petersburg, Russia") === Location(country = Some("Russian Federation"),
+                                                                              city = Some("Saint Petersburg")))
+        assert(TextAnalyzer.parseLocation("Russia") === Location(country = Some("Russian Federation"), city = None))
+        assert(TextAnalyzer.parseLocation("CA") === Location(country = Some("United States"), city = None))
+      }
+
+    }
 
     "technologySynonyms" should {
 

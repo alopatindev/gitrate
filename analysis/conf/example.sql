@@ -50,12 +50,18 @@ INSERT INTO developers (
   available_for_relocation,
   programming_experience_months,
   work_experience_months,
-  description
+  description,
+  raw_location,
+  country_id,
+  city_id
 ) VALUES (
   DEFAULT,
   (SELECT id FROM users WHERE github_user_id = 1),
   DEFAULT,
   TRUE,
+  DEFAULT,
+  DEFAULT,
+  DEFAULT,
   DEFAULT,
   DEFAULT,
   DEFAULT,

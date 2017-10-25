@@ -1,11 +1,37 @@
 package analysis
 
+import com.taykey.twitterlocationparser.{DefaultLocationParser, dto}
+import com.taykey.twitterlocationparser.dto.LocationType
+
 import scala.annotation.tailrec
 
 object TextAnalyzer {
 
   type Synonyms = Set[String]
   type StemToSynonyms = Map[String, Synonyms]
+
+  case class Location(country: Option[String], city: Option[String])
+
+  @transient private lazy val locationParser: DefaultLocationParser = new DefaultLocationParser
+
+  def parseLocation(location: String): Location =
+    Option(locationParser.parseText(location)).map(rawLocation => (rawLocation.getType, rawLocation)) match {
+      case Some((LocationType.City, rawLocation)) =>
+        val country = getCountry(rawLocation)
+        val city = Option(rawLocation.getName)
+        Location(country = country, city = city)
+      case Some((LocationType.Country, rawLocation)) => Location(country = Option(rawLocation.getName), city = None)
+      case Some((LocationType.State, rawLocation)) =>
+        val country = getCountry(rawLocation)
+        Location(country = country, city = None)
+      case _ => Location(country = None, city = None)
+    }
+
+  private def getCountry(rawLocation: dto.Location): Option[String] =
+    Option(
+      locationParser.getLocationDao
+        .getCountryByCode(rawLocation.getCountryCode)
+        .getName)
 
   def technologySynonyms(languageToTechnologies: Map[String, Seq[String]]): Iterable[(String, StemToSynonyms)] =
     for {

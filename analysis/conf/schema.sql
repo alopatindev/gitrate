@@ -13,6 +13,16 @@ DROP OWNED BY gitrate;
 
 SET enable_seqscan TO off;
 
+CREATE TABLE IF NOT EXISTS countries (
+  id SERIAL PRIMARY KEY,
+  country TEXT UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS cities (
+  id SERIAL PRIMARY KEY,
+  city TEXT UNIQUE NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   github_user_id INTEGER UNIQUE NOT NULL,
@@ -30,7 +40,10 @@ CREATE TABLE IF NOT EXISTS developers (
   available_for_relocation BOOLEAN,
   programming_experience_months SMALLINT,
   work_experience_months SMALLINT,
-  description TEXT DEFAULT '' NOT NULL
+  description TEXT DEFAULT '' NOT NULL,
+  raw_location TEXT DEFAULT '' NOT NULL,
+  country_id INTEGER REFERENCES countries,
+  city_id INTEGER REFERENCES cities
 );
 
 CREATE TABLE IF NOT EXISTS contact_categories (

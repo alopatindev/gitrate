@@ -25,10 +25,13 @@ scalacOptions ++= Seq(
 
 val sparkVersion = "2.1.1" // TODO: migrate to 2.2.0
 
+resolvers += "clojars" at "https://clojars.org/repo"
+
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion,
   "org.apache.spark" %% "spark-sql" % sparkVersion,
   "org.apache.spark" %% "spark-streaming" % sparkVersion,
+
   "org.postgresql" % "postgresql" % "42.1.4",
   "com.typesafe.slick" %% "slick" % "3.2.1",
 
@@ -37,6 +40,8 @@ libraryDependencies ++= Seq(
   "org.scalaj" %% "scalaj-http" % "2.3.0",
 
   "com.typesafe" % "config" % "1.3.1",
+
+  "cc.qbits" % "sextant" % "1.0.2",
 
   "org.scalatest" %% "scalatest" % "3.1.x-6e03d4d77" % Test,
 

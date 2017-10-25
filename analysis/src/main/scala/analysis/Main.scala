@@ -1,6 +1,7 @@
 package analysis
 
-import analysis.TextAnalyzer.StemToSynonyms
+import analysis.TextAnalyzer.{Location, StemToSynonyms}
+import controllers.UserController.AnalysisResult
 import controllers.{GithubController, GraderController, UserController}
 import github.{GithubConf, GithubExtractor, GithubReceiver, GithubSearchInputDStream, GithubUser}
 import utils.{AppConfig, HttpClientFactory, LogUtils, ResourceUtils, SparkUtils}
@@ -41,11 +42,17 @@ object Main extends AppConfig with LogUtils with ResourceUtils with SparkUtils {
         val gradedRepositories: Iterable[GradedRepository] = grader.processUsers(users)
         logInfo(s"graded ${gradedRepositories.size} repositories!")
 
-        val languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)] =
-          gradedRepositories.flatMap(repo => TextAnalyzer.technologySynonyms(repo.languageToTechnologies))
-
         if (gradedRepositories.nonEmpty) {
-          val _ = UserController.saveAnalysisResult(users, gradedRepositories, languageToTechnologyToSynonyms)
+          val languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)] =
+            gradedRepositories.flatMap(repo => TextAnalyzer.technologySynonyms(repo.languageToTechnologies))
+
+          val userToLocation: Map[Int, Location] = users
+            .flatMap(user => user.location.map(user.id -> _))
+            .toMap
+            .mapValues(TextAnalyzer.parseLocation)
+
+          val analysisResult = AnalysisResult(users, gradedRepositories, languageToTechnologyToSynonyms, userToLocation)
+          val _ = UserController.saveAnalysisResult(analysisResult)
         }
       }
 

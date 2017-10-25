@@ -4,7 +4,8 @@ import java.net.URL
 
 import analysis.github.{GithubRepository, GithubUser}
 import analysis.{Grade, GradedRepository}
-import analysis.TextAnalyzer.StemToSynonyms
+import analysis.TextAnalyzer.{Location, StemToSynonyms}
+import controllers.UserController.AnalysisResult
 import slick.sql.SqlAction
 import testing.PostgresTestUtils
 
@@ -21,7 +22,8 @@ class UserControllerSuite extends PostgresTestUtils {
     "saveAnalysisResult" should {
 
       "process empty input" in { _ =>
-        val saveResult = UserController.saveAnalysisResult(Iterable(), Iterable(), Iterable())
+        val analysisResult = AnalysisResult(Iterable.empty, Iterable.empty, Iterable.empty, Map.empty)
+        val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = String
@@ -34,7 +36,8 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "process single user" in { _ =>
-        val saveResult = UserController.saveAnalysisResult(fakeSingleUser, fakeGradedRepositories, Iterable())
+        val analysisResult = AnalysisResult(fakeSingleUser, fakeGradedRepositories, Iterable.empty, Map.empty)
+        val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = String
@@ -48,7 +51,8 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "process multiple users" in { _ =>
-        val saveResult = UserController.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable())
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable.empty, Map.empty)
+        val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = String
@@ -62,7 +66,8 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "save contacts" in { _ =>
-        val saveResult = UserController.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable())
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable.empty, Map.empty)
+        val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = (String, String, String)
@@ -81,7 +86,8 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "save languages and technologies" in { _ =>
-        val saveResult = UserController.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable())
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable.empty, Map.empty)
+        val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = (String, String, String, Boolean)
@@ -113,8 +119,9 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "save technology synonyms" in { _ =>
-        val saveResult =
-          UserController.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories, fakeLanguageToTechnologyToSynonyms)
+        val analysisResult =
+          AnalysisResult(fakeTwoUsers, fakeGradedRepositories, fakeLanguageToTechnologyToSynonyms, Map.empty)
+        val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = (String, String)
@@ -132,8 +139,32 @@ class UserControllerSuite extends PostgresTestUtils {
         assert(synonym === "eslint-plugin-better")
       }
 
+      "save locations" in { _ =>
+        val analysisResult =
+          AnalysisResult(fakeTwoUsers, fakeGradedRepositories, fakeLanguageToTechnologyToSynonyms, fakeUserToLocation)
+        val saveResult = UserController.saveAnalysisResult(analysisResult)
+        val _ = Await.result(saveResult, Duration.Inf)
+
+        type T = (Option[String], Option[String])
+        type Container = Vector[T]
+        val query: UserController.SQLQuery[Vector[T], T] = sql"""
+          SELECT countries.country, cities.city
+          FROM developers
+          LEFT JOIN countries ON countries.id = developers.country_id
+          LEFT JOIN cities ON cities.id = developers.city_id""".as[T]
+        val data: Future[Container] = UserController.runQuery(query)
+        val result: Container = Await.result(data, Duration.Inf)
+
+        val expected = Seq(
+          Some("Russian Federation") -> Some("Saint Petersburg"),
+          None -> Some("Saint Petersburg")
+        )
+        assert(result === expected)
+      }
+
       "save repositories" in { _ =>
-        val saveResult = UserController.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable())
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable.empty, Map.empty)
+        val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = (String, String, String, String)
@@ -155,7 +186,8 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "save grades" in { _ =>
-        val saveResult = UserController.saveAnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable())
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable.empty, Map.empty)
+        val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
         type T = (String, String, String)
@@ -247,7 +279,7 @@ class UserControllerSuite extends PostgresTestUtils {
     repositories = Seq(fakeRepoA),
     fullName = Some("Full Name A"),
     description = Some("description A"),
-    location = Some("location A"),
+    location = Some("Russia, Saint Petersburg"),
     company = Some("company A"),
     email = Some("a@domain.com"),
     blog = Some("https://a.domain"),
@@ -260,7 +292,7 @@ class UserControllerSuite extends PostgresTestUtils {
     repositories = Seq(fakeRepoB, fakeRepoC),
     fullName = Some("Full Name B"),
     description = Some("description B"),
-    location = Some("location B"),
+    location = Some("Saint Petersburg"),
     company = Some("company B"),
     email = None,
     blog = Some("https://b.domain"),
@@ -270,11 +302,25 @@ class UserControllerSuite extends PostgresTestUtils {
   private val fakeSingleUser: Seq[GithubUser] = Seq(fakeUserA)
   private val fakeTwoUsers: Seq[GithubUser] = Seq(fakeUserA, fakeUserB)
   private val fakeGradedRepositories: Seq[GradedRepository] = Seq(fakeGradedRepoA, fakeGradedRepoB, fakeGradedRepoC)
+  private val fakeUserToLocation: Map[Int, Location] = Map(
+    1 -> Location(country = Some("Russian Federation"), city = Some("Saint Petersburg")),
+    2 -> Location(country = None, city = Some("Saint Petersburg"))
+  )
 
   private val fakeLanguageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)] = Seq(
     "JavaScript" -> Map("eslint" -> Set("eslint-plugin-better")))
 
   override def schema: SqlAction[Int, NoStream, Effect] = sqlu"""
+    CREATE TABLE IF NOT EXISTS countries (
+      id SERIAL PRIMARY KEY,
+      country TEXT UNIQUE NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS cities (
+      id SERIAL PRIMARY KEY,
+      city TEXT UNIQUE NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       github_user_id INTEGER UNIQUE NOT NULL,
@@ -292,7 +338,10 @@ class UserControllerSuite extends PostgresTestUtils {
       available_for_relocation BOOLEAN,
       programming_experience_months SMALLINT,
       work_experience_months SMALLINT,
-      description TEXT DEFAULT '' NOT NULL
+      description TEXT DEFAULT '' NOT NULL,
+      raw_location TEXT,
+      country_id INTEGER REFERENCES countries,
+      city_id INTEGER REFERENCES cities
     );
 
     CREATE TABLE IF NOT EXISTS contact_categories (

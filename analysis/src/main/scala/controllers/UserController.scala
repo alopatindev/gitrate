@@ -2,45 +2,69 @@ package controllers
 
 import analysis.github.GithubUser
 import analysis.GradedRepository
-import analysis.TextAnalyzer.StemToSynonyms
+import analysis.TextAnalyzer.{Location, StemToSynonyms}
 import utils.CollectionUtils._
 import utils.{LogUtils, SlickUtils}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import slick.jdbc.PostgresProfile.api._
 
 object UserController extends SlickUtils with LogUtils {
 
-  def saveAnalysisResult(users: Iterable[GithubUser],
-                         gradedRepositories: Iterable[GradedRepository],
-                         languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)]): Future[Unit] = {
-    val query = buildAnalysisResultQuery(users, gradedRepositories, languageToTechnologyToSynonyms)
+  case class AnalysisResult(users: Iterable[GithubUser],
+                            gradedRepositories: Iterable[GradedRepository],
+                            languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)],
+                            userToLocation: Map[Int, Location])
+
+  def saveAnalysisResult(result: AnalysisResult): Future[Unit] = {
+    val query = buildAnalysisResultQuery(result)
     val future = runQuery(query).map(_ => ())
     future.foreach(_ => logInfo("finished saving analysis result"))
     future
   }
 
-  private def buildAnalysisResultQuery(users: Iterable[GithubUser],
-                                       gradedRepositories: Iterable[GradedRepository],
-                                       languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)]) = {
-    val repositories: Map[String, GradedRepository] = gradedRepositories.map(repo => repo.idBase64 -> repo).toMap
+  private def buildAnalysisResultQuery(result: AnalysisResult) = {
+    val repositories: Map[String, GradedRepository] = result.gradedRepositories.map(repo => repo.idBase64 -> repo).toMap
     DBIO
       .sequence(
         for {
-          user <- users.toSeq
+          user <- result.users.toSeq
           repositoriesOfUser: Seq[GradedRepository] = user.repositories.flatMap(repo => repositories.get(repo.idBase64))
           languageToTechnologiesSeq: Seq[MapOfSeq[String, String]] = repositoriesOfUser.map(_.languageToTechnologies)
           languageToTechnologies: MapOfSeq[String, String] = seqOfMapsToMap(languageToTechnologiesSeq)
+          location: Location = result.userToLocation.getOrElse(user.id, Location(None, None))
         } yield
           DBIO.seq(
+            buildSaveLocationQuery(location),
             buildSaveUserQuery(user),
+            buildSaveDeveloperQuery(user, location),
             buildSaveContactsQuery(user),
             buildSaveLanguagesAndTechnologiesQuery(languageToTechnologies, user.id),
-            buildSaveTechnologySynonyms(languageToTechnologyToSynonyms),
+            buildSaveTechnologySynonyms(result.languageToTechnologyToSynonyms),
             buildSaveRepositoriesQuery(repositoriesOfUser, user.id),
             buildSaveGradesQuery(repositoriesOfUser)
           ))
       .transactionally
+  }
+
+  private def buildSaveLocationQuery(location: Location) = {
+    val countryQuery = location.country.map { country =>
+      sqlu"""
+      INSERT INTO countries (id, country)
+      VALUES (DEFAULT, $country)
+      ON CONFLICT (country) DO NOTHING;"""
+    }
+
+    val cityQuery = location.city.map { city =>
+      sqlu"""
+      INSERT INTO cities (id, city)
+      VALUES (DEFAULT, $city)
+      ON CONFLICT (city) DO NOTHING;"""
+    }
+
+    val queries = Seq(countryQuery, cityQuery).flatten
+    DBIO.sequence(queries)
   }
 
   private def buildSaveUserQuery(user: GithubUser) = sqlu"""
@@ -61,8 +85,9 @@ object UserController extends SlickUtils with LogUtils {
     ) ON CONFLICT (github_user_id) DO UPDATE
     SET
       github_login = ${user.login},
-      full_name = ${user.fullName.getOrElse("")};
+      full_name = ${user.fullName.getOrElse("")}"""
 
+  private def buildSaveDeveloperQuery(user: GithubUser, location: Location) = sqlu"""
     INSERT INTO developers (
       id,
       user_id,
@@ -71,7 +96,10 @@ object UserController extends SlickUtils with LogUtils {
       available_for_relocation,
       programming_experience_months,
       work_experience_months,
-      description
+      description,
+      raw_location,
+      country_id,
+      city_id
     ) VALUES (
       DEFAULT,
       (
@@ -84,7 +112,18 @@ object UserController extends SlickUtils with LogUtils {
       DEFAULT,
       DEFAULT,
       DEFAULT,
-      ${user.description.getOrElse("")}
+      ${user.description.getOrElse("")},
+      ${user.location.getOrElse("")},
+      (
+        SELECT id
+        FROM countries
+        WHERE country = ${location.country}
+      ),
+      (
+        SELECT id
+        FROM cities
+        WHERE city = ${location.city}
+      )
     ) ON CONFLICT (user_id) DO NOTHING"""
 
   private def buildSaveLanguagesAndTechnologiesQuery(languageToTechnologies: Map[String, Seq[String]],
