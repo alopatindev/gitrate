@@ -1,12 +1,11 @@
 package controllers
 
-import org.apache.spark.sql.Dataset
 import utils.{AppConfig, SlickUtils, SparkUtils}
 
-import scala.concurrent.{Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
+import org.apache.spark.sql.Dataset
 import scala.concurrent.duration._
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future}
 import scala.util.Try
 import slick.jdbc.PostgresProfile.api._
 import slick.sql.SqlStreamingAction

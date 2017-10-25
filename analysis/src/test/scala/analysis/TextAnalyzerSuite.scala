@@ -1,6 +1,7 @@
 package analysis
 
 import analysis.TextAnalyzer.{Location, StemToSynonyms}
+
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 

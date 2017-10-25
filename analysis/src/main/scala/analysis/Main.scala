@@ -4,9 +4,10 @@ import analysis.TextAnalyzer.{Location, StemToSynonyms}
 import controllers.UserController.AnalysisResult
 import controllers.{GithubController, GraderController, UserController}
 import github.{GithubConf, GithubExtractor, GithubReceiver, GithubSearchInputDStream, GithubUser}
-import utils.{AppConfig, HttpClientFactory, LogUtils, ResourceUtils, SparkUtils}
 import utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 import utils.SparkUtils.RDDUtils
+import utils.{AppConfig, HttpClientFactory, LogUtils, ResourceUtils, SparkUtils}
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.SparkSession

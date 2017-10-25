@@ -1,7 +1,8 @@
 package controllers
 
-import org.apache.spark.sql.Dataset
 import utils.{AppConfig, ResourceUtils, SparkUtils}
+
+import org.apache.spark.sql.Dataset
 
 object GraderController extends AppConfig with ResourceUtils with SparkUtils {
 

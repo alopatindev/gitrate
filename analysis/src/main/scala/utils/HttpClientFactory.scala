@@ -2,10 +2,8 @@ package utils
 
 import java.io.InputStream
 import java.net.URL
-
 import scala.concurrent.blocking
 import scala.concurrent.duration._
-
 import scalaj.http.{Http, HttpRequest}
 
 object HttpClientFactory {

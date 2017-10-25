@@ -1,15 +1,15 @@
 package analysis
 
+import controllers.GraderController.{GradeCategory, WarningToGradeCategory}
 import github.GithubUser
+
 import com.typesafe.config.Config
+import java.net.URL
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{BooleanType, DoubleType, LongType}
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
-import java.net.URL
-
-import controllers.GraderController.{GradeCategory, WarningToGradeCategory}
 
 class Grader(val appConfig: Config,
              warningsToGradeCategory: Dataset[WarningToGradeCategory],

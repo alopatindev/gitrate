@@ -2,6 +2,7 @@ package analysis.github
 
 import controllers.GithubController.GithubSearchQuery
 import utils.{LogUtils, ResourceUtils}
+
 import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 import org.apache.spark.storage.StorageLevel

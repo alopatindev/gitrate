@@ -1,11 +1,11 @@
 package utils
 
+import StringUtils._
+
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 
 class StringUtilsSuite extends WordSpec {
-
-  import StringUtils._
 
   "StringUtils" can {
 

@@ -1,7 +1,6 @@
 package utils
 
 import java.io.InputStream
-
 import scala.io.Source
 
 trait ResourceUtils {

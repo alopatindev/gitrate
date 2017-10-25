@@ -1,21 +1,19 @@
 package controllers
 
-import java.net.URL
-
 import analysis.github.{GithubRepository, GithubUser}
-import analysis.{Grade, GradedRepository}
 import analysis.TextAnalyzer.{Location, StemToSynonyms}
+import analysis.{Grade, GradedRepository}
 import controllers.UserController.AnalysisResult
-import slick.sql.SqlAction
 import testing.PostgresTestUtils
 
+import java.net.URL
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 import scala.concurrent.Future
+import slick.jdbc.PostgresProfile.api._
+import slick.sql.SqlAction
 
 class UserControllerSuite extends PostgresTestUtils {
-
-  import scala.concurrent.Await
-  import scala.concurrent.duration.Duration
-  import slick.jdbc.PostgresProfile.api._
 
   "UserControllerSuite" can {
 
@@ -249,8 +247,9 @@ class UserControllerSuite extends PostgresTestUtils {
     GradedRepository(
       idBase64 = "repoA",
       name = "nameA",
-      languageToTechnologies =
-        Map("JavaScript" -> Seq("MongoDB", "eslint-plugin-better", "eslint"), "Perl" -> Seq(), "C++" -> Seq("Boost")),
+      languageToTechnologies = Map("JavaScript" -> Seq("MongoDB", "eslint-plugin-better", "eslint"),
+                                   "Perl" -> Seq.empty,
+                                   "C++" -> Seq("Boost")),
       grades = Seq(Grade("Maintainable", 0.8)),
       linesOfCode = 100
     )
@@ -259,7 +258,7 @@ class UserControllerSuite extends PostgresTestUtils {
     GradedRepository(
       idBase64 = "repoB",
       name = "nameB",
-      languageToTechnologies = Map("C" -> Seq("PostgreSQL"), "Python" -> Seq("Django"), "C++" -> Seq()),
+      languageToTechnologies = Map("C" -> Seq("PostgreSQL"), "Python" -> Seq("Django"), "C++" -> Seq.empty),
       grades = Seq(Grade("Maintainable", 0.9), Grade("Performant", 0.8)),
       linesOfCode = 200
     )
@@ -268,7 +267,7 @@ class UserControllerSuite extends PostgresTestUtils {
     GradedRepository(
       idBase64 = "repoC",
       name = "nameC",
-      languageToTechnologies = Map("Bash" -> Seq(), "Java" -> Seq("Spring")),
+      languageToTechnologies = Map("Bash" -> Seq.empty, "Java" -> Seq("Spring")),
       grades = Seq(Grade("Maintainable", 0.95), Grade("Performant", 0.77)),
       linesOfCode = 300
     )

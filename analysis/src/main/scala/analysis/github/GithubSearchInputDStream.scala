@@ -1,9 +1,10 @@
 package analysis.github
 
 import controllers.GithubController.GithubSearchQuery
-import org.apache.spark.streaming.StreamingContext
+
 import org.apache.spark.streaming.dstream.ReceiverInputDStream
 import org.apache.spark.streaming.receiver.Receiver
+import org.apache.spark.streaming.StreamingContext
 
 class GithubSearchInputDStream(ssc: StreamingContext,
                                conf: GithubConf,

@@ -2,11 +2,9 @@ package testing
 
 import java.time.Duration
 import java.util.concurrent.ConcurrentLinkedQueue
-
-import org.scalatest.Matchers._
 import org.scalatest.compatible.Assertion
+import org.scalatest.Matchers._
 import play.api.libs.json.{JsValue, Json}
-
 import scala.io.Source
 
 trait TestUtils {

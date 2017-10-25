@@ -1,21 +1,21 @@
 package analysis
 
-import testing.TestUtils
-import com.holdenkarau.spark.testing.DataFrameSuiteBase
 import controllers.GraderController.{GradeCategory, WarningToGradeCategory}
+import testing.TestUtils
+
+import com.holdenkarau.spark.testing.DataFrameSuiteBase
+import com.typesafe.config.ConfigFactory
+import java.io.File
+import java.net.URL
+import java.util.UUID
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.{Dataset, SparkSession}
-import org.scalatest.{Outcome, fixture}
 import org.scalatest.Matchers._
+import org.scalatest.{Outcome, fixture}
+import scala.io.Source
 
 class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
-
-  import com.typesafe.config.ConfigFactory
-  import scala.io.Source
-  import java.io.File
-  import java.net.URL
-  import java.util.UUID
 
   "Grader" can {
 

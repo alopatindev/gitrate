@@ -4,6 +4,7 @@ import controllers.GithubController.AnalyzedRepository
 import utils.HttpClientFactory.defaultTimeout
 import utils.SparkUtils.RDDUtils
 import utils.{ConcurrencyUtils, LogUtils}
+
 import java.net.URL
 import org.apache.commons.codec.binary.Base64.decodeBase64
 import org.apache.spark.rdd.RDD
@@ -19,7 +20,7 @@ class GithubExtractor(val conf: GithubConf, loadAnalyzedRepositories: (Seq[Strin
     with LogUtils {
 
   def parseAndFilterUsers(rawJSONs: RDD[String]): Iterable[GithubUser] = {
-    val emptySeq = Iterable()
+    val emptySeq = Iterable.empty
     if (rawJSONs.isEmpty) {
       emptySeq
     } else {

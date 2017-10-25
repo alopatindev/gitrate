@@ -5,7 +5,6 @@ import utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
 import com.typesafe.config.Config
 import java.time.Duration
 import play.api.libs.json.JsValue
-
 import scala.collection.JavaConverters._
 
 case class GithubConf(val appConfig: Config,

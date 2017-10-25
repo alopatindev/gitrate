@@ -1,8 +1,7 @@
 package analysis
 
-import com.taykey.twitterlocationparser.{DefaultLocationParser, dto}
 import com.taykey.twitterlocationparser.dto.LocationType
-
+import com.taykey.twitterlocationparser.{DefaultLocationParser, dto}
 import scala.annotation.tailrec
 
 object TextAnalyzer {

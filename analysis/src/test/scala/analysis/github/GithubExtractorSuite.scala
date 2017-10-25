@@ -1,23 +1,19 @@
 package analysis.github
 
-import testing.TestUtils
-import com.holdenkarau.spark.testing.DataFrameSuiteBase
 import controllers.GithubController.AnalyzedRepository
+import testing.TestUtils
+import utils.HttpClientFactory.Headers
+
+import com.holdenkarau.spark.testing.DataFrameSuiteBase
+import com.typesafe.config.ConfigFactory
+import java.net.URL
+import java.util.Calendar
+import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.types.TimestampType
 import org.scalatest.{Outcome, fixture}
+import play.api.libs.json.{JsValue, Json}
 
 class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
-
-  import com.typesafe.config.ConfigFactory
-
-  import java.net.URL
-  import java.util.Calendar
-
-  import play.api.libs.json.{JsValue, Json}
-
-  import utils.HttpClientFactory.Headers
-
-  import org.apache.spark.sql.Dataset
-  import org.apache.spark.sql.types.TimestampType
 
   "GithubExtractor" can {
 

@@ -2,17 +2,16 @@ package analysis.github
 
 import controllers.GithubController.GithubSearchQuery
 import testing.TestUtils
+import utils.HttpClientFactory.Headers
+
+import com.typesafe.config.ConfigFactory
+import java.net.URL
+import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{Outcome, fixture}
+import play.api.libs.json.{Json, JsValue}
 
 class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtils {
-
-  import utils.HttpClientFactory.Headers
-
-  import com.typesafe.config.ConfigFactory
-  import java.net.URL
-  import java.util.concurrent.atomic.AtomicInteger
-  import play.api.libs.json.{Json, JsValue}
 
   "GithubReceiver" can {
 

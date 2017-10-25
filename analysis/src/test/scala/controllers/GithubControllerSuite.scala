@@ -2,6 +2,7 @@ package controllers
 
 import controllers.GithubController.{AnalyzedRepository, GithubSearchQuery}
 import testing.PostgresTestUtils
+
 import slick.jdbc.PostgresProfile.api._
 import slick.sql.SqlAction
 

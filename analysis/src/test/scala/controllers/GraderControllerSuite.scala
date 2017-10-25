@@ -1,12 +1,12 @@
 package controllers
 
 import controllers.GraderController.{GradeCategory, WarningToGradeCategory}
-import slick.sql.SqlAction
 import testing.PostgresTestUtils
 
-class GraderControllerSuite extends PostgresTestUtils {
+import slick.jdbc.PostgresProfile.api._
+import slick.sql.SqlAction
 
-  import slick.jdbc.PostgresProfile.api._
+class GraderControllerSuite extends PostgresTestUtils {
 
   "GraderControllerSuite" can {
 

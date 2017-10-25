@@ -1,7 +1,6 @@
 package testing
 
 import org.scalatest.{Outcome, fixture}
-
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import slick.jdbc.PostgresProfile.api._
