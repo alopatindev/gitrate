@@ -15,6 +15,8 @@ from languages.analyzeCPP import analyze_cpp
 
 
 valid_file_path_pattern = re.compile(r'^[a-zA-Z0-9/._-]*$')
+invalid_file_extension_pattern = re.compile(r'^\.(exe|obj|o|so|dll)$', re.I)
+invalid_file_path_pattern = re.compile(r'node_modules/')
 tests_dir_pattern = re.compile(r'.*/[Tt]ests{,1}/.*')
 
 automation_tools = {
@@ -56,6 +58,10 @@ analyzers = {
 }
 
 
+def file_extension(path):
+    return os.path.splitext(path)[1]
+
+
 def change_dir(argv):
     executable = argv[0]
     current_dir = os.path.abspath(os.path.dirname(executable))
@@ -87,6 +93,14 @@ def list_dir_recursively(path):
             yield os.path.join(root, f)
 
 
+def is_valid_file_path(full_path, repository_id):
+    path = full_path.replace(repository_id, '')
+    extension = file_extension(path)
+    valid_path = valid_file_path_pattern.match(path) and not invalid_file_path_pattern.match(path)
+    valid_extension = not invalid_file_extension_pattern.match(extension)
+    return valid_path and valid_extension
+
+
 def is_non_empty_file(filename):
     return os.stat(filename).st_size > min_file_size_bytes
 
@@ -106,7 +120,7 @@ def detect_automation_tools(file_paths, repository_id, repository_name):
     detected_tools = set()
     for i in file_paths:
         filename = os.path.basename(i)
-        extension = os.path.splitext(filename)[-1:][0]
+        extension = file_extension(filename)
         if filename in automation_tools:
             if is_non_empty_file(i):
                 detected_tools.add(automation_tools[filename])
@@ -160,7 +174,7 @@ def analyze(input_line, max_archive_size_bytes, cleanup, temp_files, temp_dirs):
         subprocessUtils.run('tar', '-xzf', archive_path, '-C', archive_output_dir)
 
         file_paths = list(list_dir_recursively(archive_output_dir))
-        invalid_file_paths = (i for i in file_paths if not valid_file_path_pattern.match(i.replace(repository_id, '')))
+        invalid_file_paths = (i for i in file_paths if not is_valid_file_path(i, repository_id))
         if not any(invalid_file_paths):
             detect_automation_tools(file_paths, repository_id, repository_name)
             detect_tests_dir(file_paths, repository_id, repository_name)
