@@ -30,18 +30,22 @@ INSERT INTO github_search_queries (
   pattern,
   enabled
 ) VALUES
-  (DEFAULT, (SELECT id FROM cpp_language), '.travis.yml', 10, 2048, 0, 100, '', TRUE),
-  (DEFAULT, (SELECT id FROM cpp_language), '*.cpp', 10, 5120, 0, 100, '', TRUE),
-  (DEFAULT, (SELECT id FROM c_language), '*.c', 10, 5120, 0, 100, '', TRUE),
-  (DEFAULT, (SELECT id FROM c_language), '.travis.yml', 10, 5120, 0, 100, '', TRUE),
   (DEFAULT, (SELECT id FROM javascript_language), '.eslintrc.*', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM cpp_language), 'appveyor.yml', 10, 2048, 0, 100, '', TRUE),
   (DEFAULT, (SELECT id FROM javascript_language), '.travis.yml', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM c_language), '.travis.yml', 10, 2048, 0, 100, '', TRUE),
   (DEFAULT, (SELECT id FROM javascript_language), '.codeclimate.yml', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM cpp_language), 'ansible.cfg', 10, 2048, 0, 100, '', TRUE),
   (DEFAULT, (SELECT id FROM javascript_language), 'circle.yml', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM c_language), 'appveyor.yml', 10, 2048, 0, 100, '', TRUE),
   (DEFAULT, (SELECT id FROM javascript_language), 'Dockerfile', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM cpp_language), 'ansible.yml', 10, 2048, 0, 100, '', TRUE),
   (DEFAULT, (SELECT id FROM javascript_language), 'package.json', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM c_language), 'ansible.cfg', 10, 2048, 0, 100, '', TRUE),
   (DEFAULT, (SELECT id FROM javascript_language), 'bower.json', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM cpp_language), '.travis.yml', 10, 2048, 0, 100, '', TRUE),
   (DEFAULT, (SELECT id FROM javascript_language), '.jsbeautifyrc', 10, 2048, 0, 100, '', TRUE),
+  (DEFAULT, (SELECT id FROM c_language), 'ansible.yml', 10, 2048, 0, 100, '', TRUE),
   (DEFAULT, (SELECT id FROM javascript_language), 'ansible.cfg', 10, 2048, 0, 100, '', TRUE),
   (DEFAULT, (SELECT id FROM javascript_language), 'ansible.yml', 10, 2048, 0, 100, '', TRUE);
 
