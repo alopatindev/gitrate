@@ -106,8 +106,11 @@ def is_non_empty_file(filename):
 
 
 def read_file(file_path):
-    with open(file_path) as f:
-        return f.read(max_file_size_bytes)
+    try:
+        with open(file_path) as f:
+            return f.read(max_file_size_bytes)
+    except UnicodeDecodeError:
+        pass
 
 
 def detect_automation_tools(file_paths, repository_id, repository_name):

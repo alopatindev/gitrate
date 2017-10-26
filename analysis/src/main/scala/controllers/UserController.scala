@@ -18,21 +18,29 @@ object UserController extends SlickUtils with LogUtils {
                             userToLocation: Map[Int, Location])
 
   def saveAnalysisResult(result: AnalysisResult): Future[Unit] = {
-    val query = buildAnalysisResultQuery(result)
+    val query = buildSaveAnalysisResultQuery(result)
     val future = runQuery(query).map(_ => ())
     future.foreach(_ => logInfo("finished saving analysis result"))
     future
   }
 
-  private def buildAnalysisResultQuery(result: AnalysisResult) = {
+  private def buildSaveAnalysisResultQuery(result: AnalysisResult) =
+    DBIO
+      .seq(buildSaveAllUsersQuery(result), buildSaveTechnologySynonyms(result.languageToTechnologyToSynonyms))
+      .transactionally
+
+  private def buildSaveAllUsersQuery(result: AnalysisResult) = {
+    val users = result.users.toSeq
+    logInfo(s"saving ${users.length} users")
     val repositories: Map[String, GradedRepository] = result.gradedRepositories.map(repo => repo.idBase64 -> repo).toMap
     DBIO
       .sequence(
         for {
-          user <- result.users.toSeq
+          user <- users
           repositoriesOfUser: Seq[GradedRepository] = user.repositories.flatMap(repo => repositories.get(repo.idBase64))
           languageToTechnologiesSeq: Seq[MapOfSeq[String, String]] = repositoriesOfUser.map(_.languageToTechnologies)
           languageToTechnologies: MapOfSeq[String, String] = seqOfMapsToMap(languageToTechnologiesSeq)
+            .mapValues(_.toSet.toSeq)
           location: Location = result.userToLocation.getOrElse(user.id, Location(None, None))
         } yield
           DBIO.seq(
@@ -41,11 +49,9 @@ object UserController extends SlickUtils with LogUtils {
             buildSaveDeveloperQuery(user, location),
             buildSaveContactsQuery(user),
             buildSaveLanguagesAndTechnologiesQuery(languageToTechnologies, user.id),
-            buildSaveTechnologySynonyms(result.languageToTechnologyToSynonyms),
             buildSaveRepositoriesQuery(repositoriesOfUser, user.id),
             buildSaveGradesQuery(repositoriesOfUser)
           ))
-      .transactionally
   }
 
   private def buildSaveLocationQuery(location: Location) = {

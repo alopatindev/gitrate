@@ -2,6 +2,7 @@ package analysis
 
 import controllers.GraderController.{GradeCategory, WarningToGradeCategory}
 import github.GithubUser
+import utils.LogUtils
 
 import com.typesafe.config.Config
 import java.net.URL
@@ -13,7 +14,8 @@ import org.apache.spark.sql.{Dataset, Row, SparkSession}
 
 class Grader(val appConfig: Config,
              warningsToGradeCategory: Dataset[WarningToGradeCategory],
-             gradeCategories: Dataset[GradeCategory])(implicit sparkContext: SparkContext, sparkSession: SparkSession) {
+             gradeCategories: Dataset[GradeCategory])(implicit sparkContext: SparkContext, sparkSession: SparkSession)
+    extends LogUtils {
 
   import sparkSession.implicits._
 
@@ -24,7 +26,10 @@ class Grader(val appConfig: Config,
     }
 
     val outputMessages: Dataset[AnalyzerScriptResult] = runAnalyzerScript(scriptInput, withCleanup = true)
-    processAnalyzerScriptResults(outputMessages)
+    val results = processAnalyzerScriptResults(outputMessages)
+
+    logInfo(s"graded ${results.length} repositories of user ${user.login}")
+    results
   }
 
   case class ScriptInput(repoIdBase64: String,
@@ -62,7 +67,7 @@ class Grader(val appConfig: Config,
       .as[AnalyzerScriptResult]
   }
 
-  def processAnalyzerScriptResults(outputMessages: Dataset[AnalyzerScriptResult]): Iterable[GradedRepository] = {
+  def processAnalyzerScriptResults(outputMessages: Dataset[AnalyzerScriptResult]): Array[GradedRepository] = {
     outputMessages.cache()
 
     val graded: Dataset[Row] = warningCounts(outputMessages)

@@ -223,7 +223,7 @@ case class PartialGithubUser(id: Int, login: String, partialRepositories: Seq[Pa
       val userDetailsResult: Option[JsValue] = Try(Await.result(userDetails, defaultTimeout)).toOption
 
       def userDetailString(field: String): Option[String] =
-        userDetailsResult.flatMap(d => (d \ field).asOpt[String])
+        userDetailsResult.flatMap(d => (d \ field).asOpt[String].filter(_.nonEmpty))
 
       def userDetailBoolean(field: String): Option[Boolean] =
         userDetailsResult.flatMap(d => (d \ field).asOpt[Boolean])

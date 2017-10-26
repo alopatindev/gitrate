@@ -41,7 +41,6 @@ object Main extends AppConfig with LogUtils with ResourceUtils with SparkUtils {
         val grader = new Grader(appConfig, GraderController.warningsToGradeCategory, GraderController.gradeCategories)
 
         val gradedRepositories: Iterable[GradedRepository] = grader.processUsers(users)
-        logInfo(s"graded ${gradedRepositories.size} repositories!")
 
         if (gradedRepositories.nonEmpty) {
           val languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)] =

@@ -74,8 +74,8 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
             assert(user.description === Some("User Description"))
             assert(user.company === Some("Company Name"))
             assert(user.location === Some("City, Country"))
-            assert(user.email === Some("valid-mail@domain.com"))
-            assert(user.blog === Some("https://target-user.github.io"))
+            assert(user.email === None)
+            assert(user.blog === None)
             assert(user.jobSeeker === Some(true))
           })
       }
