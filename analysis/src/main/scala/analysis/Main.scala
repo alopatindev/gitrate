@@ -5,12 +5,14 @@ import controllers.UserController.AnalysisResult
 import controllers.{GithubController, GraderController, UserController}
 import github.{GithubConf, GithubExtractor, GithubReceiver, GithubSearchInputDStream, GithubUser}
 import utils.HttpClientFactory.{HttpGetFunction, HttpPostFunction}
+import utils.SparkUtils.DurationUtils
 import utils.SparkUtils.RDDUtils
 import utils.{AppConfig, HttpClientFactory, LogUtils, ResourceUtils, SparkUtils}
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.streaming.Duration
 import play.api.libs.json.{JsValue, Json}
 
 object Main extends AppConfig with LogUtils with ResourceUtils with SparkUtils {
@@ -27,10 +29,14 @@ object Main extends AppConfig with LogUtils with ResourceUtils with SparkUtils {
     initializeSpark()
     val ssc = createStreamingContext()
 
-    // TODO: checkpoint
-    val stream = new GithubSearchInputDStream(ssc, githubConf, GithubController.loadQueries, storeReceiverResult)
+    ssc.checkpoint(appConfig.getString("stream.checkpointPath"))
+    val checkpointInterval: Duration = appConfig
+      .getDuration("stream.checkpointInterval")
+      .toSparkDuration
 
+    val stream = new GithubSearchInputDStream(ssc, githubConf, GithubController.loadQueries, storeReceiverResult)
     stream
+      .checkpoint(checkpointInterval)
       .foreachRDD { rawGithubResult: RDD[String] =>
         val githubExtractor = new GithubExtractor(githubConf, GithubController.loadAnalyzedRepositories)
 

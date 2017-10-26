@@ -1,9 +1,11 @@
 package utils
 
+import SparkUtils.DurationUtils
+
 import com.typesafe.config.Config
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
-import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.apache.spark.streaming.{Duration, Milliseconds, StreamingContext}
 import org.apache.spark.{SparkConf, SparkContext}
 
 trait SparkUtils {
@@ -48,7 +50,7 @@ trait SparkUtils {
 
   }
 
-  private val batchDuration = Seconds(appConfig.getDuration("stream.batchDuration").getSeconds)
+  private val batchDuration: Duration = appConfig.getDuration("stream.batchDuration").toSparkDuration
 
 }
 
@@ -62,6 +64,12 @@ object SparkUtils {
         .config(conf)
         .getOrCreate()
     }
+
+  }
+
+  implicit class DurationUtils(duration: java.time.Duration) {
+
+    def toSparkDuration: Duration = Milliseconds(duration.toMillis)
 
   }
 
