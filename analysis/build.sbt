@@ -23,7 +23,7 @@ scalacOptions ++= Seq(
   "-Ywarn-value-discard",
 )
 
-val sparkVersion = "2.1.1" // TODO: migrate to 2.2.0
+val sparkVersion = "2.2.0"
 
 resolvers += "clojars" at "https://clojars.org/repo"
 
