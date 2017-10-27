@@ -11,6 +11,7 @@ import java.util.Calendar
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.types.TimestampType
 import org.scalatest.{Outcome, fixture}
+import org.scalatest.tagobjects.Slow
 import play.api.libs.json.{JsValue, Json}
 
 class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
@@ -19,54 +20,54 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
 
     "filter GitHub API output" should {
 
-      "not ignore target users" in { fixture =>
+      "not ignore target users" taggedAs Slow in { fixture =>
         assert(fixture containsUser "target-user")
       }
 
-      "ignore users with invalid type (e.g. organization)" in { fixture =>
+      "ignore users with invalid type (e.g. organization)" taggedAs Slow in { fixture =>
         assert(!(fixture containsUser "organization-user"))
       }
 
-      "not ignore target repositories" in { fixture =>
+      "not ignore target repositories" taggedAs Slow in { fixture =>
         assert(fixture.userHasRepo("target-user", "repo-pinned1"))
         assert(fixture.userHasRepo("target-user", "repo-pinned2"))
       }
 
-      "ignore too young repositories" in { fixture =>
+      "ignore too young repositories" taggedAs Slow in { fixture =>
         assert(!fixture.userHasRepo("target-user", "YOUNG-repo"))
         assert(!fixture.userHasRepo("hermityang", "YOUNG-repo-2"))
       }
 
-      "ignore forked repositories" in { fixture =>
+      "ignore forked repositories" taggedAs Slow in { fixture =>
         assert(!fixture.userHasRepo("target-user", "forked-repo"))
       }
 
-      "ignore mirrored repositories" in { fixture =>
+      "ignore mirrored repositories" taggedAs Slow in { fixture =>
         assert(!fixture.userHasRepo("target-user", "mirrored-repo"))
       }
 
-      "ignore repositories with primary language we don't support" in { fixture =>
+      "ignore repositories with primary language we don't support" taggedAs Slow in { fixture =>
         assert(!fixture.userHasRepo("target-user", "repo-with-UNKNOWN-as-primary"))
       }
 
-      "ignore duplicated repositories" in { fixture =>
+      "ignore duplicated repositories" taggedAs Slow in { fixture =>
         val repositories = fixture.repositoriesOfUser("target-user")
         assert(repositories.toSet.size === repositories.size)
       }
 
-      "ignore users with too little number of target repositories" in { fixture =>
+      "ignore users with too little number of target repositories" taggedAs Slow in { fixture =>
         assert(!(fixture containsUser "user-with-a-single-repo"))
       }
 
-      "ignore recently analyzed repositories" in { fixture =>
+      "ignore recently analyzed repositories" taggedAs Slow in { fixture =>
         assert(!fixture.userHasRepo("target-user", "recently-analyzed-repo"))
       }
 
-      "allow only repositories with commits mostly made by the user" in { fixture =>
+      "allow only repositories with commits mostly made by the user" taggedAs Slow in { fixture =>
         assert(!fixture.userHasRepo("target-user", "repo-with-mostly-commits-by-OTHERS"))
       }
 
-      "get user details" in { fixture =>
+      "get user details" taggedAs Slow in { fixture =>
         fixture
           .findUser("target-user")
           .foreach(user => {

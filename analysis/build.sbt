@@ -77,4 +77,11 @@ parallelExecution in Test := false
 fork in run := true
 cancelable in Global := true
 
+lazy val Slow = config("slow").extend(Test)
+configs(Slow)
+inConfig(Slow)(Defaults.testTasks)
+testOptions in Test += Tests.Argument("-l", "org.scalatest.tags.Slow")
+testOptions in Slow -= Tests.Argument("-l", "org.scalatest.tags.Slow")
+testOptions in Slow += Tests.Argument("-n", "org.scalatest.tags.Slow")
+
 outputStrategy := Some(StdoutOutput)
