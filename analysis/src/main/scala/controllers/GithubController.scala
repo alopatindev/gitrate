@@ -8,7 +8,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
 import scala.util.Try
 import slick.jdbc.PostgresProfile.api._
-import slick.sql.SqlStreamingAction
 
 object GithubController extends AppConfig with SlickUtils with SparkUtils {
 
@@ -23,10 +22,32 @@ object GithubController extends AppConfig with SlickUtils with SparkUtils {
       .as[AnalyzedRepository]
   }
 
-  def loadQueries(): Seq[GithubSearchQuery] = {
-    val future: Future[Vector[GithubSearchQuery]] = runQuery(query)
+  def loadQueries(): (Seq[GithubSearchQuery], Int) = {
+    val queriesFuture: Future[Vector[GithubSearchQuery]] = runQuery(loadQueriesQuery)
       .map(results => results.map(args => GithubSearchQuery.tupled(args)))
-    Try(Await.result(future, timeout)).getOrElse(Seq.empty)
+
+    val defaultQueryIndex = -1
+    val defaultResult = (Vector.empty, defaultQueryIndex)
+    val queryIndexFuture: Future[Int] = runQuery(loadReceiverStateQuery)
+      .map(_.headOption.map(_.toInt).getOrElse(defaultQueryIndex))
+
+    val result = Try(Await.result(for {
+      queries <- queriesFuture
+      queryIndex <- queryIndexFuture
+    } yield (queries, queryIndex), timeout))
+
+    result.getOrElse(defaultResult)
+  }
+
+  def saveReceiverState(queryIndex: Int): Future[Unit] = {
+    val query = sqlu"""
+      UPDATE github_receiver_state
+      SET value = ${queryIndex.toString}
+      WHERE key = 'query_index'""".transactionally
+
+    val future = runQuery(query).map(_ => ())
+    future.foreach(_ => logInfo(s"finished saving query index: $queryIndex"))
+    future
   }
 
   case class AnalyzedRepository(idBase64: String, updatedByAnalyzer: java.sql.Timestamp)
@@ -50,7 +71,7 @@ object GithubController extends AppConfig with SlickUtils with SparkUtils {
   }
 
   type T = (String, String, Int, Int, Int, Int, String)
-  private[this] val query: SqlStreamingAction[Vector[T], T, Effect] = sql"""
+  private[this] val loadQueriesQuery = sql"""
 SELECT
   languages.language AS language,
   github_search_queries.filename,
@@ -62,6 +83,12 @@ SELECT
 FROM github_search_queries
 INNER JOIN languages ON languages.id = github_search_queries.language_id
 WHERE enabled = true""".as[T]
+
+  private[this] val loadReceiverStateQuery = sql"""
+    SELECT value
+    FROM github_receiver_state
+    WHERE key = 'query_index'
+    LIMIT 1""".as[String]
 
   private val timeout: FiniteDuration = 10 seconds
 

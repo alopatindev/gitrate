@@ -8,10 +8,12 @@ import org.apache.spark.streaming.StreamingContext
 
 class GithubSearchInputDStream(ssc: StreamingContext,
                                conf: GithubConf,
-                               loadQueriesFn: () => Seq[GithubSearchQuery],
-                               storeResultFn: (GithubReceiver, String) => Unit)
+                               loadQueries: () => (Seq[GithubSearchQuery], Int),
+                               saveReceiverState: (Int) => Unit,
+                               storeResult: (GithubReceiver, String) => Unit)
     extends ReceiverInputDStream[String](ssc) {
 
-  override def getReceiver(): Receiver[String] = new GithubReceiver(conf, loadQueriesFn, storeResultFn)
+  override def getReceiver(): Receiver[String] =
+    new GithubReceiver(conf, loadQueries, saveReceiverState, storeResult)
 
 }

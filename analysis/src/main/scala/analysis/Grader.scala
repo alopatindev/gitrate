@@ -22,7 +22,7 @@ class Grader(val appConfig: Config,
   def processUsers(users: Seq[GithubUser]): Iterable[GradedRepository] = {
     val totalUsers = users.length
     users.zipWithIndex.flatMap {
-      case (user: GithubUser, index: Int) =>
+      case (user: GithubUser, userIndex: Int) =>
         val scriptInput = user.repositories.map { repo =>
           val languages: Set[String] = repo.languages.toSet + repo.primaryLanguage
           ScriptInput(repo.idBase64, repo.name, user.login, repo.archiveURL, languages).toString
@@ -31,7 +31,7 @@ class Grader(val appConfig: Config,
         val outputMessages: Dataset[AnalyzerScriptResult] = runAnalyzerScript(scriptInput, withCleanup = true)
         val results = processAnalyzerScriptResults(outputMessages)
 
-        logInfo(s"graded ${results.length} repositories of user ${user.login} (${index + 1}/$totalUsers)")
+        logInfo(s"graded ${results.length} repositories of user ${user.login} (${userIndex + 1}/$totalUsers)")
         results
     }
   }

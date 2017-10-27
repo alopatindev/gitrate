@@ -141,6 +141,12 @@ CREATE TABLE IF NOT EXISTS github_search_queries (
   enabled BOOLEAN NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS github_receiver_state (
+  id SERIAL PRIMARY KEY,
+  key TEXT UNIQUE NOT NULL,
+  value TEXT NOT NULL
+);
+
 CREATE OR REPLACE VIEW users_to_grades AS
   SELECT
     repositories.user_id,

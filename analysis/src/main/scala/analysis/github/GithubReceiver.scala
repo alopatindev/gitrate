@@ -14,8 +14,9 @@ import scala.concurrent.Future
 import scala.util.Try
 
 class GithubReceiver(conf: GithubConf,
-                     loadQueriesFn: () => Seq[GithubSearchQuery],
-                     storeResultFn: (GithubReceiver, String) => Unit,
+                     loadQueries: () => (Seq[GithubSearchQuery], Int),
+                     saveReceiverState: (Int) => Unit,
+                     storeResult: (GithubReceiver, String) => Unit,
                      storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK)
     extends Receiver[String](storageLevel: StorageLevel)
     with LogUtils
@@ -44,7 +45,9 @@ class GithubReceiver(conf: GithubConf,
     def helper(): Unit = {
       if (started.get()) {
         logInfo("reloading queries")
-        val queries = loadQueriesFn()
+        val (queries, loadedQueryIndex) = loadQueries()
+
+        logInfo(s"${queries.length} queries, previous index is $loadedQueryIndex")
 
         if (queries.isEmpty) {
           logError("list of queries is empty!")
@@ -52,12 +55,20 @@ class GithubReceiver(conf: GithubConf,
           Thread.sleep(pauseMillis)
         }
 
-        queries
-          .map(_.toString)
-          .foreach(query => {
-            logInfo(s"running new query $query")
-            makeQuery(query, None)
-          })
+        val queriesToProcess = queries.map(_.toString)
+        val totalQueries = queriesToProcess.length
+
+        queriesToProcess.zipWithIndex
+          .drop((loadedQueryIndex + 1) % totalQueries)
+          .foreach {
+            case (query, queryIndex) => {
+              if (started.get()) {
+                logInfo(s"running new query (${queryIndex + 1}/$totalQueries) $query")
+                saveReceiverState(queryIndex)
+                makeQuery(query, None)
+              }
+            }
+          }
 
         helper()
       }
@@ -98,7 +109,7 @@ class GithubReceiver(conf: GithubConf,
       case (JsDefined(searchResult: JsValue), _) =>
         val result = searchResult.toString // JSON string is easier to serialize
         if (started.get()) {
-          storeResultFn(this, result)
+          storeResult(this, result)
         } else {
           logError("receiver is not started")
         }

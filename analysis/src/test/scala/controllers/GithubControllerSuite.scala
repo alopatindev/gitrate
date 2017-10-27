@@ -5,6 +5,9 @@ import testing.PostgresTestUtils
 
 import slick.jdbc.PostgresProfile.api._
 import slick.sql.SqlAction
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class GithubControllerSuite extends PostgresTestUtils {
 
@@ -24,7 +27,7 @@ class GithubControllerSuite extends PostgresTestUtils {
     "loadQueries" should {
 
       "load queries" in { _ =>
-        val results: Seq[GithubSearchQuery] = GithubController.loadQueries()
+        val (results: Seq[GithubSearchQuery], _) = GithubController.loadQueries()
         assert(results.length === 2)
         assert(
           results contains GithubSearchQuery(language = "C++",
@@ -34,6 +37,21 @@ class GithubControllerSuite extends PostgresTestUtils {
                                              minStars = 0,
                                              maxStars = 100,
                                              pattern = "hello"))
+      }
+
+    }
+
+    "saveReceiverState" should {
+
+      "save query index" in { _ =>
+        val expected = 123
+
+        val result = GithubController.saveReceiverState(queryIndex = expected).map { _ =>
+          val (_, queryIndex) = GithubController.loadQueries()
+          queryIndex
+        }
+
+        assert(Await.result(result, Duration.Inf) === expected)
       }
 
     }
@@ -69,6 +87,12 @@ class GithubControllerSuite extends PostgresTestUtils {
       max_stars INT NOT NULL,
       pattern TEXT NOT NULL,
       enabled BOOLEAN NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS github_receiver_state (
+      id SERIAL PRIMARY KEY,
+      key TEXT UNIQUE NOT NULL,
+      value TEXT NOT NULL
     )"""
 
   def initialData: SqlAction[Int, NoStream, Effect] = sqlu"""
@@ -98,6 +122,9 @@ class GithubControllerSuite extends PostgresTestUtils {
       enabled
     ) VALUES
       (DEFAULT, (SELECT id FROM cpp_language), '.travis.yml', 10, 2048, 0, 100, 'hello', TRUE),
-      (DEFAULT, (SELECT id FROM javascript_language), '.eslintrc.*', 10, 2048, 0, 100, '', TRUE)"""
+      (DEFAULT, (SELECT id FROM javascript_language), '.eslintrc.*', 10, 2048, 0, 100, '', TRUE);
+
+      INSERT INTO github_receiver_state (id, key, value)
+      VALUES (DEFAULT, 'query_index', '-1')"""
 
 }

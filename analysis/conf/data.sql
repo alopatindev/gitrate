@@ -49,6 +49,9 @@ INSERT INTO github_search_queries (
   (DEFAULT, (SELECT id FROM javascript_language), 'ansible.cfg', 10, 2048, 0, 100, '', TRUE),
   (DEFAULT, (SELECT id FROM javascript_language), 'ansible.yml', 10, 2048, 0, 100, '', TRUE);
 
+INSERT INTO github_receiver_state (id, key, value)
+VALUES (DEFAULT, 'query_index', '-1');
+
 WITH
   maintainable_category AS (SELECT id FROM grade_categories WHERE category = 'Maintainable'),
   testable_category AS (SELECT id FROM grade_categories WHERE category = 'Testable'),

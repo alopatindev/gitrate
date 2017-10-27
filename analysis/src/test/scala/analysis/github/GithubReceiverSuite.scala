@@ -81,13 +81,17 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
     val responses = new ConcurrentQueue()
     val queriesReloads = new AtomicInteger(0)
 
-    def fakeOnLoadQueries(): Seq[GithubSearchQuery] = {
+    def fakeOnLoadQueries(): (Seq[GithubSearchQuery], Int) = {
       queriesReloads.incrementAndGet()
-      Seq(
+      val queries = Seq(
         GithubSearchQuery("FIRST_QUERY", "", 0, 0, 0, 0, ""),
         GithubSearchQuery("INVALID_QUERY", "", 0, 0, 0, 0, "")
       )
+      val queryIndex = -1
+      (queries, queryIndex)
     }
+
+    def fakeSaveReceiverState(queryIndex: Int): Unit = ()
 
     val firstResponse = loadJsonResource("github/FirstPageFixture.json")
     val secondResponse = loadJsonResource("github/LastPageFixture.json")
@@ -117,7 +121,7 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
       httpPostBlocking = fakeHttpPostBlocking
     )
 
-    val receiver = new GithubReceiver(fakeConf, fakeOnLoadQueries, fakeOnStoreResult)
+    val receiver = new GithubReceiver(fakeConf, fakeOnLoadQueries, fakeSaveReceiverState, fakeOnStoreResult)
 
     FixtureParam(receiver, requests, responses, queriesReloads)
   }

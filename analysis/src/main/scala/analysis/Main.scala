@@ -34,7 +34,9 @@ object Main extends AppConfig with LogUtils with ResourceUtils with SparkUtils {
       .getDuration("stream.checkpointInterval")
       .toSparkDuration
 
-    val stream = new GithubSearchInputDStream(ssc, githubConf, GithubController.loadQueries, storeReceiverResult)
+    val stream = new GithubSearchInputDStream(ssc, githubConf, GithubController.loadQueries, (queryIndex) => {
+      val _ = GithubController.saveReceiverState(queryIndex)
+    }, storeReceiverResult)
     stream
       .checkpoint(checkpointInterval)
       .foreachRDD { rawGithubResult: RDD[String] =>
