@@ -35,7 +35,7 @@ class GithubExtractor(val conf: GithubConf, loadAnalyzedRepositories: (Seq[Strin
     import sparkSession.implicits._
 
     val rawNodes = sparkSession.read
-      .json(rawJSONs)
+      .json(rawJSONs.toDS)
       .select(explode('nodes) as "nodes")
       .cache()
 

@@ -61,13 +61,11 @@ class GithubReceiver(conf: GithubConf,
         queriesToProcess.zipWithIndex
           .drop((loadedQueryIndex + 1) % totalQueries)
           .foreach {
-            case (query, queryIndex) => {
-              if (started.get()) {
-                logInfo(s"running new query (${queryIndex + 1}/$totalQueries) $query")
-                saveReceiverState(queryIndex)
-                makeQuery(query, None)
-              }
-            }
+            case (query, queryIndex) if started.get() =>
+              logInfo(s"running new query (${queryIndex + 1}/$totalQueries) $query")
+              saveReceiverState(queryIndex)
+              makeQuery(query, None)
+            case _ => ()
           }
 
         helper()

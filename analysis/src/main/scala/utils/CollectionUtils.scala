@@ -7,7 +7,7 @@ object CollectionUtils {
   def seqOfMapsToMap[K, V](xs: Seq[MapOfSeq[K, V]]): MapOfSeq[K, V] =
     xs.foldLeft(Map[K, Seq[V]]())(mergeMaps)
 
-  private def mergeMaps[K, V](out: MapOfSeq[K, V], x: MapOfSeq[K, V]): MapOfSeq[K, V] = x.foldLeft(out) {
+  private def mergeMaps[K, V](acc: MapOfSeq[K, V], x: MapOfSeq[K, V]): MapOfSeq[K, V] = x.foldLeft(acc) {
     case (out, (key, value)) =>
       val oldValue: Seq[V] = out.getOrElse(key, Seq.empty)
       val newValue: Seq[V] = oldValue ++ value

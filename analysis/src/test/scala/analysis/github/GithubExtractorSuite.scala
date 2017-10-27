@@ -161,7 +161,7 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
   "updated_by_analyzer": $oldDate
 }
 """
-        )))
+        )).toDS)
       .select('raw_id as "idBase64", 'updated_by_analyzer.cast(TimestampType) as "updatedByAnalyzer")
       .as[AnalyzedRepository]
   }

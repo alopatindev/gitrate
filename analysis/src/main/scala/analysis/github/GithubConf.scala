@@ -7,9 +7,9 @@ import java.time.Duration
 import play.api.libs.json.JsValue
 import scala.collection.JavaConverters._
 
-case class GithubConf(val appConfig: Config,
-                      val httpGetBlocking: HttpGetFunction[JsValue],
-                      val httpPostBlocking: HttpPostFunction[JsValue, JsValue]) {
+case class GithubConf(appConfig: Config,
+                      httpGetBlocking: HttpGetFunction[JsValue],
+                      httpPostBlocking: HttpPostFunction[JsValue, JsValue]) {
 
   private val githubConfig = appConfig.getConfig("github")
 

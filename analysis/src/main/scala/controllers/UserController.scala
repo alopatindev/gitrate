@@ -192,7 +192,12 @@ object UserController extends SlickUtils with LogUtils {
       INSERT INTO technology_synonyms (id, technology_id, synonym)
       VALUES (
         DEFAULT,
-        (SELECT id FROM technologies WHERE technology = $technology),
+        (
+          SELECT technologies.id
+          FROM technologies
+          JOIN languages ON languages.id = technologies.language_id AND languages.language = $language
+          WHERE technologies.technology = $technology
+        ),
         $synonym
       ) ON CONFLICT (technology_id, synonym) DO NOTHING""")
 
