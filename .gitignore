@@ -25,6 +25,8 @@
 conf/
 *.conf
 /lib/
+logs
+/RUNNING_PID
 scalastyle-on-compile.generated.xml
 scalastyle-output.xml
 scalastyle.txt

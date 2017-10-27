@@ -30,7 +30,7 @@ trait TestUtils {
 
   def loadJsonResource(filename: String): JsValue = {
     val text = Source
-      .fromFile(s"src/test/resources/$filename")
+      .fromFile(s"analysis/src/test/resources/$filename")
       .mkString
     Json.parse(text)
   }

@@ -5,7 +5,7 @@ set -euo pipefail
 current_dir=$(dirname "$0")
 cd "${current_dir}" || exit 1
 
-CONFIG_PATH="src/main/resources/application.conf"
+CONFIG_PATH="analysis/src/main/resources/application.conf"
 APP_NAME="$(grep '^app\.name = ' "${CONFIG_PATH}" | cut -d ' ' -f3)"
 SCRIPTS_DIR="/tmp/${APP_NAME}"
 CHECKPOINT_DIR="/var/tmp/${APP_NAME}"
@@ -24,15 +24,15 @@ WITH_CLEANUP=true
 reset
 
 if [ "${WITH_CLEANUP}" = true ] ; then
-    sudo rm -rvf "${SCRIPTS_DIR}" "${CHECKPOINT_DIR}" "${LOG_FILE_DRIVER}" "${LOG_FILE_EXECUTOR}"
-    cp -rv scripts "${SCRIPTS_DIR}"
+    echo sudo rm -rvf "${SCRIPTS_DIR}" "${CHECKPOINT_DIR}" "${LOG_FILE_DRIVER}" "${LOG_FILE_EXECUTOR}"
+    cp -rv analysis/scripts "${SCRIPTS_DIR}"
+
     mkdir -p "${SCRIPTS_DIR}/data"
+    chmod 1777 "${SCRIPTS_DIR}/data"
 
-    sudo chown spark:hadoop "${SCRIPTS_DIR}/data"
-
-    sbt assembly
-    cp -vf ./target/scala-*/*-assembly-*.jar "${OUT_JAR}"
-    cp -vf ./conf/spark-defaults.conf "${SCRIPTS_DIR}/"
+    sbt analysis/assembly
+    cp -vf analysis/target/scala-*/*-assembly-*.jar "${OUT_JAR}"
+    cp -vf analysis/conf/spark-defaults.conf "${SCRIPTS_DIR}/"
 
     cd "${SCRIPTS_DIR}"
 
