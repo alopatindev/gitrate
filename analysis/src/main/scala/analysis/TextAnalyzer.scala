@@ -34,7 +34,7 @@ object TextAnalyzer {
 
   def technologySynonyms(languageToTechnologies: Map[String, Seq[String]]): Iterable[(String, StemToSynonyms)] =
     for {
-      (language, technologies) <- languageToTechnologies
+      (language: String, technologies: Seq[String]) <- languageToTechnologies
       if languageSupportsPackageManager contains language
       technologyToSynonyms = stem(technologies, minLength = minStemLength, limit = maxTechnologiesToStem)
     } yield (language, technologyToSynonyms)
@@ -54,8 +54,11 @@ object TextAnalyzer {
     val (input, ignoredInput) = xs.splitAt(limit)
     val ignoredStems: Synonyms = (input.filter(_.length < minLength) ++ ignoredInput).toSet
     val ignoreResult: StemToSynonyms = ignoredStems.map(_ -> Set[String]()).toMap
-    val sortedXs: Seq[String] = input.filterNot(ignoredStems.contains).sortBy(_.length)
-    val result = helper(sortedXs, Map())
+    val sortedInput: Seq[String] = input
+      .filterNot(ignoredStems.contains)
+      .sortBy(_.length)
+      .toList // workaround for MatchError
+    val result = helper(sortedInput, Map())
     result ++ ignoreResult
   }
 

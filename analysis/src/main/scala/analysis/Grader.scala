@@ -19,17 +19,21 @@ class Grader(val appConfig: Config,
 
   import sparkSession.implicits._
 
-  def processUsers(users: Iterable[GithubUser]): Iterable[GradedRepository] = users.flatMap { user: GithubUser =>
-    val scriptInput = user.repositories.map { repo =>
-      val languages: Set[String] = repo.languages.toSet + repo.primaryLanguage
-      ScriptInput(repo.idBase64, repo.name, user.login, repo.archiveURL, languages).toString
+  def processUsers(users: Seq[GithubUser]): Iterable[GradedRepository] = {
+    val totalUsers = users.length
+    users.zipWithIndex.flatMap {
+      case (user: GithubUser, index: Int) =>
+        val scriptInput = user.repositories.map { repo =>
+          val languages: Set[String] = repo.languages.toSet + repo.primaryLanguage
+          ScriptInput(repo.idBase64, repo.name, user.login, repo.archiveURL, languages).toString
+        }
+
+        val outputMessages: Dataset[AnalyzerScriptResult] = runAnalyzerScript(scriptInput, withCleanup = true)
+        val results = processAnalyzerScriptResults(outputMessages)
+
+        logInfo(s"graded ${results.length} repositories of user ${user.login} (${index + 1}/$totalUsers)")
+        results
     }
-
-    val outputMessages: Dataset[AnalyzerScriptResult] = runAnalyzerScript(scriptInput, withCleanup = true)
-    val results = processAnalyzerScriptResults(outputMessages)
-
-    logInfo(s"graded ${results.length} repositories of user ${user.login}")
-    results
   }
 
   case class ScriptInput(repoIdBase64: String,

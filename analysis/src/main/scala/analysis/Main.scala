@@ -39,14 +39,13 @@ object Main extends AppConfig with LogUtils with ResourceUtils with SparkUtils {
       .checkpoint(checkpointInterval)
       .foreachRDD { rawGithubResult: RDD[String] =>
         val githubExtractor = new GithubExtractor(githubConf, GithubController.loadAnalyzedRepositories)
-
         val users: Iterable[GithubUser] = githubExtractor.parseAndFilterUsers(rawGithubResult)
 
         implicit val sparkContext: SparkContext = rawGithubResult.sparkContext
         implicit val sparkSession: SparkSession = rawGithubResult.toSparkSession
         val grader = new Grader(appConfig, GraderController.warningsToGradeCategory, GraderController.gradeCategories)
 
-        val gradedRepositories: Iterable[GradedRepository] = grader.processUsers(users)
+        val gradedRepositories: Iterable[GradedRepository] = grader.processUsers(users.toSeq)
 
         if (gradedRepositories.nonEmpty) {
           val languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)] =
