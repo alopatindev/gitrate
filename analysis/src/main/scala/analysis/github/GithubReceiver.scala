@@ -42,12 +42,22 @@ class GithubReceiver(conf: GithubConf,
     Future(helper()).logErrors()
 
     @tailrec
-    def helper(): Unit = {
+    def helper(): Unit =
+      try {
+        reloadAndRunQueries()
+      } catch {
+        case e: Exception =>
+          logError(e)
+          helper()
+      }
+
+    @tailrec
+    def reloadAndRunQueries(): Unit = {
       if (started.get()) {
         logInfo("reloading queries")
         val (queries, loadedQueryIndex) = loadQueries()
 
-        logInfo(s"${queries.length} queries, previous index is $loadedQueryIndex")
+        logInfo(s"${queries.length} queries, previous index was $loadedQueryIndex")
 
         if (queries.isEmpty) {
           logError("list of queries is empty!")
@@ -68,7 +78,7 @@ class GithubReceiver(conf: GithubConf,
             case _ => ()
           }
 
-        helper()
+        reloadAndRunQueries()
       }
     }
   }
@@ -81,10 +91,10 @@ class GithubReceiver(conf: GithubConf,
       (pageInfo \ "hasNextPage", pageInfo \ "endCursor") match {
         case (JsDefined(JsBoolean(hasNextPage)), JsDefined(JsString(endCursor))) if hasNextPage =>
           val nextPage = Some(endCursor)
-          logDebug(s"next page is $nextPage")
+          logInfo(s"next page is $nextPage")
           nextPage
         case _ =>
-          logDebug("no more pages")
+          logInfo("no more pages")
           None
       }
 
