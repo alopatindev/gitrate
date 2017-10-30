@@ -1,6 +1,6 @@
-name := "gitrate-backend"
+name := "gitrate-webapp"
 
-lazy val backend = (project in file(".")).enablePlugins(PlayScala)
+lazy val webapp = (project in file(".")).enablePlugins(PlayScala)
 
 scalaVersion := "2.12.4"
 
