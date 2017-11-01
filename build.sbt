@@ -24,6 +24,12 @@ val commonSettings = Seq(
     "-Ywarn-value-discard",
   ),
 
+  resolvers += "clojars" at "https://clojars.org/repo",
+
+  libraryDependencies ++= Seq(
+    "org.scalatest" %% "scalatest" % "3.1.x-6e03d4d77" % Test,
+  ),
+
   scalastyleConfig := baseDirectory.value / ".." / "project" / "scalastyle-config.xml",
   scalastyleConfig in Test := baseDirectory.value / ".." / "project" / "scalastyle-config-test.xml",
 
@@ -31,17 +37,11 @@ val commonSettings = Seq(
   coverageEnabled in(Compile, compile) := false,
 )
 
-lazy val testDependencies = Seq (
-  "org.scalatest" %% "scalatest" % "3.1.x-6e03d4d77" % Test,
-)
-
 lazy val analysis = project
   .settings(commonSettings:_*)
-  .settings(libraryDependencies ++= testDependencies)
 
-lazy val backend = project
+lazy val webapp = project
   .settings(commonSettings:_*)
-  .settings(libraryDependencies ++= testDependencies)
 
 lazy val main = project.in(file("."))
-  .aggregate(analysis, backend)
+  .aggregate(analysis, webapp)

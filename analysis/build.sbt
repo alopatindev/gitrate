@@ -4,8 +4,6 @@ scalaVersion := "2.11.11"
 
 lazy val sparkVersion = "2.2.0"
 
-resolvers += "clojars" at "https://clojars.org/repo"
-
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion,
   "org.apache.spark" %% "spark-sql" % sparkVersion,
@@ -19,8 +17,6 @@ libraryDependencies ++= Seq(
   "org.scalaj" %% "scalaj-http" % "2.3.0",
 
   "com.typesafe" % "config" % "1.3.1",
-
-  "cc.qbits" % "sextant" % "1.0.2",
 
   "com.holdenkarau" %% "spark-testing-base" % "2.2.0_0.7.4" % Test,
   "org.apache.spark" %% "spark-hive" % sparkVersion % Test // https://github.com/holdenk/spark-testing-base/issues/148
