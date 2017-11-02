@@ -23,6 +23,13 @@ class TextAnalyzerSuite extends WordSpec {
         assert(TextAnalyzer.parseLocation("CA") === Location(country = Some("United States"), city = None))
       }
 
+      "process only one location" in {
+        val input = "united states saint petersburg russian federation"
+        assert(
+          TextAnalyzer.parseLocation(input) === Location(country = Some("Russian Federation"),
+                                                         city = Some("Saint Petersburg")))
+      }
+
     }
 
     "technologySynonyms" should {

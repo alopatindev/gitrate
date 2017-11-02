@@ -1,7 +1,5 @@
 name := "gitrate-webapp"
 
-lazy val webapp = (project in file(".")).enablePlugins(PlayScala)
-
 scalaVersion := "2.12.4"
 
 lazy val playSlickVersion = "3.0.1" // TODO: update to 3.0.2?
@@ -9,8 +7,6 @@ lazy val playSlickVersion = "3.0.1" // TODO: update to 3.0.2?
 
 libraryDependencies ++= Seq(
   guice,
-
-  "cc.qbits" % "sextant" % "1.0.2", // FIXME: move to common library dependencies
 
   "com.typesafe.play" %% "play-slick" % playSlickVersion,
   //"com.typesafe.play" %% "play-slick-evolutions" % playSlickVersion,

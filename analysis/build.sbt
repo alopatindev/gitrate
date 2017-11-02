@@ -27,9 +27,6 @@ dependencyOverrides ++= Seq(
   "com.fasterxml.jackson.core" % "jackson-core" % "2.8.7",
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.8.7",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.7",
-
-  // https://github.com/scalatest/scalatest/issues/1013
-  //"org.scalatest" %% "scalatest" % "3.1.x-6e03d4d77" % Test,
 )
 
 // https://stackoverflow.com/questions/25144484/sbt-assembly-deduplication-found-error/39058507#39058507

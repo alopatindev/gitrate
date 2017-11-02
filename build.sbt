@@ -27,7 +27,8 @@ val commonSettings = Seq(
   resolvers += "clojars" at "https://clojars.org/repo",
 
   libraryDependencies ++= Seq(
-    "org.scalatest" %% "scalatest" % "3.1.x-6e03d4d77" % Test,
+    // https://github.com/scalatest/scalatest/issues/1013
+    "org.scalatest" %% "scalatest" % "3.1.x-serialization-workaround" % Test,
   ),
 
   scalastyleConfig := baseDirectory.value / ".." / "project" / "scalastyle-config.xml",
@@ -37,11 +38,17 @@ val commonSettings = Seq(
   coverageEnabled in(Compile, compile) := false,
 )
 
+lazy val common = project
+  .settings(commonSettings:_*)
+
 lazy val analysis = project
   .settings(commonSettings:_*)
+  .dependsOn(common)
 
 lazy val webapp = project
   .settings(commonSettings:_*)
+  .dependsOn(common)
+  .enablePlugins(PlayScala)
 
 lazy val main = project.in(file("."))
   .aggregate(analysis, webapp)

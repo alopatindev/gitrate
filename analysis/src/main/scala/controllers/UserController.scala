@@ -2,7 +2,8 @@ package controllers
 
 import analysis.github.GithubUser
 import analysis.GradedRepository
-import analysis.TextAnalyzer.{Location, StemToSynonyms}
+import analysis.TextAnalyzer.StemToSynonyms
+import common.LocationParser.Location
 import utils.CollectionUtils._
 import utils.{LogUtils, SlickUtils}
 
