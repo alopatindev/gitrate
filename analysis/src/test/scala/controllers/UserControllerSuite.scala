@@ -33,7 +33,7 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "process single user" in { _ =>
-        val analysisResult = AnalysisResult(fakeSingleUser, fakeGradedRepositories, Map.empty)
+        val analysisResult = AnalysisResult(fakeSingleUser, fakeGradedRepositoryOfSingleUser, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -48,7 +48,7 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "process multiple users" in { _ =>
-        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Map.empty)
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositoriesOfTwoUsers, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -63,7 +63,7 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "save contacts" in { _ =>
-        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Map.empty)
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositoriesOfTwoUsers, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -83,7 +83,7 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "save languages and technologies" in { _ =>
-        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Map.empty)
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositoriesOfTwoUsers, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -99,11 +99,11 @@ class UserControllerSuite extends PostgresTestUtils {
         val data: Future[Container] = UserController.runQuery(query)
         val result: Container = Await.result(data, Duration.Inf)
 
-        val user = fakeUserA
+        val user = fakeUserB
         val repo = user.repositories.head
 
         val languagesToTechnologies: Map[String, Seq[String]] =
-          fakeGradedRepositories.filter(_.idBase64 == repo.idBase64).head.languageToTechnologies
+          fakeGradedRepositoriesOfTwoUsers.filter(_.idBase64 == repo.idBase64).head.languageToTechnologies
         assert(languagesToTechnologies.nonEmpty)
 
         languagesToTechnologies.foreach {
@@ -115,13 +115,13 @@ class UserControllerSuite extends PostgresTestUtils {
         }
       }
 
-      "save languages when no technologies detected" in { _ =>
-        val analysisResult = AnalysisResult(fakeSingleUser, fakeGradedRepositories, Map.empty)
+      "save not graded languages" in { _ =>
+        val analysisResult = AnalysisResult(fakeSingleUser, fakeGradedRepositoryOfSingleUser, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
         val language = "Perl"
-        assert(fakeGradedRepoA.languageToTechnologies(language).isEmpty)
+        assert(!(fakeGradedRepoA.languageToTechnologies.keySet contains language))
 
         type T = String
         type Container = Vector[T]
@@ -136,8 +136,7 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "save technology synonyms" in { _ =>
-        val analysisResult =
-          AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Map.empty)
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositoriesOfTwoUsers, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -161,7 +160,7 @@ class UserControllerSuite extends PostgresTestUtils {
           FROM technologies""".as[T]
 
         {
-          val analysisResult = AnalysisResult(fakeSingleUser, fakeSingleGradedRepository, Map.empty)
+          val analysisResult = AnalysisResult(fakeSingleUser, fakeGradedRepositoryOfSingleUser, Map.empty)
           val saveResult = UserController.saveAnalysisResult(analysisResult)
           val _ = Await.result(saveResult, Duration.Inf)
 
@@ -172,7 +171,7 @@ class UserControllerSuite extends PostgresTestUtils {
         }
 
         {
-          val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Map.empty)
+          val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositoriesOfTwoUsers, Map.empty)
           val saveResult = UserController.saveAnalysisResult(analysisResult)
           val _ = Await.result(saveResult, Duration.Inf)
 
@@ -192,7 +191,7 @@ class UserControllerSuite extends PostgresTestUtils {
           FROM technologies""".as[T]
 
         {
-          val analysisResult = AnalysisResult(fakeSingleUser, fakeGradedRepositories, Map.empty)
+          val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositoriesOfTwoUsers, Map.empty)
           val saveResult = UserController.saveAnalysisResult(analysisResult)
           val _ = Await.result(saveResult, Duration.Inf)
 
@@ -204,7 +203,7 @@ class UserControllerSuite extends PostgresTestUtils {
         }
 
         {
-          val analysisResult = AnalysisResult(fakeTwoUsers, fakeSingleGradedRepository, Map.empty)
+          val analysisResult = AnalysisResult(fakeSingleUser, fakeGradedRepositoryOfSingleUser, Map.empty)
           val saveResult = UserController.saveAnalysisResult(analysisResult)
           val _ = Await.result(saveResult, Duration.Inf)
 
@@ -218,7 +217,7 @@ class UserControllerSuite extends PostgresTestUtils {
 
       "save locations" in { _ =>
         val analysisResult =
-          AnalysisResult(fakeTwoUsers, fakeGradedRepositories, fakeUserToLocation)
+          AnalysisResult(fakeTwoUsers, fakeGradedRepositoriesOfTwoUsers, fakeUserToLocation)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -240,7 +239,7 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "save repositories" in { _ =>
-        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Map.empty)
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositoriesOfTwoUsers, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -258,12 +257,12 @@ class UserControllerSuite extends PostgresTestUtils {
         val result: Container = Await.result(data, Duration.Inf)
 
         val repo = fakeUserB.repositories.head
-        val gradedRepo = fakeGradedRepositories.filter(_.idBase64 == repo.idBase64).head
+        val gradedRepo = fakeGradedRepositoriesOfTwoUsers.filter(_.idBase64 == repo.idBase64).head
         assert(result.contains((fakeUserB.login, repo.idBase64, repo.name, gradedRepo.linesOfCode.toString)))
       }
 
       "save grades" in { _ =>
-        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Map.empty)
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositoriesOfTwoUsers, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -282,7 +281,7 @@ class UserControllerSuite extends PostgresTestUtils {
         val result: Container = Await.result(data, Duration.Inf)
 
         val repo = fakeUserB.repositories.head
-        val gradedRepo = fakeGradedRepositories.filter(_.idBase64 == repo.idBase64).head
+        val gradedRepo = fakeGradedRepositoriesOfTwoUsers.filter(_.idBase64 == repo.idBase64).head
         val grade = gradedRepo.grades.head
         val value = BigDecimal(grade.value).setScale(2).toString
         assert(result.contains((fakeUserB.login, grade.gradeCategory, value)))
@@ -306,7 +305,7 @@ class UserControllerSuite extends PostgresTestUtils {
     idBase64 = "repoB",
     name = "nameB",
     primaryLanguage = "C",
-    languages = Seq("Python", "C++"),
+    languages = Seq("Python", "C++", "JavaScript"),
     defaultBranch = "master",
     archiveURL = new URL("http://path.to/master/archive.tar.gz"),
     ownerToAllCommitsRatio = 0.8
@@ -326,8 +325,7 @@ class UserControllerSuite extends PostgresTestUtils {
     GradedRepository(
       idBase64 = "repoA",
       name = "nameA",
-      languageToTechnologies =
-        Map("JavaScript" -> Seq("MongoDB", "eslint-plugin-better"), "Perl" -> Seq.empty, "C++" -> Seq("Boost")),
+      languageToTechnologies = Map("JavaScript" -> Seq("MongoDB", "eslint-plugin-better"), "C++" -> Seq("Boost")),
       grades = Seq(Grade("Maintainable", 0.8)),
       linesOfCode = 100
     )
@@ -380,8 +378,8 @@ class UserControllerSuite extends PostgresTestUtils {
   private val fakeSingleUser: Seq[GithubUser] = Seq(fakeUserA)
   private val fakeTwoUsers: Seq[GithubUser] = Seq(fakeUserA, fakeUserB)
 
-  private val fakeSingleGradedRepository: Seq[GradedRepository] = Seq(fakeGradedRepoA)
-  private val fakeGradedRepositories: Seq[GradedRepository] = Seq(fakeGradedRepoA, fakeGradedRepoB, fakeGradedRepoC)
+  private val fakeGradedRepositoryOfSingleUser: Seq[GradedRepository] = Seq(fakeGradedRepoA)
+  private val fakeGradedRepositoriesOfTwoUsers: Seq[GradedRepository] = Seq(fakeGradedRepoA, fakeGradedRepoB, fakeGradedRepoC)
 
   private val fakeUserToLocation: Map[Int, Location] = Map(
     1 -> Location(country = Some("Russian Federation"), city = Some("Saint Petersburg")),

@@ -20,7 +20,7 @@ object UserController extends SlickUtils with LogUtils {
   def saveAnalysisResult(result: AnalysisResult): Future[Unit] = {
     val query =
       DBIO
-        .seq(buildSaveLanguagesQuery(result.gradedRepositories),
+        .seq(buildSaveLanguagesQuery(result.users),
              buildSaveTechnologies(result.gradedRepositories),
              buildSaveAllUsersQuery(result))
         .transactionally
@@ -133,10 +133,11 @@ object UserController extends SlickUtils with LogUtils {
       DEFAULT
     ) ON CONFLICT (user_id) DO NOTHING"""
 
-  private def buildSaveLanguagesQuery(gradedRepositories: Iterable[GradedRepository]) =
+  private def buildSaveLanguagesQuery(users: Iterable[GithubUser]) =
     DBIO.sequence(for {
-      repo <- gradedRepositories
-      language <- repo.languageToTechnologies.keys
+      user <- users
+      repo <- user.repositories
+      language <- repo.languages :+ repo.primaryLanguage
     } yield sqlu"""
       INSERT INTO languages (id, language) VALUES (DEFAULT, $language)
       ON CONFLICT (language) DO NOTHING""")

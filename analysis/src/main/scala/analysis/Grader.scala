@@ -108,7 +108,6 @@ class Grader(val appConfig: Config,
       .join(languageToTechnologies, 'idBase64 === 'idBase64_ && 'name === 'name_)
       .as[GradedRepository]
 
-    results.show(truncate = false)
     results.collect()
   }
 

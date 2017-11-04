@@ -346,8 +346,6 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(grade("Testable") === 0.0 +- tolerance)
       }
 
-      // "return bad grades when code is bad" taggedAs Slow in { ??? }
-
       "return automated grade based on detected automation tools" taggedAs Slow in { fixture =>
         val login = "alopatindev"
         val repoName = "find-telegram-bot"
