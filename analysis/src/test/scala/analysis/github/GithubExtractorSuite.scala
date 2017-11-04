@@ -16,71 +16,67 @@ import play.api.libs.json.{JsValue, Json}
 
 class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
 
-  "GithubExtractor" can {
+  "filter GitHub API output" should {
 
-    "filter GitHub API output" should {
+    "not ignore target users" taggedAs Slow in { fixture =>
+      assert(fixture containsUser "target-user")
+    }
 
-      "not ignore target users" taggedAs Slow in { fixture =>
-        assert(fixture containsUser "target-user")
-      }
+    "ignore users with invalid type (e.g. organization)" taggedAs Slow in { fixture =>
+      assert(!(fixture containsUser "organization-user"))
+    }
 
-      "ignore users with invalid type (e.g. organization)" taggedAs Slow in { fixture =>
-        assert(!(fixture containsUser "organization-user"))
-      }
+    "not ignore target repositories" taggedAs Slow in { fixture =>
+      assert(fixture.userHasRepo("target-user", "repo-pinned1"))
+      assert(fixture.userHasRepo("target-user", "repo-pinned2"))
+    }
 
-      "not ignore target repositories" taggedAs Slow in { fixture =>
-        assert(fixture.userHasRepo("target-user", "repo-pinned1"))
-        assert(fixture.userHasRepo("target-user", "repo-pinned2"))
-      }
+    "ignore too young repositories" taggedAs Slow in { fixture =>
+      assert(!fixture.userHasRepo("target-user", "YOUNG-repo"))
+      assert(!fixture.userHasRepo("hermityang", "YOUNG-repo-2"))
+    }
 
-      "ignore too young repositories" taggedAs Slow in { fixture =>
-        assert(!fixture.userHasRepo("target-user", "YOUNG-repo"))
-        assert(!fixture.userHasRepo("hermityang", "YOUNG-repo-2"))
-      }
+    "ignore forked repositories" taggedAs Slow in { fixture =>
+      assert(!fixture.userHasRepo("target-user", "forked-repo"))
+    }
 
-      "ignore forked repositories" taggedAs Slow in { fixture =>
-        assert(!fixture.userHasRepo("target-user", "forked-repo"))
-      }
+    "ignore mirrored repositories" taggedAs Slow in { fixture =>
+      assert(!fixture.userHasRepo("target-user", "mirrored-repo"))
+    }
 
-      "ignore mirrored repositories" taggedAs Slow in { fixture =>
-        assert(!fixture.userHasRepo("target-user", "mirrored-repo"))
-      }
+    "ignore repositories with primary language we don't support" taggedAs Slow in { fixture =>
+      assert(!fixture.userHasRepo("target-user", "repo-with-UNKNOWN-as-primary"))
+    }
 
-      "ignore repositories with primary language we don't support" taggedAs Slow in { fixture =>
-        assert(!fixture.userHasRepo("target-user", "repo-with-UNKNOWN-as-primary"))
-      }
+    "ignore duplicated repositories" taggedAs Slow in { fixture =>
+      val repositories = fixture.repositoriesOfUser("target-user")
+      assert(repositories.toSet.size === repositories.size)
+    }
 
-      "ignore duplicated repositories" taggedAs Slow in { fixture =>
-        val repositories = fixture.repositoriesOfUser("target-user")
-        assert(repositories.toSet.size === repositories.size)
-      }
+    "ignore users with too little number of target repositories" taggedAs Slow in { fixture =>
+      assert(!(fixture containsUser "user-with-a-single-repo"))
+    }
 
-      "ignore users with too little number of target repositories" taggedAs Slow in { fixture =>
-        assert(!(fixture containsUser "user-with-a-single-repo"))
-      }
+    "ignore recently analyzed repositories" taggedAs Slow in { fixture =>
+      assert(!fixture.userHasRepo("target-user", "recently-analyzed-repo"))
+    }
 
-      "ignore recently analyzed repositories" taggedAs Slow in { fixture =>
-        assert(!fixture.userHasRepo("target-user", "recently-analyzed-repo"))
-      }
+    "allow only repositories with commits mostly made by the user" taggedAs Slow in { fixture =>
+      assert(!fixture.userHasRepo("target-user", "repo-with-mostly-commits-by-OTHERS"))
+    }
 
-      "allow only repositories with commits mostly made by the user" taggedAs Slow in { fixture =>
-        assert(!fixture.userHasRepo("target-user", "repo-with-mostly-commits-by-OTHERS"))
-      }
-
-      "get user details" taggedAs Slow in { fixture =>
-        fixture
-          .findUser("target-user")
-          .foreach(user => {
-            assert(user.fullName === Some("First Last"))
-            assert(user.description === Some("User Description"))
-            assert(user.company === Some("Company Name"))
-            assert(user.location === Some("City, Country"))
-            assert(user.email === None)
-            assert(user.blog === None)
-            assert(user.jobSeeker === Some(true))
-          })
-      }
-
+    "get user details" taggedAs Slow in { fixture =>
+      fixture
+        .findUser("target-user")
+        .foreach(user => {
+          assert(user.fullName === Some("First Last"))
+          assert(user.description === Some("User Description"))
+          assert(user.company === Some("Company Name"))
+          assert(user.location === Some("City, Country"))
+          assert(user.email === None)
+          assert(user.blog === None)
+          assert(user.jobSeeker === Some(true))
+        })
     }
 
   }
@@ -151,17 +147,18 @@ class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with
     spark.read
       .json(
         sc.parallelize(Seq(
-          s"""{
+            s"""{
   "raw_id": "MDEwOlJlcG9zaXRvcnk4MTQyMTAyCg==",
   "updated_by_analyzer": $currentDate
 }""",
-          s"""
+            s"""
 {
   "raw_id": "MDEwOlJlcG9zaXRvcnkyMDg5Mjg2MA==",
   "updated_by_analyzer": $oldDate
 }
 """
-        )).toDS)
+          ))
+          .toDS)
       .select('raw_id as "idBase64", 'updated_by_analyzer.cast(TimestampType) as "updatedByAnalyzer")
       .as[AnalyzedRepository]
   }

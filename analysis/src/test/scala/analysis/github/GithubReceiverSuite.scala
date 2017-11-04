@@ -13,52 +13,48 @@ import play.api.libs.json.{Json, JsValue}
 
 class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtils {
 
-  "GithubReceiver" can {
+  "store" should {
+    "be called when new users were found" in { fixture =>
+      eventually {
+        val usersReceived = fixture.responses.count("Inspq") >= 1
+        assert(usersReceived)
+      }
+    }
+  }
 
-    "store" should {
-      "be called when new users were found" in { fixture =>
-        eventually {
-          val usersReceived = fixture.responses.count("Inspq") >= 1
-          assert(usersReceived)
-        }
+  "onStart" should {
+
+    "execute first query" in { fixture =>
+      eventually {
+        val querySent = fixture.requests.count("FIRST_QUERY") >= 1
+        assert(querySent)
       }
     }
 
-    "onStart" should {
-
-      "execute first query" in { fixture =>
-        eventually {
-          val querySent = fixture.requests.count("FIRST_QUERY") >= 1
-          assert(querySent)
-        }
-      }
-
-      "reload queries after traversing all pages of the last query" in { fixture =>
-        eventually {
-          val queriesReloads = fixture.queriesReloads.get()
-          val firstRequests = fixture.requests.count("FIRST_QUERY")
-          assert(queriesReloads >= 10 && queriesReloads < firstRequests)
-        }
-      }
-
-      "visit all pages of a query" in { fixture =>
-        eventually {
-          val multipleFirstPageRequests = fixture.requests.count("FIRST_QUERY") >= 2
-          val secondPageRequested = fixture.requests.count("SECOND_PAGE") >= 1
-          val lastPageVisited = fixture.responses.count("\"hasNextPage\":false") >= 1
-          assert(multipleFirstPageRequests && secondPageRequested && lastPageVisited)
-        }
-      }
-
-      "ignore error responses" in { fixture =>
-        eventually {
-          val multipleInvalidRequests = fixture.requests.count("INVALID_QUERY") >= 10
-          val invalidResponses = fixture.responses.count("INVALID_PAGE") > 0
-          assert(multipleInvalidRequests && !invalidResponses)
-        }
+    "reload queries after traversing all pages of the last query" in { fixture =>
+      eventually {
+        val queriesReloads = fixture.queriesReloads.get()
+        val firstRequests = fixture.requests.count("FIRST_QUERY")
+        assert(queriesReloads >= 10 && queriesReloads < firstRequests)
       }
     }
 
+    "visit all pages of a query" in { fixture =>
+      eventually {
+        val multipleFirstPageRequests = fixture.requests.count("FIRST_QUERY") >= 2
+        val secondPageRequested = fixture.requests.count("SECOND_PAGE") >= 1
+        val lastPageVisited = fixture.responses.count("\"hasNextPage\":false") >= 1
+        assert(multipleFirstPageRequests && secondPageRequested && lastPageVisited)
+      }
+    }
+
+    "ignore error responses" in { fixture =>
+      eventually {
+        val multipleInvalidRequests = fixture.requests.count("INVALID_QUERY") >= 10
+        val invalidResponses = fixture.responses.count("INVALID_PAGE") > 0
+        assert(multipleInvalidRequests && !invalidResponses)
+      }
+    }
   }
 
   override def withFixture(test: OneArgTest): Outcome = {

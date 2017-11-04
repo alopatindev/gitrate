@@ -11,48 +11,44 @@ import slick.sql.SqlAction
 
 class GithubControllerSuite extends PostgresTestUtils {
 
-  "GithubControllerSuite" can {
+  "loadAnalyzedRepositories" should {
 
-    "loadAnalyzedRepositories" should {
-
-      "load analyzed repositories" in { _ =>
-        val repoIdsBase64: Seq[String] = Seq("repo1")
-        val results: Seq[AnalyzedRepository] = GithubController.loadAnalyzedRepositories(repoIdsBase64).collect()
-        assert(results.length === 1)
-        assert(results.head.idBase64 === repoIdsBase64.head)
-      }
-
+    "load analyzed repositories" in { _ =>
+      val repoIdsBase64: Seq[String] = Seq("repo1")
+      val results: Seq[AnalyzedRepository] = GithubController.loadAnalyzedRepositories(repoIdsBase64).collect()
+      assert(results.length === 1)
+      assert(results.head.idBase64 === repoIdsBase64.head)
     }
 
-    "loadQueries" should {
+  }
 
-      "load queries" in { _ =>
-        val (results: Seq[GithubSearchQuery], _) = GithubController.loadQueries()
-        val expected = GithubSearchQuery(language = "C++",
-                                         filename = ".travis.yml",
-                                         minRepoSizeKiB = 10,
-                                         maxRepoSizeKiB = 2048,
-                                         minStars = 0,
-                                         maxStars = 100,
-                                         pattern = "")
-        assert(results contains expected)
-      }
+  "loadQueries" should {
 
+    "load queries" in { _ =>
+      val (results: Seq[GithubSearchQuery], _) = GithubController.loadQueries()
+      val expected = GithubSearchQuery(language = "C++",
+                                       filename = ".travis.yml",
+                                       minRepoSizeKiB = 10,
+                                       maxRepoSizeKiB = 2048,
+                                       minStars = 0,
+                                       maxStars = 100,
+                                       pattern = "")
+      assert(results contains expected)
     }
 
-    "saveReceiverState" should {
+  }
 
-      "save query index" in { _ =>
-        val expected = 123
+  "saveReceiverState" should {
 
-        val result = GithubController.saveReceiverState(queryIndex = expected).map { _ =>
-          val (_, queryIndex) = GithubController.loadQueries()
-          queryIndex
-        }
+    "save query index" in { _ =>
+      val expected = 123
 
-        assert(Await.result(result, Duration.Inf) === expected)
+      val result = GithubController.saveReceiverState(queryIndex = expected).map { _ =>
+        val (_, queryIndex) = GithubController.loadQueries()
+        queryIndex
       }
 
+      assert(Await.result(result, Duration.Inf) === expected)
     }
 
   }
