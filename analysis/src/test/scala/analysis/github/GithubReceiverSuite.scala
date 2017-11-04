@@ -93,9 +93,9 @@ class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtil
 
     def fakeSaveReceiverState(queryIndex: Int): Unit = ()
 
-    val firstResponse = loadJsonResource("github/FirstPageFixture.json")
-    val secondResponse = loadJsonResource("github/LastPageFixture.json")
-    val errorResponse = loadJsonResource("github/ErrorFixture.json")
+    val firstResponse = loadJsonResource("/github/FirstPageFixture.json")
+    val secondResponse = loadJsonResource("/github/LastPageFixture.json")
+    val errorResponse = loadJsonResource("/github/ErrorFixture.json")
 
     def stubHttpGetBlocking(url: URL, headers: Headers): JsValue = Json.parse("{}")
 

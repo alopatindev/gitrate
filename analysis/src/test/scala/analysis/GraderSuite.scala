@@ -7,6 +7,7 @@ import com.holdenkarau.spark.testing.DataFrameSuiteBase
 import com.typesafe.config.ConfigFactory
 import java.io.File
 import java.net.URL
+import java.nio.file.{Path, Paths}
 import java.util.UUID
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkContext
@@ -428,18 +429,18 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
       .as[GradeCategory]
 
     val grader = new Grader(appConfig, warningsToGradeCategory, gradeCategories)
-    val dataDir: String = s"${appConfig.getString("app.scriptsDir")}/data"
+    val dataDir: Path = Paths.get(appConfig.getString("app.scriptsDir"), "data")
     val theFixture = FixtureParam(grader, dataDir)
     try {
       withFixture(test.toNoArgTest(theFixture))
     } finally {
-      val dir = new File(dataDir)
+      val dir = new File(dataDir.toUri)
       FileUtils.deleteDirectory(dir)
       val _ = dir.mkdir()
     }
   }
 
-  case class FixtureParam(grader: Grader, dataDir: String) {
+  case class FixtureParam(grader: Grader, dataDir: Path) {
 
     def runAnalyzerScript(login: String, // scalastyle:ignore
                           repoName: String,
@@ -453,7 +454,11 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
 
       val results = grader.runAnalyzerScript(input, withCleanup)
 
-      def file(path: String): File = new File(s"$dataDir/$repoId/$repoName-$branch$path").getCanonicalFile
+      def file(path: String): File =
+        dataDir
+          .resolve(Paths.get(repoId, s"$repoName-$branch", path))
+          .normalize
+          .toFile
 
       def pathExists(path: String): Boolean = file(path).exists()
 

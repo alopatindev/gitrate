@@ -29,9 +29,8 @@ trait TestUtils {
   }
 
   def loadJsonResource(filename: String): JsValue = {
-    val text = Source
-      .fromFile(s"analysis/src/test/resources/$filename")
-      .mkString
+    val url = getClass.getResource(filename)
+    val text = Source.fromURL(url).mkString
     Json.parse(text)
   }
 

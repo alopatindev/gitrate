@@ -1,7 +1,7 @@
 package testing
 
+import java.nio.file.Paths
 import org.scalatest.{Outcome, fixture}
-
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.io.Source
@@ -37,10 +37,9 @@ trait PostgresTestUtils extends fixture.WordSpec {
   }
 
   private def loadSQL(script: String) = {
-    val text = Source.fromFile(sqlScriptsDir + script).mkString
+    val path = Paths.get("analysis", "conf", script).toUri
+    val text = Source.fromFile(path).mkString
     sqlu"#$text"
   }
-
-  private val sqlScriptsDir = "analysis/conf/"
 
 }

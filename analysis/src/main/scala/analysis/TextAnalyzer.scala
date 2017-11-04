@@ -10,9 +10,9 @@ object TextAnalyzer {
   def technologySynonyms(languageToTechnologies: Map[String, Seq[String]]): Iterable[(String, StemToSynonyms)] =
     for {
       (language: String, technologies: Seq[String]) <- languageToTechnologies
-      technologyToSynonyms: StemToSynonyms = if (languageSupportsPackageManager contains language)
+      technologyToSynonyms: StemToSynonyms = if (languageSupportsPackageManager contains language) {
         stem(technologies)
-      else technologies.map(_ -> Set[String]()).toMap
+      } else { technologies.map(_ -> Set[String]()).toMap }
     } yield (language, technologyToSynonyms)
 
   private def stem(xs: Seq[String]): StemToSynonyms = {
