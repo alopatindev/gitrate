@@ -1,9 +1,9 @@
 package controllers
 
 import analysis.github.{GithubRepository, GithubUser}
-import analysis.TextAnalyzer.{Location, StemToSynonyms}
 import analysis.{Grade, GradedRepository}
 import controllers.UserController.AnalysisResult
+import common.LocationParser.Location
 import testing.PostgresTestUtils
 
 import java.net.URL
@@ -11,7 +11,6 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.concurrent.Future
 import slick.jdbc.PostgresProfile.api._
-import slick.sql.SqlAction
 
 class UserControllerSuite extends PostgresTestUtils {
 
@@ -20,7 +19,7 @@ class UserControllerSuite extends PostgresTestUtils {
     "saveAnalysisResult" should {
 
       "process empty input" in { _ =>
-        val analysisResult = AnalysisResult(Iterable.empty, Iterable.empty, Iterable.empty, Map.empty)
+        val analysisResult = AnalysisResult(Iterable.empty, Iterable.empty, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -34,7 +33,7 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "process single user" in { _ =>
-        val analysisResult = AnalysisResult(fakeSingleUser, fakeGradedRepositories, Iterable.empty, Map.empty)
+        val analysisResult = AnalysisResult(fakeSingleUser, fakeGradedRepositories, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -49,7 +48,7 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "process multiple users" in { _ =>
-        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable.empty, Map.empty)
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -64,7 +63,7 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "save contacts" in { _ =>
-        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable.empty, Map.empty)
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -84,7 +83,7 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "save languages and technologies" in { _ =>
-        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable.empty, Map.empty)
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -116,30 +115,110 @@ class UserControllerSuite extends PostgresTestUtils {
         }
       }
 
-      "save technology synonyms" in { _ =>
-        val analysisResult =
-          AnalysisResult(fakeTwoUsers, fakeGradedRepositories, fakeLanguageToTechnologyToSynonyms, Map.empty)
+      "save languages when no technologies detected" in { _ =>
+        val analysisResult = AnalysisResult(fakeSingleUser, fakeGradedRepositories, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
-        type T = (String, String)
+        val language = "Perl"
+        assert(fakeGradedRepoA.languageToTechnologies(language).isEmpty)
+
+        type T = String
         type Container = Vector[T]
         val query: UserController.SQLQuery[Vector[T], T] = sql"""
-          SELECT technologies.technology, technology_synonyms.synonym
-          FROM technology_synonyms
-          INNER JOIN technologies ON technologies.id = technology_synonyms.technology_id""".as[T]
-        val data: Future[Container] = UserController.runQuery(query)
-        val result: Container = Await.result(data, Duration.Inf)
+          SELECT language
+          FROM languages
+          WHERE language = $language""".as[T]
+        val users: Future[Container] = UserController.runQuery(query)
+        val result: Container = Await.result(users, Duration.Inf)
 
-        assert(result.length === 1)
-        val (technology, synonym) = result.head
-        assert(technology === "eslint")
-        assert(synonym === "eslint-plugin-better")
+        assert(result.nonEmpty)
+      }
+
+      "save technology synonyms" in { _ =>
+        val analysisResult =
+          AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Map.empty)
+        val saveResult = UserController.saveAnalysisResult(analysisResult)
+        val _ = Await.result(saveResult, Duration.Inf)
+
+        type T = (String, Boolean)
+        type Container = Vector[T]
+        val query: UserController.SQLQuery[Vector[T], T] = sql"""
+          SELECT technologies.technology, technologies.synonym
+          FROM technologies""".as[T]
+        val data: Future[Container] = UserController.runQuery(query)
+        val synonyms = Await.result(data, Duration.Inf).toMap
+
+        assert(synonyms("eslint") === false)
+        assert(synonyms("eslint-plugin-better") === true)
+      }
+
+      "downgrade technologies to synonyms" in { _ =>
+        type T = (String, Boolean)
+        type Container = Vector[T]
+        val query: UserController.SQLQuery[Vector[T], T] = sql"""
+          SELECT technologies.technology, technologies.synonym
+          FROM technologies""".as[T]
+
+        {
+          val analysisResult = AnalysisResult(fakeSingleUser, fakeSingleGradedRepository, Map.empty)
+          val saveResult = UserController.saveAnalysisResult(analysisResult)
+          val _ = Await.result(saveResult, Duration.Inf)
+
+          val data: Future[Container] = UserController.runQuery(query)
+          val synonyms = Await.result(data, Duration.Inf).toMap
+
+          assert(synonyms("eslint-plugin-better") === false)
+        }
+
+        {
+          val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Map.empty)
+          val saveResult = UserController.saveAnalysisResult(analysisResult)
+          val _ = Await.result(saveResult, Duration.Inf)
+
+          val data: Future[Container] = UserController.runQuery(query)
+          val synonyms = Await.result(data, Duration.Inf).toMap
+
+          assert(synonyms("eslint-plugin-better") === true)
+          assert(synonyms("eslint") === false)
+        }
+      }
+
+      "not upgrade synonyms to technologies" in { _ =>
+        type T = (String, Boolean)
+        type Container = Vector[T]
+        val query: UserController.SQLQuery[Vector[T], T] = sql"""
+          SELECT technologies.technology, technologies.synonym
+          FROM technologies""".as[T]
+
+        {
+          val analysisResult = AnalysisResult(fakeSingleUser, fakeGradedRepositories, Map.empty)
+          val saveResult = UserController.saveAnalysisResult(analysisResult)
+          val _ = Await.result(saveResult, Duration.Inf)
+
+          val data: Future[Container] = UserController.runQuery(query)
+          val synonyms = Await.result(data, Duration.Inf).toMap
+
+          assert(synonyms("eslint-plugin-better") === true)
+          assert(synonyms("eslint") === false)
+        }
+
+        {
+          val analysisResult = AnalysisResult(fakeTwoUsers, fakeSingleGradedRepository, Map.empty)
+          val saveResult = UserController.saveAnalysisResult(analysisResult)
+          val _ = Await.result(saveResult, Duration.Inf)
+
+          val data: Future[Container] = UserController.runQuery(query)
+          val synonyms = Await.result(data, Duration.Inf).toMap
+
+          assert(synonyms("eslint-plugin-better") === true)
+          assert(synonyms("eslint") === false)
+        }
       }
 
       "save locations" in { _ =>
         val analysisResult =
-          AnalysisResult(fakeTwoUsers, fakeGradedRepositories, fakeLanguageToTechnologyToSynonyms, fakeUserToLocation)
+          AnalysisResult(fakeTwoUsers, fakeGradedRepositories, fakeUserToLocation)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -161,7 +240,7 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "save repositories" in { _ =>
-        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable.empty, Map.empty)
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -184,7 +263,7 @@ class UserControllerSuite extends PostgresTestUtils {
       }
 
       "save grades" in { _ =>
-        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Iterable.empty, Map.empty)
+        val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositories, Map.empty)
         val saveResult = UserController.saveAnalysisResult(analysisResult)
         val _ = Await.result(saveResult, Duration.Inf)
 
@@ -247,9 +326,8 @@ class UserControllerSuite extends PostgresTestUtils {
     GradedRepository(
       idBase64 = "repoA",
       name = "nameA",
-      languageToTechnologies = Map("JavaScript" -> Seq("MongoDB", "eslint-plugin-better", "eslint"),
-                                   "Perl" -> Seq.empty,
-                                   "C++" -> Seq("Boost")),
+      languageToTechnologies =
+        Map("JavaScript" -> Seq("MongoDB", "eslint-plugin-better"), "Perl" -> Seq.empty, "C++" -> Seq("Boost")),
       grades = Seq(Grade("Maintainable", 0.8)),
       linesOfCode = 100
     )
@@ -258,7 +336,8 @@ class UserControllerSuite extends PostgresTestUtils {
     GradedRepository(
       idBase64 = "repoB",
       name = "nameB",
-      languageToTechnologies = Map("C" -> Seq("PostgreSQL"), "Python" -> Seq("Django"), "C++" -> Seq.empty),
+      languageToTechnologies =
+        Map("C" -> Seq("PostgreSQL"), "Python" -> Seq("Django"), "C++" -> Seq.empty, "JavaScript" -> Seq("eslint")),
       grades = Seq(Grade("Maintainable", 0.9), Grade("Performant", 0.8)),
       linesOfCode = 200
     )
@@ -300,127 +379,13 @@ class UserControllerSuite extends PostgresTestUtils {
 
   private val fakeSingleUser: Seq[GithubUser] = Seq(fakeUserA)
   private val fakeTwoUsers: Seq[GithubUser] = Seq(fakeUserA, fakeUserB)
+
+  private val fakeSingleGradedRepository: Seq[GradedRepository] = Seq(fakeGradedRepoA)
   private val fakeGradedRepositories: Seq[GradedRepository] = Seq(fakeGradedRepoA, fakeGradedRepoB, fakeGradedRepoC)
+
   private val fakeUserToLocation: Map[Int, Location] = Map(
     1 -> Location(country = Some("Russian Federation"), city = Some("Saint Petersburg")),
     2 -> Location(country = None, city = Some("Saint Petersburg"))
   )
-
-  private val fakeLanguageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)] = Seq(
-    "JavaScript" -> Map("eslint" -> Set("eslint-plugin-better")))
-
-  override def schema: SqlAction[Int, NoStream, Effect] = sqlu"""
-    CREATE TABLE IF NOT EXISTS countries (
-      id SERIAL PRIMARY KEY,
-      country TEXT UNIQUE NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS cities (
-      id SERIAL PRIMARY KEY,
-      city TEXT UNIQUE NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      github_user_id INTEGER UNIQUE NOT NULL,
-      github_login TEXT NOT NULL,
-      full_name TEXT NOT NULL,
-      updated_by_user TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS developers (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER UNIQUE REFERENCES users NOT NULL,
-      show_email BOOLEAN,
-      job_seeker BOOLEAN NOT NULL,
-      available_for_relocation BOOLEAN,
-      programming_experience_months SMALLINT,
-      work_experience_months SMALLINT,
-      description TEXT DEFAULT '' NOT NULL,
-      raw_location TEXT,
-      country_id INTEGER REFERENCES countries,
-      city_id INTEGER REFERENCES cities,
-      viewed INTEGER DEFAULT 0 NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS contact_categories (
-      id SERIAL PRIMARY KEY,
-      category TEXT UNIQUE NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS contacts (
-      id SERIAL PRIMARY KEY,
-      category_id INTEGER REFERENCES contact_categories NOT NULL,
-      contact TEXT,
-      user_id INTEGER REFERENCES users NOT NULL,
-      UNIQUE (category_id, contact)
-    );
-
-    CREATE TABLE IF NOT EXISTS languages (
-      id SERIAL PRIMARY KEY,
-      language TEXT UNIQUE NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS technologies (
-      id SERIAL PRIMARY KEY,
-      language_id INTEGER REFERENCES languages NOT NULL,
-      technology TEXT NOT NULL,
-      UNIQUE (language_id, technology)
-    );
-
-    CREATE TABLE IF NOT EXISTS technology_synonyms (
-      id SERIAL PRIMARY KEY,
-      technology_id INTEGER REFERENCES technologies NOT NULL,
-      synonym TEXT NOT NULL,
-      UNIQUE (technology_id, synonym)
-    );
-
-    CREATE TABLE IF NOT EXISTS technologies_users (
-      id SERIAL PRIMARY KEY,
-      technology_id INTEGER REFERENCES technologies NOT NULL,
-      user_id INTEGER REFERENCES users NOT NULL,
-      UNIQUE (technology_id, user_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS technologies_users_settings (
-      id SERIAL PRIMARY KEY,
-      technologies_users_id INTEGER UNIQUE REFERENCES technologies_users NOT NULL,
-      verified BOOLEAN NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS repositories (
-      id SERIAL PRIMARY KEY,
-      raw_id TEXT UNIQUE NOT NULL,
-      user_id INTEGER REFERENCES users NOT NULL,
-      name TEXT NOT NULL,
-      lines_of_code INTEGER NOT NULL,
-      updated_by_analyzer TIMESTAMP DEFAULT NOW() NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS grade_categories (
-      id SERIAL PRIMARY KEY,
-      category TEXT UNIQUE NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS grades (
-      id SERIAL PRIMARY KEY,
-      category_id INTEGER REFERENCES grade_categories NOT NULL,
-      value FLOAT NOT NULL,
-      repository_id INTEGER REFERENCES repositories NOT NULL,
-      UNIQUE (category_id, repository_id)
-    )"""
-
-  def initialData: SqlAction[Int, NoStream, Effect] = sqlu"""
-    INSERT INTO grade_categories (id, category) VALUES
-      (DEFAULT, 'Maintainable'),
-      (DEFAULT, 'Testable'),
-      (DEFAULT, 'Robust'),
-      (DEFAULT, 'Secure'),
-      (DEFAULT, 'Automated'),
-      (DEFAULT, 'Performant');
-
-    INSERT INTO contact_categories (id, category) VALUES
-      (DEFAULT, 'Email'),
-      (DEFAULT, 'Website')"""
 
 }

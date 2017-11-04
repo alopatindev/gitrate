@@ -1,11 +1,11 @@
 package controllers
 
 import analysis.github.GithubUser
-import analysis.GradedRepository
+import analysis.{GradedRepository, TextAnalyzer}
 import analysis.TextAnalyzer.StemToSynonyms
 import common.LocationParser.Location
-import utils.CollectionUtils._
 import utils.{LogUtils, SlickUtils}
+import utils.CollectionUtils._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -15,20 +15,20 @@ object UserController extends SlickUtils with LogUtils {
 
   case class AnalysisResult(users: Iterable[GithubUser],
                             gradedRepositories: Iterable[GradedRepository],
-                            languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)],
                             userToLocation: Map[Int, Location])
 
   def saveAnalysisResult(result: AnalysisResult): Future[Unit] = {
-    val query = buildSaveAnalysisResultQuery(result)
+    val query =
+      DBIO
+        .seq(buildSaveLanguagesQuery(result.gradedRepositories),
+             buildSaveTechnologies(result.gradedRepositories),
+             buildSaveAllUsersQuery(result))
+        .transactionally
+
     val future = runQuery(query).map(_ => ())
     future.foreach(_ => logInfo("finished saving analysis result"))
     future
   }
-
-  private def buildSaveAnalysisResultQuery(result: AnalysisResult) =
-    DBIO
-      .seq(buildSaveAllUsersQuery(result), buildSaveTechnologySynonyms(result.languageToTechnologyToSynonyms))
-      .transactionally
 
   private def buildSaveAllUsersQuery(result: AnalysisResult) = {
     val users = result.users.toSeq
@@ -40,16 +40,16 @@ object UserController extends SlickUtils with LogUtils {
           user <- users
           repositoriesOfUser: Seq[GradedRepository] = user.repositories.flatMap(repo => repositories.get(repo.idBase64))
           languageToTechnologiesSeq: Seq[MapOfSeq[String, String]] = repositoriesOfUser.map(_.languageToTechnologies)
-          languageToTechnologies: MapOfSeq[String, String] = seqOfMapsToMap(languageToTechnologiesSeq)
+          languageToTechnologies: MapOfSeq[String, String] = seqOfMapsToMapOfSeq(languageToTechnologiesSeq)
             .mapValues(_.toSet.toSeq)
-          location: Location = result.userToLocation.getOrElse(user.id, Location(None, None))
+          location = result.userToLocation.getOrElse(user.id, Location(None, None))
         } yield
           DBIO.seq(
             buildSaveLocationQuery(location),
             buildSaveUserQuery(user),
             buildSaveDeveloperQuery(user, location),
             buildSaveContactsQuery(user),
-            buildSaveLanguagesAndTechnologiesQuery(languageToTechnologies, user.id),
+            buildSaveTechnologiesOfUserQuery(languageToTechnologies, user.id),
             buildSaveRepositoriesQuery(repositoriesOfUser, user.id),
             buildSaveGradesQuery(repositoriesOfUser)
           ))
@@ -60,14 +60,14 @@ object UserController extends SlickUtils with LogUtils {
       sqlu"""
       INSERT INTO countries (id, country)
       VALUES (DEFAULT, $country)
-      ON CONFLICT (country) DO NOTHING;"""
+      ON CONFLICT (country) DO NOTHING"""
     }
 
     val cityQuery = location.city.map { city =>
       sqlu"""
       INSERT INTO cities (id, city)
       VALUES (DEFAULT, $city)
-      ON CONFLICT (city) DO NOTHING;"""
+      ON CONFLICT (city) DO NOTHING"""
     }
 
     val queries = Seq(countryQuery, cityQuery).flatten
@@ -133,25 +133,50 @@ object UserController extends SlickUtils with LogUtils {
       DEFAULT
     ) ON CONFLICT (user_id) DO NOTHING"""
 
-  private def buildSaveLanguagesAndTechnologiesQuery(languageToTechnologies: Map[String, Seq[String]],
-                                                     githubUserId: Int) =
+  private def buildSaveLanguagesQuery(gradedRepositories: Iterable[GradedRepository]) =
     DBIO.sequence(for {
-      (language: String, technologies: Seq[String]) <- languageToTechnologies
-      technology: String <- technologies
+      repo <- gradedRepositories
+      language <- repo.languageToTechnologies.keys
     } yield sqlu"""
       INSERT INTO languages (id, language) VALUES (DEFAULT, $language)
-      ON CONFLICT (language) DO NOTHING;
+      ON CONFLICT (language) DO NOTHING""")
 
+  private def buildSaveTechnologies(gradedRepositories: Iterable[GradedRepository]) = {
+    val languageToTechnologies: Map[String, Seq[String]] = seqOfMapsToMapOfSeq(
+      gradedRepositories.map(_.languageToTechnologies).toSeq)
+
+    DBIO.sequence(for {
+      (language: String, technologiesToSynonyms: StemToSynonyms) <- TextAnalyzer.technologySynonyms(
+        languageToTechnologies)
+      technologies: Iterable[(String, Boolean)] = technologiesToSynonyms.keys.map(_ -> false)
+      synonyms: Iterable[(String, Boolean)] = technologiesToSynonyms.values.flatten.map(_ -> true)
+      (technology, isSynonym) <- technologies ++ synonyms
+    } yield sqlu"""
       INSERT INTO technologies (
         id,
         language_id,
-        technology
+        technology,
+        synonym
       ) VALUES (
         DEFAULT,
         (SELECT id FROM languages WHERE language = $language),
-        $technology
+        $technology,
+        $isSynonym
       ) ON CONFLICT (language_id, technology) DO NOTHING;
 
+      UPDATE technologies
+      SET synonym = $isSynonym
+      WHERE
+        $isSynonym = TRUE
+        AND language_id = (SELECT id FROM languages WHERE language = $language)
+        AND technology = $technology""")
+  }
+
+  private def buildSaveTechnologiesOfUserQuery(languageToTechnologies: MapOfSeq[String, String], githubUserId: Int) =
+    DBIO.sequence(for {
+      (language, technologies) <- languageToTechnologies
+      technology <- technologies
+    } yield sqlu"""
       INSERT INTO technologies_users (
         id,
         technology_id,
@@ -183,24 +208,6 @@ object UserController extends SlickUtils with LogUtils {
         TRUE
       ) ON CONFLICT (technologies_users_id) DO UPDATE
       SET verified = TRUE""")
-
-  private def buildSaveTechnologySynonyms(languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)]) =
-    DBIO.sequence(for {
-      (language, technologiesToSynonyms) <- languageToTechnologyToSynonyms
-      (technology, synonyms) <- technologiesToSynonyms
-      synonym <- synonyms
-    } yield sqlu"""
-      INSERT INTO technology_synonyms (id, technology_id, synonym)
-      VALUES (
-        DEFAULT,
-        (
-          SELECT technologies.id
-          FROM technologies
-          JOIN languages ON languages.id = technologies.language_id AND languages.language = $language
-          WHERE technologies.technology = $technology
-        ),
-        $synonym
-      ) ON CONFLICT (technology_id, synonym) DO NOTHING""")
 
   private def buildSaveGradesQuery(repositoriesOfUser: Seq[GradedRepository]) =
     DBIO.sequence(for {

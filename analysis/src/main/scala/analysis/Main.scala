@@ -1,7 +1,6 @@
 package analysis
 
 import common.LocationParser
-import analysis.TextAnalyzer.StemToSynonyms
 import controllers.UserController.AnalysisResult
 import controllers.{GithubController, GraderController, UserController}
 import github.{GithubConf, GithubExtractor, GithubReceiver, GithubSearchInputDStream, GithubUser}
@@ -51,15 +50,12 @@ object Main extends AppConfig with LogUtils with ResourceUtils with SparkUtils {
         val gradedRepositories: Iterable[GradedRepository] = grader.processUsers(users.toSeq)
 
         if (gradedRepositories.nonEmpty) {
-          val languageToTechnologyToSynonyms: Iterable[(String, StemToSynonyms)] =
-            gradedRepositories.flatMap(repo => TextAnalyzer.technologySynonyms(repo.languageToTechnologies))
-
           val userToLocation: Map[Int, LocationParser.Location] = users
             .flatMap(user => user.location.map(user.id -> _))
             .toMap
             .mapValues(LocationParser.parse)
 
-          val analysisResult = AnalysisResult(users, gradedRepositories, languageToTechnologyToSynonyms, userToLocation)
+          val analysisResult = AnalysisResult(users, gradedRepositories, userToLocation)
           val _ = UserController.saveAnalysisResult(analysisResult)
         }
       }

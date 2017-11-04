@@ -12,7 +12,7 @@ class CollectionUtilsSuite extends WordSpec {
     "seqOfMapsToMap" should {
 
       "process empty input" in {
-        assert(seqOfMapsToMap(Seq.empty).isEmpty)
+        assert(seqOfMapsToMapOfSeq(Seq.empty).isEmpty)
       }
 
       "merge values of common keys" in {
@@ -23,7 +23,7 @@ class CollectionUtilsSuite extends WordSpec {
 
         val expected: T =
           Map("key1" -> Seq("value1", "value2", "value3"), "key2" -> Seq("value3", "value4"), "key3" -> Seq.empty)
-        seqOfMapsToMap(input) shouldEqual expected
+        seqOfMapsToMapOfSeq(input) shouldEqual expected
       }
 
     }

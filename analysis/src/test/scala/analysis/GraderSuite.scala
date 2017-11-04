@@ -113,13 +113,13 @@ class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtil
         assert(messages contains "codecov")
       }
 
-//      "ignore repositories with generated/downloaded files (*.o, *.so, node_modules, etc.)" taggedAs Slow in { fixture =>
-//          ???
-//      }
+// "ignore repositories with generated/downloaded files (*.o, *.so, node_modules, etc.)" taggedAs Slow in { fixture =>
+//     ???
+// }
 //
-//      "ignore repository if script fails" taggedAs Slow in { fixture =>
-//        ???
-//      }
+// "ignore repository if script fails" taggedAs Slow in { fixture =>
+//   ???
+// }
 
     }
 

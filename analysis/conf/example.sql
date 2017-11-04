@@ -84,11 +84,13 @@ INSERT INTO contacts (
 INSERT INTO technologies (
   id,
   language_id,
-  technology
+  technology,
+  synonym
 ) VALUES (
   DEFAULT,
   (SELECT id FROM languages WHERE language = 'JavaScript'),
-  'eslint'
+  'eslint',
+  DEFAULT
 );
 
 INSERT INTO technologies_users (

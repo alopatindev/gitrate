@@ -10,15 +10,16 @@ object TextAnalyzer {
   def technologySynonyms(languageToTechnologies: Map[String, Seq[String]]): Iterable[(String, StemToSynonyms)] =
     for {
       (language: String, technologies: Seq[String]) <- languageToTechnologies
-      if languageSupportsPackageManager contains language
-      technologyToSynonyms = stem(technologies, minLength = minStemLength, limit = maxTechnologiesToStem)
+      technologyToSynonyms: StemToSynonyms = if (languageSupportsPackageManager contains language)
+        stem(technologies)
+      else technologies.map(_ -> Set[String]()).toMap
     } yield (language, technologyToSynonyms)
 
-  def stem(xs: Seq[String], minLength: Int, limit: Int): StemToSynonyms = {
+  private def stem(xs: Seq[String]): StemToSynonyms = {
     @tailrec
     def helper(xs: Seq[String], acc: StemToSynonyms): StemToSynonyms = xs match {
       case x :: tail =>
-        val synonymsTail: Synonyms = tail.filter(_ contains x).toSet
+        val synonymsTail: Synonyms = tail.filter(item => (item contains x) && item.exists(delimiters contains _)).toSet
         val newSynonyms: Synonyms = acc.getOrElse(x, Set()) ++ synonymsTail
         val newTail: Seq[String] = tail.filterNot(synonymsTail.contains)
         val newAcc: StemToSynonyms = acc + (x -> newSynonyms)
@@ -26,8 +27,8 @@ object TextAnalyzer {
       case Nil => acc
     }
 
-    val (input, ignoredInput) = xs.splitAt(limit)
-    val ignoredStems: Synonyms = (input.filter(_.length < minLength) ++ ignoredInput).toSet
+    val (input, skippedInput) = xs.splitAt(maxTechnologiesToStem)
+    val ignoredStems: Synonyms = (input.filter(_.length < minStemLength) ++ skippedInput).toSet
     val ignoreResult: StemToSynonyms = ignoredStems.map(_ -> Set[String]()).toMap
     val sortedInput: Seq[String] = input
       .filterNot(ignoredStems.contains)
@@ -40,5 +41,6 @@ object TextAnalyzer {
   private val languageSupportsPackageManager = Set("JavaScript")
   private val minStemLength = 4
   private val maxTechnologiesToStem = 1000
+  private val delimiters = "-_."
 
 }

@@ -4,6 +4,8 @@ val commonSettings = Seq(
   organization := "com.gitrate",
   version := "0.1",
 
+  scalaVersion := "2.11.11",
+
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding", "UTF-8",
@@ -27,6 +29,8 @@ val commonSettings = Seq(
   resolvers += "clojars" at "https://clojars.org/repo",
 
   libraryDependencies ++= Seq(
+    "org.postgresql" % "postgresql" % "42.1.4",
+
     // https://github.com/scalatest/scalatest/issues/1013
     "org.scalatest" %% "scalatest" % "3.1.x-serialization-workaround" % Test,
   ),
@@ -39,14 +43,14 @@ val commonSettings = Seq(
 )
 
 lazy val common = project
-  .settings(commonSettings:_*)
+  .settings(commonSettings: _*)
 
 lazy val analysis = project
-  .settings(commonSettings:_*)
+  .settings(commonSettings: _*)
   .dependsOn(common)
 
 lazy val webapp = project
-  .settings(commonSettings:_*)
+  .settings(commonSettings: _*)
   .dependsOn(common)
   .enablePlugins(PlayScala)
 

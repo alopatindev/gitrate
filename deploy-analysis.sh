@@ -24,7 +24,7 @@ WITH_CLEANUP=true
 reset
 
 if [ "${WITH_CLEANUP}" = true ] ; then
-    echo sudo rm -rvf "${SCRIPTS_DIR}" "${CHECKPOINT_DIR}" "${LOG_FILE_DRIVER}" "${LOG_FILE_EXECUTOR}"
+    sudo rm -rvf "${SCRIPTS_DIR}" "${CHECKPOINT_DIR}" "${LOG_FILE_DRIVER}" "${LOG_FILE_EXECUTOR}"
     cp -rv analysis/scripts "${SCRIPTS_DIR}"
 
     mkdir -p "${SCRIPTS_DIR}/data"

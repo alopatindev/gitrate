@@ -1,7 +1,5 @@
 name := "gitrate-analysis"
 
-scalaVersion := "2.11.11"
-
 lazy val sparkVersion = "2.2.0"
 
 libraryDependencies ++= Seq(

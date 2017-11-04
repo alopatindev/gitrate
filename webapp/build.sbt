@@ -1,7 +1,5 @@
 name := "gitrate-webapp"
 
-scalaVersion := "2.12.4"
-
 lazy val playSlickVersion = "3.0.1" // TODO: update to 3.0.2?
 //lazy val playSlickVersion = "3.0.2"
 
@@ -10,6 +8,7 @@ libraryDependencies ++= Seq(
 
   "com.typesafe.play" %% "play-slick" % playSlickVersion,
   //"com.typesafe.play" %% "play-slick-evolutions" % playSlickVersion,
+  "com.github.tminglei" %% "slick-pg" % "0.15.4",
 
   "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test,
 )

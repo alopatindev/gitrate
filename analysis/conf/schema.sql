@@ -9,9 +9,9 @@
 -- psql --username postgres --dbname gitrate
 -- CREATE EXTENSION pg_trgm;
 
-DROP OWNED BY gitrate;
+-- DROP OWNED BY gitrate;
 
-SET enable_seqscan TO off;
+-- SET enable_seqscan TO off;
 
 CREATE TABLE IF NOT EXISTS countries (
   id SERIAL PRIMARY KEY,
@@ -70,14 +70,8 @@ CREATE TABLE IF NOT EXISTS technologies (
   id SERIAL PRIMARY KEY,
   language_id INTEGER REFERENCES languages NOT NULL,
   technology TEXT NOT NULL,
+  synonym BOOLEAN NOT NULL DEFAULT FALSE,
   UNIQUE (language_id, technology)
-);
-
-CREATE TABLE IF NOT EXISTS technology_synonyms (
-  id SERIAL PRIMARY KEY,
-  technology_id INTEGER REFERENCES technologies NOT NULL,
-  synonym TEXT NOT NULL,
-  UNIQUE (technology_id, synonym)
 );
 
 CREATE TABLE IF NOT EXISTS technologies_users (
