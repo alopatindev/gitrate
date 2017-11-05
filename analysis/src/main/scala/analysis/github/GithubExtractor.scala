@@ -166,11 +166,11 @@ class GithubExtractor(val conf: GithubConf, loadAnalyzedRepositories: (Seq[Strin
 
   private val parseUserId = udf((idBase64: String) =>
     new String(decodeBase64(idBase64)) match {
-      case userIdRegex(_, userType, id) => ParsedUserId(userType, id.toInt)
-      case _                            => ParsedUserId("Unknown", -1)
+      case userIdPattern(_, userType, id) => ParsedUserId(userType, id.toInt)
+      case _                              => ParsedUserId("Unknown", -1)
   })
 
-  private[this] val userIdRegex = """^(\d*?):(.*?)(\d*)$""".r
+  private[this] val userIdPattern = """^(\d*?):(.*?)(\d*)$""".r
 
   private def arraySum(numbers: Seq[JsValue]): Double =
     numbers

@@ -1,72 +1,57 @@
 package controllers
 
 import common.LocationParser
+import models.{Lexemes, Predicate, Query, TokenToLexemes, TokenTypes}
 
 import scala.annotation.tailrec
 
-object Query {
+class QueryParser(predicates: Map[String, Predicate]) {
 
-  type Items = Map[String, List[String]]
-
-  object keys {
-    val languages = "languages"
-    val technologies = "technologies"
-    val cities = "cities"
-    val countries = "countries"
-    val stopWords = "stopWords"
-    val unknown = "unknown"
-    val byPriority = Seq(stopWords, languages, technologies, cities, countries, unknown)
-  }
-
-  def emptyItems: Items = keys.byPriority.map(_ -> List()).toMap
-
-}
-
-case class Query(rawQuery: String, items: Query.Items)
-
-object QueryParser {
-
-  type Predicate = String => Boolean
-
-}
-
-class QueryParser(predicates: Map[String, QueryParser.Predicate]) {
-
-  import Query._
-
-  def parseQuery(rawQuery: String): Query = {
+  def parse(rawQuery: String): Query = {
     @tailrec
-    def helper(tokens: List[String], items: Items): Items = tokens match {
-      case token :: tail =>
-        val key = keys.byPriority
-          .filter(predicates(_)(token))
+    def tokenize(lexemes: Lexemes, tokenToLexemes: TokenToLexemes): TokenToLexemes = lexemes match {
+      case lexeme :: tail if lexeme.nonEmpty =>
+        val key = TokenTypes.parsableWithPredicates
+          .filter(allPredicates(_)(lexeme))
           .head
-        val value: List[String] = items(key) :+ token
-        val newItems = items + (key -> value)
-        helper(tail, newItems)
-      case Nil => items
+        val value: Lexemes = tokenToLexemes(key) :+ lexeme
+        val newTokenToLexemes = tokenToLexemes + (key -> value)
+        tokenize(tail, newTokenToLexemes)
+      case _ => tokenToLexemes
     }
 
-    val items = helper(tokenize(rawQuery), emptyItems)
+    val tokenToLexemes = tokenize(extractLexemes(rawQuery), TokenToLexemes.empty)
 
-    val location = LocationParser.parse(items(keys.unknown).mkString(" "))
-    val cities = keys.cities -> location.city.map(List(_)).getOrElse(List())
-    val countries = keys.countries -> location.country.map(List(_)).getOrElse(List())
+    val rawUnknown: String = tokenToLexemes(TokenTypes.unknown).mkString(" ")
+    val location = LocationParser.parse(rawUnknown)
+    val cities = TokenTypes.cities -> location.city.map(List(_)).getOrElse(List())
+    val countries = TokenTypes.countries -> location.country.map(List(_)).getOrElse(List())
 
-    Query(rawQuery, items + cities + countries + (keys.unknown -> List()))
+    val newTokenToLexemes = tokenToLexemes + cities + countries + (TokenTypes.unknown -> List())
+    Query(rawQuery, newTokenToLexemes)
   }
 
-  def tokenize(rawQuery: String): List[String] =
-    rawQuery
-      .split(' ')
-      .flatMap(_.split("""[/\\]"""))
-      .filter(_.nonEmpty)
+  def extractLexemes(rawQuery: String): Lexemes = {
+    val prefixTokens = delimiterPattern
+      .split(rawQuery.toLowerCase)
       .toList
       .flatMap {
-        case tokenRegex(_, token, _) => Some(token)
-        case _                       => None
+        case lexemePattern(_, lexeme, _) => Some(lexeme)
+        case _                           => None
       }
 
-  private[this] val tokenRegex = """^([.,;'"]*)(.+?)([.,;'"]*)$""".r
+    val postfixTokens = rawQuery.lastOption.filter(_ => prefixTokens.nonEmpty) match {
+      case Some(delimiterPattern(_)) => List("")
+      case _                         => Nil
+    }
+
+    prefixTokens ++ postfixTokens
+  }
+
+  private def isUnknown(lexeme: String): Boolean = true
+  private[this] val allPredicates = predicates ++ Map(TokenTypes.unknown -> isUnknown _)
+
+  private[this] val lexemePattern = """^([.,;'"]*)(.+?)([.,;'"]*)$""".r
+  private[this] val delimiterPattern = """([\s/\\]+)""".r
 
 }

@@ -140,9 +140,9 @@ class GraderSpec extends fixture.WordSpec with DataFrameSuiteBase with TestUtils
       assert(dependencies.toSet.size === dependencies.length)
     }
 
-//      "ignore scoped dependencies" taggedAs Slow in { fixture =>
-//        ???
-//      }
+// "ignore scoped dependencies" taggedAs Slow in { fixture =>
+//   ???
+// }
 
     "detect Node.js dependence" taggedAs Slow in { fixture =>
       def hasDependence(login: String, repoName: String): Boolean = {
