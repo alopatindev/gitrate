@@ -5,7 +5,7 @@ import LocationParser._
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 
-class LocationParserSuite extends WordSpec {
+class LocationParserSpec extends WordSpec {
 
   "parse" should {
 

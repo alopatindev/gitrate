@@ -11,7 +11,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.{Outcome, fixture}
 import play.api.libs.json.{Json, JsValue}
 
-class GithubReceiverSuite extends fixture.WordSpec with Eventually with TestUtils {
+class GithubReceiverSpec extends fixture.WordSpec with Eventually with TestUtils {
 
   "store" should {
     "be called when new users were found" in { fixture =>

@@ -17,7 +17,7 @@ import org.scalatest.tagobjects.Slow
 import org.scalatest.{Outcome, fixture}
 import scala.io.Source
 
-class GraderSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
+class GraderSpec extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
 
   "runAnalyzerScript" should {
 

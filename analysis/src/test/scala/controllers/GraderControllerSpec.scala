@@ -3,7 +3,7 @@ package controllers
 import controllers.GraderController.{GradeCategory, WarningToGradeCategory}
 import testing.PostgresTestUtils
 
-class GraderControllerSuite extends PostgresTestUtils {
+class GraderControllerSpec extends PostgresTestUtils {
 
   "warningsToGradeCategory" should {
 

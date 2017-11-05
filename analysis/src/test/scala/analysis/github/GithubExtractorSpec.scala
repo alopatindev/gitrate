@@ -14,7 +14,7 @@ import org.scalatest.{Outcome, fixture}
 import org.scalatest.tagobjects.Slow
 import play.api.libs.json.{JsValue, Json}
 
-class GithubExtractorSuite extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
+class GithubExtractorSpec extends fixture.WordSpec with DataFrameSuiteBase with TestUtils {
 
   "filter GitHub API output" should {
 

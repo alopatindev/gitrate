@@ -5,7 +5,7 @@ import CollectionUtils._
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 
-class CollectionUtilsSuite extends WordSpec {
+class CollectionUtilsSpec extends WordSpec {
 
   "seqOfMapsToMap" should {
 

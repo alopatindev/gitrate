@@ -5,7 +5,7 @@ import StringUtils._
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 
-class StringUtilsSuite extends WordSpec {
+class StringUtilsSpec extends WordSpec {
 
   "formatTemplate" should {
 

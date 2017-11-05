@@ -9,7 +9,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import slick.jdbc.PostgresProfile.api._
 import slick.sql.SqlAction
 
-class GithubControllerSuite extends PostgresTestUtils {
+class GithubControllerSpec extends PostgresTestUtils {
 
   "loadAnalyzedRepositories" should {
 

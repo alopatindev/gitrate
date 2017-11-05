@@ -12,7 +12,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.Future
 import slick.jdbc.PostgresProfile.api._
 
-class UserControllerSuite extends PostgresTestUtils {
+class UserControllerSpec extends PostgresTestUtils {
 
   "saveAnalysisResult" should {
 

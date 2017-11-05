@@ -5,7 +5,7 @@ import analysis.TextAnalyzer.StemToSynonyms
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 
-class TextAnalyzerSuite extends WordSpec {
+class TextAnalyzerSpec extends WordSpec {
 
   "technologySynonyms" should {
 
