@@ -1,55 +1,72 @@
 package controllers
 
 import common.LocationParser
-import models.{Lexemes, Predicate, Query, TokenToLexemes, TokenTypes}
+import models.{Lexemes, TokenToLexemes, TokenTypes}
 
-import scala.annotation.tailrec
+import com.github.tminglei.slickpg.utils.PlainSQLUtils
+import javax.inject.{Inject, Singleton}
+import play.api.db.slick.DatabaseConfigProvider
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import slick.jdbc.JdbcProfile
 
-class QueryParser(predicates: Map[String, Predicate]) {
+@Singleton
+class QueryParser @Inject()(dbConfigProvider: DatabaseConfigProvider) {
 
-  def parse(rawQuery: String): Query = {
-    @tailrec
-    def tokenize(lexemes: Lexemes, tokenToLexemes: TokenToLexemes): TokenToLexemes = lexemes match {
-      case lexeme :: tail if lexeme.nonEmpty =>
-        val key = TokenTypes.parsableWithPredicates
-          .filter(allPredicates(_)(lexeme))
-          .head
-        val value: Lexemes = tokenToLexemes(key) :+ lexeme
-        val newTokenToLexemes = tokenToLexemes + (key -> value)
-        tokenize(tail, newTokenToLexemes)
-      case _ => tokenToLexemes
-    }
+  private val dbConfig = dbConfigProvider.get[JdbcProfile]
+  import dbConfig._
+  import profile.api._
 
-    val tokenToLexemes = tokenize(extractLexemes(rawQuery), TokenToLexemes.empty)
+  implicit val textArray = PlainSQLUtils.mkArraySetParameter[String]("text")
 
-    val rawUnknown: String = tokenToLexemes(TokenTypes.unknown).mkString(" ")
-    val location = LocationParser.parse(rawUnknown)
-    val cities = TokenTypes.cities -> location.city.map(List(_)).getOrElse(List())
-    val countries = TokenTypes.countries -> location.country.map(List(_)).getOrElse(List())
+  private[controllers] def tokenize(lexemes: Lexemes): Future[TokenToLexemes] = {
+    type T = (String, String)
 
-    val newTokenToLexemes = tokenToLexemes + cities + countries + (TokenTypes.unknown -> List())
-    Query(rawQuery, newTokenToLexemes)
+    val query = sql"""
+      SELECT 'stopWord' AS token_type, LOWER(word) AS lexeme
+      FROM stop_words
+      WHERE word ILIKE ANY($lexemes)
+
+      UNION ALL
+
+      SELECT 'language' AS token_type, LOWER(language) AS lexeme
+      FROM languages
+      WHERE language ILIKE ANY($lexemes)
+
+      UNION ALL
+
+      SELECT 'technology' AS token_type, LOWER(technology) AS lexeme
+      FROM technologies
+      WHERE technology ILIKE ANY($lexemes)
+
+      UNION ALL
+
+      SELECT 'githubLogin' AS token_type, LOWER(github_login) AS lexeme
+      FROM users
+      WHERE github_login ILIKE ANY($lexemes)""".as[T]
+
+    db.run(query)
+      .map(_.groupBy { case (token, _) => token }.mapValues(_.map { case (_, lexeme) => lexeme }))
+      .map {
+        case tokenToLexemes: TokenToLexemes =>
+          val detectedLexemes: Set[String] = tokenToLexemes.values.flatten.toSet
+          val unknownLexemes: Seq[String] = lexemes.filterNot(detectedLexemes.contains)
+          val rawUnknown: String = unknownLexemes.mkString(" ")
+          val location = LocationParser.parse(rawUnknown)
+          val city = TokenTypes.city -> location.city.toList
+          val country = TokenTypes.country -> location.country.toList
+          TokenToLexemes.empty ++ (tokenToLexemes + city + country)
+      }
   }
 
-  def extractLexemes(rawQuery: String): Lexemes = {
-    val prefixTokens = delimiterPattern
+  private[controllers] def extractLexemes(rawQuery: String): Lexemes =
+    delimiterPattern
       .split(rawQuery.toLowerCase)
-      .toList
+      .toSeq
       .flatMap {
         case lexemePattern(_, lexeme, _) => Some(lexeme)
         case _                           => None
       }
-
-    val postfixTokens = rawQuery.lastOption.filter(_ => prefixTokens.nonEmpty) match {
-      case Some(delimiterPattern(_)) => List("")
-      case _                         => Nil
-    }
-
-    prefixTokens ++ postfixTokens
-  }
-
-  private def isUnknown(lexeme: String): Boolean = true
-  private[this] val allPredicates = predicates ++ Map(TokenTypes.unknown -> isUnknown _)
 
   private[this] val lexemePattern = """^([.,;'"]*)(.+?)([.,;'"]*)$""".r
   private[this] val delimiterPattern = """([\s/\\]+)""".r

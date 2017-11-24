@@ -7,7 +7,7 @@ libraryDependencies ++= Seq(
   guice,
 
   "com.typesafe.play" %% "play-slick" % playSlickVersion,
-  //"com.typesafe.play" %% "play-slick-evolutions" % playSlickVersion,
+  "com.typesafe.play" %% "play-slick-evolutions" % playSlickVersion,
   "com.github.tminglei" %% "slick-pg" % "0.15.4",
 
   "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test,

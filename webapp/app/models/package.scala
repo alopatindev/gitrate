@@ -1,33 +1,29 @@
 package object models {
 
-  type Predicate = String => Boolean
-  type Lexemes = List[String]
-
-  object TokenTypes {
-    val languages = "languages"
-    val technologies = "technologies"
-    val cities = "cities"
-    val countries = "countries"
-    val stopWords = "stopWords"
-    val unknown = "unknown"
-    val parsableWithPredicates = Seq(stopWords, languages, technologies, unknown)
-  }
-
+  type Lexemes = Seq[String]
   type TokenToLexemes = Map[String, Lexemes]
 
   object TokenToLexemes {
 
     def empty: TokenToLexemes =
-      (TokenTypes.parsableWithPredicates ++ Seq(TokenTypes.cities, TokenTypes.countries))
-        .map(_ -> List())
+      Seq(TokenTypes.language,
+          TokenTypes.technology,
+          TokenTypes.city,
+          TokenTypes.country,
+          TokenTypes.stopWord,
+          TokenTypes.githubLogin)
+        .map(_ -> Seq())
         .toMap
 
   }
 
-}
-
-package models {
-
-  case class Query(rawQuery: String, tokens: TokenToLexemes)
+  object TokenTypes {
+    val language = "language"
+    val technology = "technology"
+    val city = "city"
+    val country = "country"
+    val stopWord = "stopWord"
+    val githubLogin = "githubLogin"
+  }
 
 }
