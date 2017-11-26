@@ -35,6 +35,8 @@ val commonSettings = Seq(
     "org.scalatest" %% "scalatest" % "3.1.x-serialization-workaround" % Test,
   ),
 
+  parallelExecution in Test := false,
+
   scalastyleConfig := baseDirectory.value / ".." / "project" / "scalastyle-config.xml",
   scalastyleConfig in Test := baseDirectory.value / ".." / "project" / "scalastyle-config-test.xml",
 

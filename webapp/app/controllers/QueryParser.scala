@@ -24,8 +24,8 @@ class QueryParser @Inject()(dbConfigProvider: DatabaseConfigProvider) {
 
     val query = sql"""
       SELECT 'stopWord' AS token_type, LOWER(word) AS lexeme
-      FROM stop_words
-      WHERE word ILIKE ANY($lexemes)
+      FROM UNNEST($lexemes) AS word
+      WHERE CARDINALITY(TS_LEXIZE('english_stem', word)) = 0
 
       UNION ALL
 

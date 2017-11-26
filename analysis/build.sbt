@@ -34,9 +34,9 @@ assemblyMergeStrategy in assembly := {
 }
 
 //testOptions in Test += Tests.Argument("-oF")
-parallelExecution in Test := false
 
 fork in run := true
+fork in Test := true
 cancelable in Global := true
 
 lazy val Slow = config("slow").extend(Test)
