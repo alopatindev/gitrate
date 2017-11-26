@@ -101,6 +101,65 @@ CREATE TABLE IF NOT EXISTS grades (
   UNIQUE (category_id, repository_id)
 );
 
+CREATE OR REPLACE VIEW searchable_sorted_users_view AS
+  SELECT
+    user_id,
+    TO_TSVECTOR(STRING_AGG(language, ' ')) AS languages,
+    TO_TSVECTOR(STRING_AGG(technology, ' ')) AS technologies
+  FROM (
+    SELECT
+      technologies_users.user_id AS user_id,
+      languages.language AS language,
+      technologies.technology AS technology,
+      (
+        SELECT AVG(grades.value)
+        FROM grades
+        INNER JOIN repositories ON
+          repositories.id = grades.repository_id
+          AND repositories.user_id = technologies_users.user_id
+      ) AS avg_grade,
+      (
+        SELECT MAX(repositories.updated_by_analyzer)
+        FROM repositories
+        WHERE repositories.user_id = technologies_users.user_id
+      ) AS updated_by_analyzer,
+      (
+        SELECT SUM(repositories.lines_of_code)
+        FROM repositories
+        WHERE user_id = technologies_users.user_id
+      ) AS total_lines_of_code
+    FROM languages
+    INNER JOIN technologies ON technologies.language_id = languages.id
+    INNER JOIN technologies_users ON technologies_users.technology_id = technologies.id
+    INNER JOIN technologies_users_settings ON
+      technologies_users_settings.technologies_users_id = technologies_users.id
+      AND technologies_users_settings.verified = TRUE
+    ORDER BY
+      avg_grade ASC,
+      updated_by_analyzer ASC,
+      total_lines_of_code ASC
+  ) AS TMP
+  WHERE
+    avg_grade IS NOT NULL
+    AND updated_by_analyzer IS NOT NULL
+    AND total_lines_of_code IS NOT NULL
+  GROUP BY user_id;
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS users_ranks_matview AS
+  SELECT
+    user_id,
+    ROW_NUMBER() OVER () AS rank,
+    languages,
+    technologies
+  FROM searchable_sorted_users_view;
+
+CREATE INDEX IF NOT EXISTS users_ranks_matview_user_id_idx
+ON users_ranks_matview (user_id);
+
+CREATE INDEX IF NOT EXISTS users_ranks_matview_languages_and_technologies_idx
+ON users_ranks_matview
+USING GIN (languages, technologies);
+
 # --- !Downs
 
 DROP TABLE IF EXISTS countries CASCADE;
@@ -118,3 +177,7 @@ DROP TABLE IF EXISTS repositories CASCADE;
 DROP INDEX IF EXISTS repositories_user_id_idx CASCADE;
 DROP TABLE IF EXISTS grade_categories CASCADE;
 DROP TABLE IF EXISTS grades CASCADE;
+DROP VIEW IF EXISTS searchable_sorted_users_view CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS user_ranks_matview CASCADE;
+DROP INDEX IF EXISTS users_ranks_matview_user_id_idx CASCADE;
+DROP INDEX IF EXISTS users_ranks_matview_languages_and_technologies_idx CASCADE;
