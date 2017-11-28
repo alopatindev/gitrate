@@ -1,64 +1,20 @@
 package controllers
 
 import models.{TokenToLexemes, TokenTypes}
+import testing.PostgresTestUtils
 
-import org.scalatest.TestData
 import org.scalatest.Matchers._
-import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneAppPerTest
-import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.db.DBApi
-import play.api.db.evolutions.Evolutions
+import org.scalatestplus.play.PlaySpec
+import slick.jdbc.PostgresProfile.api._
+import slick.sql.SqlAction
 import play.api.test.Injecting
-import play.api.db.slick.DatabaseConfigProvider
-import play.api.Application
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.language.implicitConversions
-import slick.jdbc.JdbcProfile
 
-class QueryParserSpec extends PlaySpec with GuiceOneAppPerTest with Injecting {
+class QueryParserSpec extends PlaySpec with GuiceOneAppPerTest with PostgresTestUtils with Injecting {
 
-  implicit override def newAppForTest(testData: TestData): Application = {
-    val slickDatabase = "default"
-    val user = "gitrate_test"
-    val database = user
-    val databaseKeyPrefix = s"slick.dbs.$slickDatabase.db.properties"
-    val app = new GuiceApplicationBuilder()
-      .configure(Map(s"$databaseKeyPrefix.user" -> user, s"$databaseKeyPrefix.url" -> s"jdbc:postgresql:$database"))
-      .build()
-
-    val databaseApi = app.injector.instanceOf[DBApi]
-    val defaultDb = databaseApi.database(slickDatabase)
-    Evolutions.cleanupEvolutions(defaultDb)
-    Evolutions.applyEvolutions(defaultDb)
-
-    val dbConfigProvider = app.injector.instanceOf[DatabaseConfigProvider]
-    val dbConfig = dbConfigProvider.get[JdbcProfile]
-    import dbConfig._
-    import profile.api._
-
-    val result = db.run(sqlu"""
-      INSERT INTO languages (id, language)
-      VALUES
-        (DEFAULT, 'JavaScript'),
-        (DEFAULT, 'Python'),
-        (DEFAULT, 'Scala');
-
-      INSERT INTO technologies (id, language_id, technology, synonym)
-      VALUES
-        (DEFAULT, (SELECT id FROM languages WHERE language = 'JavaScript'), 'Node.js', DEFAULT),
-        (DEFAULT, (SELECT id FROM languages WHERE language = 'JavaScript'), 'nodejs', TRUE),
-        (DEFAULT, (SELECT id FROM languages WHERE language = 'Scala'), 'Playframework', DEFAULT);
-
-      INSERT INTO stop_words (id, word)
-      VALUES (DEFAULT, 'in')""".transactionally)
-    Await.result(result, Duration.Inf)
-
-    app
-  }
-
-  "parse" should {
+  "tokenize" should {
 
     "process empty input" in {
       val parser = inject[QueryParser]
@@ -150,5 +106,18 @@ class QueryParserSpec extends PlaySpec with GuiceOneAppPerTest with Injecting {
     }
 
   }
+
+  override def initialData: SqlAction[Int, NoStream, Effect] = sqlu"""
+    INSERT INTO languages (id, language)
+    VALUES
+      (DEFAULT, 'JavaScript'),
+      (DEFAULT, 'Python'),
+      (DEFAULT, 'Scala');
+
+    INSERT INTO technologies (id, language_id, technology, synonym)
+    VALUES
+      (DEFAULT, (SELECT id FROM languages WHERE language = 'JavaScript'), 'Node.js', DEFAULT),
+      (DEFAULT, (SELECT id FROM languages WHERE language = 'JavaScript'), 'nodejs', TRUE),
+      (DEFAULT, (SELECT id FROM languages WHERE language = 'Scala'), 'Playframework', DEFAULT)"""
 
 }
