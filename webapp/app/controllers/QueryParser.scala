@@ -5,13 +5,14 @@ import models.{Lexemes, TokenToLexemes, TokenTypes}
 
 import com.github.tminglei.slickpg.utils.PlainSQLUtils
 import javax.inject.{Inject, Singleton}
+import play.api.Configuration
 import play.api.db.slick.DatabaseConfigProvider
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import slick.jdbc.JdbcProfile
 
 @Singleton
-class QueryParser @Inject()(dbConfigProvider: DatabaseConfigProvider) {
+class QueryParser @Inject()(configuration: Configuration, dbConfigProvider: DatabaseConfigProvider) {
 
   private val dbConfig = dbConfigProvider.get[JdbcProfile]
   import dbConfig._
@@ -62,6 +63,7 @@ class QueryParser @Inject()(dbConfigProvider: DatabaseConfigProvider) {
   private[controllers] def extractLexemes(rawQuery: String): Lexemes =
     delimiterPattern
       .split(rawQuery.toLowerCase)
+      .takeRight(maxInputLexemes)
       .toSeq
       .flatMap {
         case lexemePattern(_, lexeme, _) => Some(lexeme)
@@ -70,5 +72,6 @@ class QueryParser @Inject()(dbConfigProvider: DatabaseConfigProvider) {
 
   private[this] val lexemePattern = """^([.,;'"]*)(.+?)([.,;'"]*)$""".r
   private[this] val delimiterPattern = """([\s/\\]+)""".r
+  private[this] val maxInputLexemes = configuration.get[Int]("searchQuery.maxInputLexemes")
 
 }
