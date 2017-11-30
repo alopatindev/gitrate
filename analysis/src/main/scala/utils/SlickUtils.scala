@@ -3,11 +3,12 @@ package utils
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import slick.jdbc.PostgresProfile.api._
+import slick.sql.SqlStreamingAction
 
 trait SlickUtils extends LogUtils {
 
   type SQLTransaction[T] = DBIOAction[T, NoStream, Effect with Effect.Transactional]
-  type SQLQuery[Container, T] = slick.sql.SqlStreamingAction[Container, T, Effect]
+  type SQLQuery[Container, T] = SqlStreamingAction[Container, T, Effect]
 
   def runQuery[T](query: SQLTransaction[T]): Future[T] = {
     val db = createDatabase()

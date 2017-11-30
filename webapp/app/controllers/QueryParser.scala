@@ -2,23 +2,18 @@ package controllers
 
 import common.LocationParser
 import models.{Lexemes, TokenToLexemes, TokenTypes}
+import utils.SlickUtils
 
-import com.github.tminglei.slickpg.utils.PlainSQLUtils
 import javax.inject.{Inject, Singleton}
 import play.api.Configuration
 import play.api.db.slick.DatabaseConfigProvider
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
-import slick.jdbc.JdbcProfile
+import slick.jdbc.PostgresProfile.api._
 
 @Singleton
-class QueryParser @Inject()(configuration: Configuration, dbConfigProvider: DatabaseConfigProvider) {
-
-  private val dbConfig = dbConfigProvider.get[JdbcProfile]
-  import dbConfig._
-  import profile.api._
-
-  implicit val textArray = PlainSQLUtils.mkArraySetParameter[String]("text")
+class QueryParser @Inject()(configuration: Configuration, val dbConfigProvider: DatabaseConfigProvider)
+    extends SlickUtils {
 
   private[controllers] def tokenize(lexemes: Lexemes): Future[TokenToLexemes] = {
     type T = (String, String)
@@ -46,7 +41,7 @@ class QueryParser @Inject()(configuration: Configuration, dbConfigProvider: Data
       FROM users
       WHERE github_login ILIKE ANY($lexemes)""".as[T]
 
-    db.run(query)
+    runQuery(query)
       .map(_.groupBy { case (token, _) => token }.mapValues(_.map { case (_, lexeme) => lexeme }))
       .map {
         case tokenToLexemes: TokenToLexemes =>

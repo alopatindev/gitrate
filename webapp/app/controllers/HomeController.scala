@@ -1,6 +1,7 @@
 package controllers
 
-import com.github.tminglei.slickpg.utils.PlainSQLUtils
+import utils.SlickUtils
+
 import javax.inject.{Inject, Singleton}
 import play.api.Configuration
 import play.api.db.slick.DatabaseConfigProvider
@@ -8,14 +9,15 @@ import play.api.libs.json.Json
 import play.api.mvc.{AbstractController, AnyContent, ControllerComponents, Request}
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
-import slick.jdbc.JdbcProfile
+import slick.jdbc.PostgresProfile.api._
 
 @Singleton
 class HomeController @Inject()(cc: ControllerComponents,
                                configuration: Configuration,
-                               dbConfigProvider: DatabaseConfigProvider,
+                               val dbConfigProvider: DatabaseConfigProvider,
                                queryParser: QueryParser)
-    extends AbstractController(cc) {
+    extends AbstractController(cc)
+    with SlickUtils {
 
   def index() = Action { implicit request: Request[AnyContent] =>
     Ok(views.html.index())
@@ -38,15 +40,9 @@ class HomeController @Inject()(cc: ControllerComponents,
     }
   }
 
-  private val dbConfig = dbConfigProvider.get[JdbcProfile]
-  import dbConfig._
-  import profile.api._
-
-  implicit val textArray = PlainSQLUtils.mkArraySetParameter[String]("text")
-
   private def suggestTokens(queryPrefix: Seq[String], incompleteLexeme: String): Future[Vector[String]] = {
     val pattern = incompleteLexeme + '%'
-    db.run(sql"""
+    runQuery(sql"""
       SELECT suggestion
       FROM (
         (
