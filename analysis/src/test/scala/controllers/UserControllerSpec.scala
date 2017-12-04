@@ -82,10 +82,10 @@ class UserControllerSpec extends PostgresTestUtils {
       type T = (String, String, String)
       type Container = Vector[T]
       val query: UserController.SQLQuery[Vector[T], T] = sql"""
-          SELECT users.github_login, contact_categories.category, contacts.contact
-          FROM users
-          INNER JOIN contacts ON contacts.user_id = users.id
-          INNER JOIN contact_categories ON contact_categories.id = contacts.category_id""".as[T]
+        SELECT users.github_login, contact_categories.category, contacts.contact
+        FROM users
+        INNER JOIN contacts ON contacts.user_id = users.id
+        INNER JOIN contact_categories ON contact_categories.id = contacts.category_id""".as[T]
       val data: Future[Container] = UserController.runQuery(query)
       val result: Container = Await.result(data, Duration.Inf)
 
@@ -102,12 +102,12 @@ class UserControllerSpec extends PostgresTestUtils {
       type T = (String, String, String, Boolean)
       type Container = Vector[T]
       val query: UserController.SQLQuery[Vector[T], T] = sql"""
-          SELECT users.github_login, languages.language, technologies.technology, technologies_users_settings.verified
-          FROM users
-          INNER JOIN technologies_users ON technologies_users.user_id = users.id
-          INNER JOIN technologies ON technologies.id = technologies_users.technology_id
-          INNER JOIN technologies_users_settings ON technologies_users_settings.id = technologies_users.id
-          INNER JOIN languages ON languages.id = technologies.language_id""".as[T]
+        SELECT users.github_login, languages.language, technologies.technology, technologies_users_settings.verified
+        FROM users
+        INNER JOIN technologies_users ON technologies_users.user_id = users.id
+        INNER JOIN technologies ON technologies.id = technologies_users.technology_id
+        INNER JOIN technologies_users_settings ON technologies_users_settings.id = technologies_users.id
+        INNER JOIN languages ON languages.id = technologies.language_id""".as[T]
       val data: Future[Container] = UserController.runQuery(query)
       val result: Container = Await.result(data, Duration.Inf)
 
@@ -138,9 +138,9 @@ class UserControllerSpec extends PostgresTestUtils {
       type T = String
       type Container = Vector[T]
       val query: UserController.SQLQuery[Vector[T], T] = sql"""
-          SELECT language
-          FROM languages
-          WHERE language = $language""".as[T]
+        SELECT language
+        FROM languages
+        WHERE language = $language""".as[T]
       val users: Future[Container] = UserController.runQuery(query)
       val result: Container = Await.result(users, Duration.Inf)
 
@@ -155,8 +155,8 @@ class UserControllerSpec extends PostgresTestUtils {
       type T = (String, Boolean)
       type Container = Vector[T]
       val query: UserController.SQLQuery[Vector[T], T] = sql"""
-          SELECT technologies.technology, technologies.synonym
-          FROM technologies""".as[T]
+        SELECT technologies.technology, technologies.synonym
+        FROM technologies""".as[T]
       val data: Future[Container] = UserController.runQuery(query)
       val synonyms = Await.result(data, Duration.Inf).toMap
 
@@ -168,8 +168,8 @@ class UserControllerSpec extends PostgresTestUtils {
       type T = (String, Boolean)
       type Container = Vector[T]
       val query: UserController.SQLQuery[Vector[T], T] = sql"""
-          SELECT technologies.technology, technologies.synonym
-          FROM technologies""".as[T]
+        SELECT technologies.technology, technologies.synonym
+        FROM technologies""".as[T]
 
       {
         val analysisResult = AnalysisResult(fakeSingleUser, fakeGradedRepositoryOfSingleUser, Map.empty)
@@ -199,8 +199,8 @@ class UserControllerSpec extends PostgresTestUtils {
       type T = (String, Boolean)
       type Container = Vector[T]
       val query: UserController.SQLQuery[Vector[T], T] = sql"""
-          SELECT technologies.technology, technologies.synonym
-          FROM technologies""".as[T]
+        SELECT technologies.technology, technologies.synonym
+        FROM technologies""".as[T]
 
       {
         val analysisResult = AnalysisResult(fakeTwoUsers, fakeGradedRepositoriesOfTwoUsers, Map.empty)
@@ -236,10 +236,10 @@ class UserControllerSpec extends PostgresTestUtils {
       type T = (Option[String], Option[String])
       type Container = Vector[T]
       val query: UserController.SQLQuery[Vector[T], T] = sql"""
-          SELECT countries.country, cities.city
-          FROM developers
-          LEFT JOIN countries ON countries.id = developers.country_id
-          LEFT JOIN cities ON cities.id = developers.city_id""".as[T]
+        SELECT countries.country, cities.city
+        FROM developers
+        LEFT JOIN countries ON countries.id = developers.country_id
+        LEFT JOIN cities ON cities.id = developers.city_id""".as[T]
       val data: Future[Container] = UserController.runQuery(query)
       val result: Container = Await.result(data, Duration.Inf)
 
@@ -258,13 +258,13 @@ class UserControllerSpec extends PostgresTestUtils {
       type T = (String, String, String, String)
       type Container = Vector[T]
       val query: UserController.SQLQuery[Vector[T], T] = sql"""
-          SELECT
-            users.github_login,
-            repositories.raw_id,
-            repositories.name,
-            repositories.lines_of_code
-          FROM users
-          INNER JOIN repositories ON repositories.user_id = users.id""".as[T]
+        SELECT
+          users.github_login,
+          repositories.raw_id,
+          repositories.name,
+          repositories.lines_of_code
+        FROM users
+        INNER JOIN repositories ON repositories.user_id = users.id""".as[T]
       val data: Future[Container] = UserController.runQuery(query)
       val result: Container = Await.result(data, Duration.Inf)
 
@@ -281,14 +281,14 @@ class UserControllerSpec extends PostgresTestUtils {
       type T = (String, String, String)
       type Container = Vector[T]
       val query: UserController.SQLQuery[Vector[T], T] = sql"""
-          SELECT
-            users.github_login,
-            grade_categories.category,
-            ROUND(CAST(grades.value AS NUMERIC), 2)
-          FROM users
-          INNER JOIN repositories ON repositories.user_id = users.id
-          INNER JOIN grades ON grades.repository_id = repositories.id
-          INNER JOIN grade_categories ON grade_categories.id = grades.category_id""".as[T]
+        SELECT
+          users.github_login,
+          grade_categories.category,
+          ROUND(CAST(grades.value AS NUMERIC), 2)
+        FROM users
+        INNER JOIN repositories ON repositories.user_id = users.id
+        INNER JOIN grades ON grades.repository_id = repositories.id
+        INNER JOIN grade_categories ON grade_categories.id = grades.category_id""".as[T]
       val data: Future[Container] = UserController.runQuery(query)
       val result: Container = Await.result(data, Duration.Inf)
 
