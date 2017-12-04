@@ -1,6 +1,6 @@
 package controllers
 
-import models.{TokenToLexemes, TokenTypes}
+import models.QueryParserModel.{TokenToLexemes, TokenTypes}
 import testing.PostgresTestUtils
 
 import org.scalatest.Matchers._

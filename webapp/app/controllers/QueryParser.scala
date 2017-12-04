@@ -1,7 +1,7 @@
 package controllers
 
 import common.LocationParser
-import models.{Lexemes, TokenToLexemes, TokenTypes}
+import models.QueryParserModel.{Lexemes, TokenToLexemes, TokenTypes}
 import utils.SlickUtils
 
 import javax.inject.{Inject, Singleton}

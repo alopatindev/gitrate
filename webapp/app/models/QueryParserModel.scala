@@ -1,4 +1,6 @@
-package object models {
+package models
+
+object QueryParserModel {
 
   type Lexemes = Seq[String]
   type TokenToLexemes = Map[String, Lexemes]
