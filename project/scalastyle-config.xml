@@ -118,7 +118,7 @@
   <check enabled="true" class="org.scalastyle.file.NewLineAtEofChecker" level="warning" />
   <check enabled="true" class="org.scalastyle.scalariform.UnderscoreImportChecker" level="warning">
     <parameters>
-      <parameter name="ignoreRegex">collection\.JavaConverters\._|scala\.concurrent\.duration\._|.*Utils\._|\.functions\._|\.implicits\._|slick\.jdbc\.PostgresProfile\.api\._</parameter>
+      <parameter name="ignoreRegex">collection\.JavaConverters\._|scala\.concurrent\.duration\._|.*Utils\._|\.functions\._|\.implicits\._|slick\.jdbc\.PostgresProfile\.api\._|PostgresDriverPgExt\.api\._|play\.api\.libs\.functional\.syntax\._</parameter>
     </parameters>
   </check>
   <check enabled="true" class="org.scalastyle.file.RegexChecker" level="warning">

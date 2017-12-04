@@ -9,7 +9,6 @@ import play.api.Configuration
 import play.api.db.slick.DatabaseConfigProvider
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
-import slick.jdbc.PostgresProfile.api._
 
 @Singleton
 class QueryParser @Inject()(configuration: Configuration, val dbConfigProvider: DatabaseConfigProvider)

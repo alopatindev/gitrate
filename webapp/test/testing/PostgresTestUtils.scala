@@ -37,8 +37,7 @@ trait PostgresTestUtils {
 
     val dbConfigProvider = app.injector.instanceOf[DatabaseConfigProvider]
     val dbConfig = dbConfigProvider.get[JdbcProfile]
-    import dbConfig._
-    import profile.api._
+    import dbConfig.db
 
     val result = db.run(initialData.transactionally)
     Await.result(result, Duration.Inf)

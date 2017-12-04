@@ -1,13 +1,13 @@
 package controllers
 
-import models.SearcherModel._
+import models.SearcherModel.{Grade, Language, RawUser, SearchResults, Technology, User}
 import models.QueryParserModel.{Lexemes, TokenToLexemes, TokenTypes}
 import utils.SlickUtils
 
 import javax.inject.{Inject, Singleton}
 import play.api.Configuration
 import play.api.db.slick.DatabaseConfigProvider
-import play.api.libs.json._
+import play.api.libs.json.{Json, JsValue}
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 

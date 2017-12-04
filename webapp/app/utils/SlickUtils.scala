@@ -1,6 +1,6 @@
 package utils
 
-import com.github.tminglei.slickpg._
+import com.github.tminglei.slickpg.{ExPostgresProfile, PgArraySupport}
 import play.api.db.slick.DatabaseConfigProvider
 import scala.concurrent.Future
 import slick.dbio.{DBIOAction, Effect, NoStream}
@@ -14,12 +14,12 @@ trait SlickUtils {
   type SQLTransaction[T] = DBIOAction[T, NoStream, Effect with Effect.Transactional]
 
   private val dbConfig = dbConfigProvider.get[JdbcProfile]
-  import dbConfig._
+  import dbConfig.db
 
-  trait PostgresDriverPg extends ExPostgresProfile with PgDateSupport with PgDate2Support with PgArraySupport {
+  trait PostgresDriverPg extends ExPostgresProfile with PgArraySupport {
 
     override val api = MyAPI
-    object MyAPI extends API with ArrayImplicits with DateTimeImplicits with SimpleArrayPlainImplicits {
+    object MyAPI extends API with ArrayImplicits with SimpleArrayPlainImplicits {
 
       implicit val strListTypeMapper = new SimpleArrayJdbcType[String]("text").to(_.toList)
 

@@ -5,7 +5,7 @@ import utils.SlickUtils
 import javax.inject.{Inject, Singleton}
 import play.api.Configuration
 import play.api.db.slick.DatabaseConfigProvider
-import play.api.libs.json._
+import play.api.libs.json.{Json, JsValue}
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -49,11 +49,7 @@ class Suggester @Inject()(configuration: Configuration,
           LEFT JOIN languages ON languages.id = technologies.language_id AND languages.language ILIKE ANY($queryPrefix)
           WHERE technologies.technology ILIKE $pattern
           LIMIT #$maxSuggestions
-        )
-
-        UNION ALL
-
-        (
+        ) UNION ALL (
           SELECT
             DISTINCT(LOWER(languages.language)) AS suggestion,
             2 AS priority,
@@ -61,11 +57,7 @@ class Suggester @Inject()(configuration: Configuration,
           FROM languages
           WHERE languages.language ILIKE $pattern
           LIMIT #$maxSuggestions
-        )
-
-        UNION ALL
-
-        (
+        ) UNION ALL (
           SELECT
             DISTINCT(LOWER(cities.city)) AS suggestion,
             1 AS priority,
@@ -73,11 +65,7 @@ class Suggester @Inject()(configuration: Configuration,
           FROM cities
           WHERE cities.city ILIKE $pattern
           LIMIT #$maxSuggestions
-        )
-
-        UNION ALL
-
-        (
+        ) UNION ALL (
           SELECT
             DISTINCT(LOWER(countries.country)) AS suggestion,
             1 AS priority,
@@ -86,7 +74,6 @@ class Suggester @Inject()(configuration: Configuration,
           WHERE countries.country ILIKE $pattern
           LIMIT #$maxSuggestions
         )
-
         ORDER BY priority DESC, length ASC
         LIMIT #$maxSuggestions
       ) as TMP
