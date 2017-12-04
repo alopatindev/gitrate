@@ -1,0 +1,19 @@
+language: scala
+
+scala:
+  - 2.11.11
+
+services:
+  - postgresql
+
+before_script:
+  - analysis/prepare_test_env.sh
+  - git clone https://github.com/alopatindev/scalatest.git && cd scalatest && git checkout serialization-workaround && sbt ++$TRAVIS_SCALA_VERSION package ; sbt ++$TRAVIS_SCALA_VERSION publishLocal && cd ..
+
+script:
+  - cp -av analysis/scripts /tmp/AnalyzeGithubUsers
+  - sbt ++$TRAVIS_SCALA_VERSION scalastyle test:scalastyle ; sbt ++$TRAVIS_SCALA_VERSION coverageOn test slow:test coverageReport coverageAggregate
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
+  - sbt ++$TRAVIS_SCALA_VERSION coveralls
