@@ -5,6 +5,7 @@
 
 # An example controller showing a sample home page
 GET     /                           controllers.HomeController.index
+GET     /search                     controllers.HomeController.search(q: String, page: Int)
 GET     /suggest                    controllers.HomeController.suggest(q: String)
 
 # Map static resources from the /public folder to the /assets URL path

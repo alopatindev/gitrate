@@ -15,6 +15,8 @@ import slick.jdbc.PostgresProfile.api._
 class QueryParser @Inject()(configuration: Configuration, val dbConfigProvider: DatabaseConfigProvider)
     extends SlickUtils {
 
+  import PostgresDriverPgExt.api._
+
   private[controllers] def tokenize(lexemes: Lexemes): Future[TokenToLexemes] = {
     type T = (String, String)
 
@@ -67,6 +69,6 @@ class QueryParser @Inject()(configuration: Configuration, val dbConfigProvider: 
 
   private[this] val lexemePattern = """^([.,;'"]*)(.+?)([.,;'"]*)$""".r
   private[this] val delimiterPattern = """([\s/\\]+)""".r
-  private[this] val maxInputLexemes = configuration.get[Int]("searchQuery.maxInputLexemes")
+  private[this] val maxInputLexemes = configuration.get[Int]("search.maxInputLexemes")
 
 }

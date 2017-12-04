@@ -26,13 +26,30 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with PostgresT
     }
   }
 
-  "HomeController GET /search?q=..." ignore {
+  "HomeController GET /search?q=..." should {
 
     "return search results" in {
-      val request = FakeRequest(GET, "/search?q=javascript")
+      val request = FakeRequest(GET, "/search?q=javascript&page=1")
       val response = route(app, request).get
       validateResponse(response)
-      contentAsString(response) must include("users")
+
+      val body = Json.parse(contentAsString(response))
+      val users: Seq[JsValue] = body \ "users" match {
+        case JsDefined(JsArray(users: Seq[JsValue])) => users
+        case _ =>
+          assert(false)
+          Seq()
+      }
+
+      val head = users.head
+      (head \ "id").as[Int] shouldEqual 2
+      (head \ "githubLogin").as[String] shouldEqual "userB"
+
+      val technologies = for {
+        technology <- (head \ "technologies").as[Seq[JsValue]]
+      } yield (technology \ "technology").as[String]
+
+      technologies should contain("jboss")
     }
 
     "support pagination" in {
@@ -81,7 +98,7 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with PostgresT
       val controller = inject[HomeController]
       val input = "s"
       val response = controller.suggest(input).apply(FakeRequest(GET, s"/suggest?q=$input"))
-      val maxSuggestions = app.configuration.get[Int]("searchQuery.maxSuggestions")
+      val maxSuggestions = app.configuration.get[Int]("search.maxSuggestions")
 
       validateResponse(response)
       extractSuggestions(response).length shouldEqual maxSuggestions
@@ -134,7 +151,8 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with PostgresT
       (DEFAULT, (SELECT id FROM languages WHERE language = 'JavaScript'), 's-foo-bar-8', FALSE),
       (DEFAULT, (SELECT id FROM languages WHERE language = 'JavaScript'), 's-foo-bar-9', FALSE),
       (DEFAULT, (SELECT id FROM languages WHERE language = 'JavaScript'), 's-foo-bar-10', FALSE),
-      (DEFAULT, (SELECT id FROM languages WHERE language = 'JavaScript'), 's-foo-bar-11', FALSE);
+      (DEFAULT, (SELECT id FROM languages WHERE language = 'JavaScript'), 's-foo-bar-11', FALSE),
+      (DEFAULT, (SELECT id FROM languages WHERE language = 'Python'), 'pygtk', FALSE);
 
     INSERT INTO cities (id, city)
     VALUES
@@ -151,6 +169,120 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with PostgresT
     VALUES
       (DEFAULT, 123, 'userA', 'A A', DEFAULT),
       (DEFAULT, 456, 'userB', 'B B', DEFAULT),
-      (DEFAULT, 789, 'userC', 'C C', DEFAULT)"""
+      (DEFAULT, 789, 'userC', 'C C', DEFAULT);
+
+    INSERT INTO developers (
+      id,
+      user_id,
+      show_email,
+      job_seeker,
+      available_for_relocation,
+      programming_experience_months,
+      work_experience_months,
+      description,
+      raw_location,
+      country_id,
+      city_id,
+      viewed
+    ) VALUES (
+      DEFAULT,
+      (SELECT id FROM users WHERE github_login = 'userA'),
+      DEFAULT,
+      FALSE,
+      DEFAULT,
+      DEFAULT,
+      DEFAULT,
+      DEFAULT,
+      DEFAULT,
+      DEFAULT,
+      DEFAULT,
+      DEFAULT
+    ), (
+      DEFAULT,
+      (SELECT id FROM users WHERE github_login = 'userB'),
+      DEFAULT,
+      FALSE,
+      DEFAULT,
+      DEFAULT,
+      DEFAULT,
+      DEFAULT,
+      DEFAULT,
+      DEFAULT,
+      DEFAULT,
+      DEFAULT
+    );
+
+    INSERT INTO technologies_users (id, technology_id, user_id)
+    VALUES (
+      DEFAULT,
+      (SELECT id from technologies WHERE technology = 'jade'),
+      (SELECT id FROM users WHERE github_login = 'userA')
+    ), (
+      DEFAULT,
+      (SELECT id from technologies WHERE technology = 'jboss'),
+      (SELECT id FROM users WHERE github_login = 'userB')
+    ), (
+      DEFAULT,
+      (SELECT id from technologies WHERE technology = 's-foo-bar-1'),
+      (SELECT id FROM users WHERE github_login = 'userB')
+    ), (
+      DEFAULT,
+      (SELECT id from technologies WHERE technology = 'pygtk'),
+      (SELECT id FROM users WHERE github_login = 'userB')
+    ), (
+      DEFAULT,
+      (SELECT id from technologies WHERE technology = 's-foo-bar-2'),
+      (SELECT id FROM users WHERE github_login = 'userB')
+    );
+
+    INSERT INTO technologies_users_settings (id, technologies_users_id, verified)
+    VALUES
+      (DEFAULT, 1, TRUE),
+      (DEFAULT, 2, TRUE),
+      (DEFAULT, 3, TRUE),
+      (DEFAULT, 4, FALSE),
+      (DEFAULT, 5, FALSE);
+
+    INSERT INTO repositories (id, raw_id, user_id, name, lines_of_code, updated_by_analyzer)
+    VALUES (
+      DEFAULT,
+      'foo_id',
+      (SELECT id FROM users WHERE github_login = 'userA'),
+      'bar',
+      12345,
+      DEFAULT
+    ), (
+      DEFAULT,
+      'hello_id',
+      (SELECT id FROM users WHERE github_login = 'userB'),
+      'hello_world',
+      777,
+      DEFAULT
+    );
+
+    INSERT INTO grade_categories (id, category)
+    VALUES
+      (DEFAULT, 'Secure'),
+      (DEFAULT, 'Testable');
+
+    INSERT INTO grades (id, category_id, value, repository_id)
+    VALUES (
+      DEFAULT,
+      (SELECT id FROM grade_categories WHERE category = 'Secure'),
+      0.8,
+      (SELECT id FROM repositories WHERE raw_id = 'foo_id')
+    ), (
+      DEFAULT,
+      (SELECT id FROM grade_categories WHERE category = 'Testable'),
+      0.5,
+      (SELECT id FROM repositories WHERE raw_id = 'hello_id')
+    ), (
+      DEFAULT,
+      (SELECT id FROM grade_categories WHERE category = 'Secure'),
+      1.0,
+      (SELECT id FROM repositories WHERE raw_id = 'hello_id')
+    );
+
+    REFRESH MATERIALIZED VIEW users_ranks_matview"""
 
 }

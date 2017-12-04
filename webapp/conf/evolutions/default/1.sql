@@ -99,8 +99,17 @@ CREATE TABLE IF NOT EXISTS grades (
 CREATE OR REPLACE VIEW users_ranks_helper_view AS
   SELECT
     user_id,
-    TO_TSVECTOR(STRING_AGG(language, ' ')) AS languages,
-    TO_TSVECTOR(STRING_AGG(technology, ' ')) AS technologies
+    ARRAY(
+      SELECT CAST(JSON_BUILD_OBJECT('category', grade_categories.category, 'value', AVG(grades.value)) AS TEXT)
+      FROM grades
+      INNER JOIN grade_categories ON grade_categories.id = grades.category_id
+      INNER JOIN repositories ON repositories.id = grades.repository_id AND repositories.user_id = TMP.user_id
+      GROUP BY grade_categories.id
+    ) AS grades,
+    ARRAY_AGG(DISTINCT language) AS languages,
+    ARRAY_AGG(DISTINCT technology) AS technologies,
+    TO_TSVECTOR(STRING_AGG(language, ' ')) AS languages_ts,
+    TO_TSVECTOR(STRING_AGG(technology, ' ')) AS technologies_ts
   FROM (
     SELECT
       developers.user_id AS user_id,
@@ -143,15 +152,20 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS users_ranks_matview AS
   SELECT
     ROW_NUMBER() OVER () AS rank,
     users_ranks_helper_view.user_id AS user_id,
-    TO_TSVECTOR(users.github_login) AS github_login,
+    users.github_login AS github_login,
+    users.full_name AS full_name,
+    users_ranks_helper_view.grades,
     users_ranks_helper_view.languages,
-    users_ranks_helper_view.technologies
+    users_ranks_helper_view.technologies,
+    TO_TSVECTOR(users.github_login) AS github_login_ts,
+    users_ranks_helper_view.languages_ts,
+    users_ranks_helper_view.technologies_ts
   FROM users_ranks_helper_view
   INNER JOIN users ON users.id = users_ranks_helper_view.user_id;
 
 CREATE INDEX IF NOT EXISTS users_ranks_texts_idx
 ON users_ranks_matview
-USING GIN (github_login, languages, technologies);
+USING GIN (github_login_ts, languages_ts, technologies_ts);
 
 # --- !Downs
 

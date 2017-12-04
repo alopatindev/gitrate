@@ -72,7 +72,7 @@ class QueryParserSpec extends PlaySpec with GuiceOneAppPerTest with PostgresTest
     "drop first lexemes for too long queries" in {
       val parser = inject[QueryParser]
 
-      val maxInputLexemes = app.configuration.get[Int]("searchQuery.maxInputLexemes")
+      val maxInputLexemes = app.configuration.get[Int]("search.maxInputLexemes")
       val inputTokens = maxInputLexemes + 5
       val lastToken = inputTokens.toString
       val input = (1 to inputTokens).map(_.toString).mkString(" ")
