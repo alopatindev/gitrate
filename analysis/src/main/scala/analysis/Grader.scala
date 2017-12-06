@@ -64,7 +64,7 @@ class Grader(val appConfig: Config,
     val scriptInputRDD: RDD[String] = sparkContext.parallelize(scriptInput)
 
     val maxTimeToRun = s"${maxExternalScriptDuration.getSeconds}s"
-    val timeLimitedRunner = List(s"$scriptsDirectory/runWithTimeout.sh", maxTimeToRun)
+    val timeLimitedRunner = List("/bin/sh", s"$scriptsDirectory/runWithTimeout.sh", maxTimeToRun)
 
     val sandboxRunner = List("firejail", "--quiet", "--blacklist=/home", s"--whitelist=$scriptsDirectory")
 

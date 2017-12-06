@@ -8,7 +8,7 @@ function has_valid_git_url () {
     local login="$3"
     local valid_git_url=true
 
-    for packagejson in ${packagejson_files}; do
+    for packagejson in ${packagejson_files[@]}; do
         local git_url
         git_url=$(jq --monochrome-output --raw-output ".repository.url" "${packagejson}")
         if [ "${git_url}" = "" ] || [ "${git_url}" = null ]; then
@@ -16,7 +16,7 @@ function has_valid_git_url () {
         fi
 
         local git_url_match
-        git_url_match=$(echo "${git_url}" | grep -E "[:/]${login}/${repository_name}")
+        git_url_match=$(echo "${git_url}" | grep -E "[/@]github.com[:/]${login}/${repository_name}")
         if [ "${git_url_match}" != "${git_url}" ]; then
             valid_git_url=false
         fi

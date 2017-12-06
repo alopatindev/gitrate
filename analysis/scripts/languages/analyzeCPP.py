@@ -79,11 +79,11 @@ def analyze_cpp(repository_id, repository_name, login, archive_output_dir):
 
 
 def compute_lines_of_code_for_file(filename):
-    lines = open(filename).readlines()
     result = 0
-    for i in lines:
-        if not whitespace_pattern.match(i):
-            result += 1
+    with open(filename) as f:
+        for i in f.readlines():
+            if not whitespace_pattern.match(i):
+                result += 1
     return result
 
 

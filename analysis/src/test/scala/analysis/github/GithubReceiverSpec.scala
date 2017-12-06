@@ -17,13 +17,14 @@ package analysis.github
 import controllers.GithubController.GithubSearchQuery
 import testing.TestUtils
 import utils.HttpClientFactory.Headers
-
 import com.typesafe.config.ConfigFactory
 import java.net.URL
 import java.util.concurrent.atomic.AtomicInteger
+
 import org.scalatest.concurrent.Eventually
+import org.scalatest.time.{Seconds, Span}
 import org.scalatest.{Outcome, fixture}
-import play.api.libs.json.{Json, JsValue}
+import play.api.libs.json.{JsValue, Json}
 
 class GithubReceiverSpec extends fixture.WordSpec with Eventually with TestUtils {
 
@@ -135,5 +136,7 @@ class GithubReceiverSpec extends fixture.WordSpec with Eventually with TestUtils
 
     FixtureParam(receiver, requests, responses, queriesReloads)
   }
+
+  implicit override val patienceConfig: PatienceConfig = PatienceConfig(timeout = Span(2, Seconds))
 
 }

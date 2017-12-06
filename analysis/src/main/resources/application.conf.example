@@ -4,7 +4,7 @@ app.scriptsDir = /tmp/${app.name}
 stream {
   batchDuration = 5 seconds
   checkpointInterval = 2 minutes
-  checkpointPath = hdfs://${app.name}
+  checkpointPath = /var/tmp/${app.name}
 }
 
 github {
@@ -22,7 +22,7 @@ github {
 
 grader {
   maxRepoArchiveSizeKiB = 2048
-  maxExternalScriptDuration = 30 seconds
+  maxExternalScriptDuration = 3 minutes
 }
 
 db {
