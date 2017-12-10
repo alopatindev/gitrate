@@ -1,18 +1,3 @@
--- psql --username postgres
-
--- CREATE ROLE gitrate NOSUPERUSER CREATEDB NOCREATEROLE INHERIT LOGIN;
---DROP DATABASE gitrate;
---CREATE DATABASE gitrate OWNER gitrate;
-
--- psql --username gitrate --dbname gitrate --file=conf/schema.sql --file=conf/data.sql
-
--- psql --username postgres --dbname gitrate
--- CREATE EXTENSION pg_trgm;
-
--- DROP OWNED BY gitrate;
-
--- SET enable_seqscan TO off;
-
 CREATE TABLE IF NOT EXISTS countries (
   id SERIAL PRIMARY KEY,
   country TEXT UNIQUE NOT NULL
@@ -59,8 +44,6 @@ CREATE TABLE IF NOT EXISTS contacts (
   UNIQUE (category_id, contact)
 );
 
--- TODO: Developer Level, Location, Company, Position/Occupation
-
 CREATE TABLE IF NOT EXISTS languages (
   id SERIAL PRIMARY KEY,
   language TEXT UNIQUE NOT NULL
@@ -89,10 +72,10 @@ CREATE TABLE IF NOT EXISTS technologies_users_settings (
 
 CREATE TABLE IF NOT EXISTS repositories (
   id SERIAL PRIMARY KEY,
-  raw_id TEXT UNIQUE NOT NULL, -- TODO: index
+  raw_id TEXT UNIQUE NOT NULL,
   user_id INTEGER REFERENCES users NOT NULL,
   name TEXT NOT NULL,
-  lines_of_code INTEGER NOT NULL, -- TODO: index
+  lines_of_code INTEGER NOT NULL,
   updated_by_analyzer TIMESTAMP DEFAULT NOW() NOT NULL
 );
 
@@ -111,18 +94,14 @@ CREATE TABLE IF NOT EXISTS grades (
   UNIQUE (category_id, repository_id)
 );
 
---CREATE INDEX IF NOT EXISTS grades_repository_id_idx ON grades (repository_id);
---CREATE INDEX IF NOT EXISTS grades_repository_id_idx ON grades USING gin (repository_id gin_trgm_ops);
-
 CREATE TABLE IF NOT EXISTS warnings (
   id SERIAL PRIMARY KEY,
-  warning TEXT NOT NULL, -- TODO: index?
+  warning TEXT NOT NULL,
   grade_category_id INTEGER REFERENCES grade_categories NOT NULL,
   language_id INTEGER REFERENCES languages NOT NULL,
   UNIQUE (warning, grade_category_id, language_id)
 );
 
--- TODO: make everything nullable (and join non-null stuff)?
 CREATE TABLE IF NOT EXISTS github_search_queries (
   id SERIAL PRIMARY KEY,
   language_id INTEGER REFERENCES languages NOT NULL,
@@ -140,105 +119,3 @@ CREATE TABLE IF NOT EXISTS github_receiver_state (
   key TEXT UNIQUE NOT NULL,
   value TEXT NOT NULL
 );
-
-CREATE OR REPLACE VIEW users_to_grades AS
-  SELECT
-    repositories.user_id,
-    grades.value
-  FROM grades
-  INNER JOIN repositories ON repositories.id = grades.repository_id;
-
-CREATE OR REPLACE VIEW users_to_grade_details AS
-  SELECT
-    repositories.user_id,
-    JSON_BUILD_OBJECT('category', grade_categories.category, 'value', grades.value) as grade_details
-  FROM grades
-  INNER JOIN grade_categories ON grade_categories.id = grades.category_id
-  INNER JOIN repositories ON repositories.id = grades.repository_id;
-
--- TODO: split into two views? make one based on other?
-CREATE OR REPLACE VIEW users_to_technology_details AS
-  SELECT
-    technologies_users.user_id,
-    technologies.technology,
-    JSON_BUILD_OBJECT(
-      'technology',
-       technology,
-      'verified',
-      technologies_users_settings.verified
-  ) AS technology_details
-  FROM technologies
-  INNER JOIN technologies_users ON technologies_users.technology_id = technologies.id
-  INNER JOIN technologies_users_settings ON technologies_users_settings.id = technologies_users.id
-  ORDER BY technologies_users_settings.verified DESC;
-
-CREATE OR REPLACE VIEW users_to_language_details AS
-  SELECT
-    user_id,
-    language,
-    verified,
-    JSON_BUILD_OBJECT(
-      'language',
-      language,
-      'verified',
-      verified
-    ) AS language_details
-  FROM ( -- TODO: move to separate view?
-    SELECT DISTINCT
-      technologies_users.user_id,
-      languages.language,
-      technologies_users_settings.verified
-    FROM technologies_users
-    INNER JOIN technologies_users_settings ON technologies_users_settings.technologies_users_id = technologies_users.id
-    INNER JOIN technologies ON technologies.id = technologies_users.technology_id
-    INNER JOIN languages ON languages.id = technologies.language_id
-    ORDER BY technologies_users_settings.verified DESC
-  ) AS users_to_language;
-
-CREATE OR REPLACE VIEW main_page AS
-  SELECT
-    users.id,
-    users.github_login,
-    users.full_name,
-    developers.available_for_relocation,
-    developers.job_seeker,
-    ARRAY(
-      SELECT technology_details
-      FROM users_to_technology_details
-      WHERE users_to_technology_details.user_id = users.id
-      LIMIT 5
-    ) AS technologies,
-    ARRAY(
-      SELECT language_details
-      FROM users_to_language_details
-      WHERE users_to_language_details.user_id = users.id
-      LIMIT 5
-    ) AS languages,
-    ARRAY(
-      SELECT grade_details
-      FROM users_to_grade_details
-      WHERE users_to_grade_details.user_id = users.id
-    ) AS grades,
-    (
-      SELECT AVG(users_to_grades.value)
-      FROM users_to_grades
-      WHERE users_to_grades.user_id = users.id
-    ) AS avg_grade,
-    (
-      SELECT MAX(repositories.updated_by_analyzer)
-      FROM repositories
-      WHERE repositories.user_id = users.id
-    ) AS updated_by_analyzer,
-    (
-      SELECT SUM(repositories.lines_of_code)
-      FROM repositories
-      WHERE user_id = users.id
-    ) AS total_lines_of_code
-  FROM users
-  INNER JOIN developers ON developers.user_id = users.id
-  ORDER BY
-    avg_grade DESC,
-    updated_by_analyzer DESC,
-    total_lines_of_code DESC -- TODO: filtering instead of ordering?
-  LIMIT 20
-  OFFSET 0;
